@@ -1,0 +1,8 @@
+pywikibot
+mwxml
+transliterate
+num2words
+exif
+python-dateutil
+simple_term_menu
+pyexiftool

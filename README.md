@@ -13,16 +13,28 @@ Limited to process images of buildings and vehicles.
 ```
 git clone https://github.com/trolleway/commons-uploader.git
 cd commons-uploader 
-docker build
+docker build --tag commons-uploader:1.0 .
+
+docker run --rm -v "${PWD}:/opt/commons-uploader" -v "${PWD}/wikibase-cli:/root/.config/wikibase-cli" -v "${PWD}/wikibase-cache:/root/.cache/wikibase-cli" -it commons-uploader:1.0
+cp user-config.example.py user-config.py 
+
+
+#Open user-config.py in text editor, set your Wikimedia Username in usernames['commons']['commons'] = 
+nano user-config.py
+chmod o-w  user-config.py
+wb config instance https://www.wikidata.org
 ```
 
 Run
 ```
-docker run
+docker run --rm -v "${PWD}:/opt/commons-uploader" -v "${PWD}/wikibase-cli:/root/.config/wikibase-cli" -v "${PWD}/wikibase-cache:/root/.cache/wikibase-cli" -it commons-uploader:1.0
+
+
 
 # emulate upload files for building https://www.wikidata.org/wiki/Q118113014 witch has wikimedia commons category from directiry i
 ./building-upload.py https://www.wikidata.org/wiki/Q118113014 i --dry
 ```
+The wikibase-cli volumes used by wikibase-cli tool for auth storage
 
 ### Install in Android / termux
 

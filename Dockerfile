@@ -4,7 +4,7 @@ ARG APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=DontWarn
 
 RUN apt-get update 
 RUN apt-get install --no-install-recommends --fix-missing -y \
-    jq python3-pip nodejs npm gdal-bin proj-data libxml2-utils 
+    jq python3-pip nodejs npm gdal-bin proj-data libxml2-utils nano
 	
 	
 
@@ -14,19 +14,15 @@ RUN npm install -g wikibase-cli
 RUN apt-get install -y libimage-exiftool-perl
 
 
-RUN mkdir /opt/trolleway_wikidata
+RUN mkdir /opt/commons-uploader
 
-RUN chmod  --recursive 777 /opt/trolleway_wikidata
+RUN chmod  --recursive 777 /opt/commons-uploader
 
-WORKDIR /opt/trolleway_wikidata
+WORKDIR /opt/commons-uploader
 COPY requirements.txt requirements.txt
-COPY photouploader/requirements.txt requirements2.txt
 RUN pip3 install -r requirements.txt
-RUN pip3 install -r requirements2.txt
 
-RUN pip3 install pyexiftool
-
-
+RUN wb config instance https://www.wikidata.org
 
 
 CMD ["/bin/bash"]

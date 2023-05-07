@@ -338,7 +338,7 @@ class CommonsOps:
         terminal_menu = TerminalMenu(candidates, title="Select street")
         menu_entry_index = terminal_menu.show()
         selected_url = result_wd[menu_entry_index]['id']
-        print('selected '+selected_url+' '+result_wd[menu_entry_index]["description"])
+        print('For '+inp+' selected '+selected_url+' '+result_wd[menu_entry_index].get("description",'[no description]'))
         return selected_url
             
         
@@ -348,6 +348,8 @@ class CommonsOps:
         
         wikidata = str(wikidata).strip()
         wikidata = wikidata.replace('https://www.wikidata.org/wiki/','')
+        if wikidata[0].isdigit() and not wikidata.upper().startswith('Q'):
+            wikidata = 'Q'+wikidata
         return wikidata
 
     def wikidata_add_commonscat(self, wikidata, category_name) -> bool:
@@ -377,7 +379,10 @@ class CommonsOps:
         return category_name
 
     def location_string_parse(self, text) -> tuple:
-        if text is None or text.strip() == "":
+        if text is None:
+            return None, None
+        text = text.strip()
+        if text is None or text == "":
             return None, None
         struct = re.split(" |,|\t|\|", text)
         if len(struct) < 2:
@@ -390,7 +395,13 @@ class CommonsOps:
 
         cmd = ["wd", "generate-template", "--json", data["street_wikidata"]]
         response = subprocess.run(cmd, capture_output=True)
-        street_dict_wd = json.loads(response.stdout.decode())
+        try:
+            street_dict_wd = json.loads(response.stdout.decode())
+        except:
+            self.logger.error('not JSON')
+            self.logger.error('command was'+' '.join(cmd))
+            print(response.stdout.decode())
+            quit()
         result = None
         if "ru" not in street_dict_wd["labels"]:
             print("street " + wikidata_street_url + " must have name ru")

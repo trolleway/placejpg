@@ -19,6 +19,7 @@ parser.add_argument(
 parser.add_argument(
     "--verify", action="store_const", required=False, default=False, const=True
 )
+parser.add_argument("--country", type=str,required=False, default='Russia', help='Country for {{Taken on}} template')
 parser.add_argument(
     "--no-building",
     action="store_const",
@@ -43,28 +44,33 @@ else:
 wikidata = fileprocessor.prepare_wikidata_url(args.wikidata)
 uploaded_paths = list()
 for filename in files:
-    texts = fileprocessor.make_image_texts(
-        filename=filename,
-        wikidata=wikidata,
-        place_en="Moscow",
-        place_ru="Москва",
-        no_building=args.no_building,
-    )
+    try:
+        texts = fileprocessor.make_image_texts(
+            filename=filename,
+            wikidata=wikidata,
+            place_en="Moscow",
+            place_ru="Москва",
+            no_building=args.no_building,
+            country=args.country.capitalize()
+        )
 
-    if args.dry_run:
-        print()
-        print(texts["name"])
-        print(texts["text"])
+        if args.dry_run:
+            print()
+            print(texts["name"])
+            print(texts["text"])
+            continue
+
+        wikidata_list = list()
+        wikidata_list.append(wikidata)
+        fileprocessor.upload_file(
+            filename, texts["name"], texts["text"], verify_description=args.verify
+        )
+        fileprocessor.append_image_descripts_claim(texts["name"], wikidata_list)
+        uploaded_paths.append('https://commons.wikimedia.org/wiki/File:'+texts["name"].replace(' ', '_'))
+    except:
+        fileprocessor.logger.warning('can not open file '+filename+', skipped')
         continue
-
-    wikidata_list = list()
-    wikidata_list.append(wikidata)
-    fileprocessor.upload_file(
-        filename, texts["name"], texts["text"], verify_description=args.verify
-    )
-    fileprocessor.append_image_descripts_claim(texts["name"], wikidata_list)
-    uploaded_paths.append('https://commons.wikimedia.org/wiki/File:'+texts["name"].replace(' ', '_'))
-    
+        
 if len(uploaded_paths)>1:    
     print('Uploaded:')
     for element in uploaded_paths:

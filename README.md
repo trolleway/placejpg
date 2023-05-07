@@ -23,6 +23,7 @@ cp user-config.example.py user-config.py
 nano user-config.py
 chmod o-w  user-config.py
 wb config instance https://www.wikidata.org
+wb config credentials https://www.wikidata.org test
 ```
 
 Run

@@ -23,6 +23,7 @@ parser.add_argument('--levels', type=int, required=False, help='Building levels 
 parser.add_argument('--levels_url', type=str, required=False, help='url for building levels refrence')
 parser.add_argument('--year', type=int, required=False, help='year built')
 parser.add_argument('--year_url', type=str, required=False, help='url for year refrence')
+parser.add_argument("--country", type=str,required=False, default='Russia', help='Country for {{Taken on}} template')
 parser.add_argument('--photos', type=str, required=False, help='Optional: call photo uploader , path to files dir ')
 
 parser.add_argument(
@@ -69,5 +70,5 @@ for data in buildings:
     print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))
     print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))
     if args.photos:
-        cmd = ['python3','building-upload.py', building_wikidata, args.photos]
+        cmd = ['python3','building-upload.py', building_wikidata, args.photos, '--country',args.country]
         response = subprocess.run(cmd) 

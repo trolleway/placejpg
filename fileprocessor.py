@@ -342,7 +342,7 @@ class Fileprocessor:
         
         
     def make_image_texts(
-        self, filename, wikidata, place_en, place_ru, no_building=False
+        self, filename, wikidata, place_en, place_ru, no_building=False, country='', photographer='Artem Svetlov'
     ) -> dict:
         # return file description texts
 
@@ -361,11 +361,8 @@ class Fileprocessor:
         # there is no excact 'city' in wikidata, use manual input cityname
         wd_record["addr:place:en"] = place_en
         wd_record["addr:place:ru"] = place_ru
-
-        if wd_record["addr:place:en"] == "Moscow":
-            taken_on_location = "Moscow"
-        else:
-            taken_on_location = "Russia"
+        
+        taken_on_location = country
 
         text = ""
         if no_building:
@@ -485,11 +482,11 @@ class Fileprocessor:
 
         text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
         
-        text = text + "[[Category:Photographs by Artem Svetlov/"+taken_on_location+"]]" + "\n"
+        text = text + "[[Category:Photographs by "+photographer+'/'+taken_on_location+"]]" + "\n"
         if 'ShiftN' in filename:
             text = text + "[[Category:Corrected with ShiftN]]" + "\n"
         if 'stitch' in filename:
-            text = text + "[[Category:Photographs by Artem Svetlov/Stitched panoramics]]" + "\n"
+            text = text + "[[Category:Photographs by "+photographer+'/Stitched panoramics]]' + "\n"
 
         return {"name": commons_filename, "text": text}
 
@@ -531,14 +528,21 @@ class Fileprocessor:
                 cameramodels_dict = {
         'Pentax corporation PENTAX K10D':'Pentax K10D',
         'Samsung SM-G7810':'Samsung Galaxy S20 FE 5G',
+        'Olympus imaging corp.':'Olympus',
         }
-        
+                lensmodel_dict = {
+                'OLYMPUS M.12-40mm F2.8':'Olympus M.Zuiko Digital ED 12-40mm f/2.8 PRO',
+                }
                 for camerastring in cameramodels_dict.keys():
                     if camerastring in st: st = st.replace(camerastring,cameramodels_dict[camerastring])
                 
                 if image_exif.get("lensmodel",'') != "" and image_exif.get("lensmodel",'') != "": 
                     st += "{{Taken with|" + image_exif.get("lensmodel").replace('[','').replace(']','').replace('f/ ','f/') + "|sf=1|own=1}}" + "\n"
 
+        
+                for lensstring in lensmodel_dict.keys():
+                    if lensstring in st: st = st.replace(lensstring,lensmodel_dict[lensstring])
+                        
                 return st
         else:
             return ''

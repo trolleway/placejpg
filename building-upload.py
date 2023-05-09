@@ -44,7 +44,8 @@ else:
 wikidata = fileprocessor.prepare_wikidata_url(args.wikidata)
 uploaded_paths = list()
 for filename in files:
-    try:
+    if fileprocessor.check_exif_valid(filename):
+        print(filename+' valid')
         texts = fileprocessor.make_image_texts(
             filename=filename,
             wikidata=wikidata,
@@ -67,7 +68,7 @@ for filename in files:
         )
         fileprocessor.append_image_descripts_claim(texts["name"], wikidata_list)
         uploaded_paths.append('https://commons.wikimedia.org/wiki/File:'+texts["name"].replace(' ', '_'))
-    except:
+    else:
         fileprocessor.logger.warning('can not open file '+filename+', skipped')
         continue
         

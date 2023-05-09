@@ -23,6 +23,7 @@ COPY requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt
 
 RUN wb config instance https://www.wikidata.org
+RUN wb config sparql-endpoint https://query.wikidata.org/sparql
 
 
 CMD ["/bin/bash"]

@@ -21,6 +21,8 @@ class Fileprocessor:
     pp = pprint.PrettyPrinter(indent=4)
     
     exiftool_path = "exiftool"
+    
+    wikidata_cache = dict()
 
     def prepare_wikidata_url(self,wikidata)->str:
         # convert string https://www.wikidata.org/wiki/Q4412648 to Q4412648
@@ -42,50 +44,6 @@ class Fileprocessor:
             verify_description=verify_description,  # Ask for verification of the description
             targetSite=site,  # The site object for Wikimedia Commons
             chunk_size=100000,
-        )
-
-        # Try to run the upload robot
-        try:
-            bot.run()
-        except Exception as e:
-            # Handle API errors
-            print(f"API error: {e.code}: {e.info}")
-
-    def upload_image0(self):
-        # The file path or URL of the file to upload
-        file = "imgs/Vidnoe trolleybus 24 2023-01 Rastorguevo station.jpg"
-
-        # The name of the file on Wikimedia Commons
-        filename = "Vidnoe trolleybus 24 2023-01 Rastorguevo station.jpg"
-
-        # The description of the file
-        description = """{{Information
-        |Description = {{en|1=Vidnoe trolleybus 24. test upload with script created by Bing Ai}}
-        |Source = {{own}}
-        |Author = {{Creator:Svetlov Artem}}
-        |Date = {{Taken on|2023-01-31|location=Russia}}
-        |Permission =
-        |other_versions =
-        }}
-        {{Location|lat|lon}}
-        == {{int:license-header}} ==
-        {{self|cc-by-sa-4.0}}
-        [[Category:Trolleybuses in Vidnoe]]
-        [[Category:Photographs by Artem Svetlov/Moscow]]
-
-        """
-
-        # The site object for Wikimedia Commons
-        site = pywikibot.Site("commons", "commons")
-
-        # The upload robot object
-        bot = UploadRobot(
-            [file],  # A list of files to upload
-            description=description,  # The description of the file
-            useFilename=filename,  # The name of the file on Wikimedia Commons
-            keepFilename=True,  # Keep the filename as is
-            verifyDescription=True,  # Ask for verification of the description
-            targetSite=site,  # The site object for Wikimedia Commons
         )
 
         # Try to run the upload robot
@@ -138,15 +96,27 @@ class Fileprocessor:
 
     def get_object_wikidata(self, wikidata) -> dict:
         # get all claims of this wikidata objects
+        
+        if wikidata in self.wikidata_cache:
+            return self.wikidata_cache[wikidata]
+            
         cmd = ["wb", "gt", "--json", "--no-minimize", wikidata]
         response = subprocess.run(cmd, capture_output=True)
         object_wd = json.loads(response.stdout.decode())
 
-        object_record = {
-            "name_en": object_wd["labels"]["en"],
-            "name_ru": object_wd["labels"]["ru"],
-            "commons": object_wd["claims"]["P373"][0]["value"],
-        }
+        try:
+            object_record = {
+                "name_en": object_wd["labels"]["en"],
+                "name_ru": object_wd["labels"]["ru"],
+            }
+        except:
+            self.logger.error('object https://www.wikidata.org/wiki/'+wikidata+' must has name_ru and name_en')
+            quit()
+        if "P373" in object_wd["claims"]:
+            object_record['commons'] = object_wd["claims"]["P373"][0]["value"]
+        if "P31" in object_wd["claims"]:
+            object_record['instance_of_list'] = object_wd["claims"]["P31"]
+        self.wikidata_cache[wikidata] = object_record
 
         return object_record
 
@@ -355,8 +325,15 @@ class Fileprocessor:
 
         if no_building:
             wd_record = self.get_object_wikidata(wikidata)
+            
         else:
             wd_record = self.get_building_record_wikidata(wikidata)
+        instance_of_data = list()
+        
+        if 'instance_of_list' in wd_record:
+            for i in wd_record['instance_of_list']:
+                instance_of_data.append(self.get_object_wikidata(i['value']))
+        
 
         # there is no excact 'city' in wikidata, use manual input cityname
         wd_record["addr:place:en"] = place_en
@@ -383,6 +360,13 @@ class Fileprocessor:
                 + " "
                 + wd_record["addr:housenumber:local"]
             )
+        
+        objectname_long_ru = objectname_ru
+        objectname_long_en = objectname_en
+        if len(instance_of_data)>0:
+            objectname_long_ru = ', '.join(d['name_ru'] for d in instance_of_data) + ' '+objectname_ru
+            objectname_long_en = ', '.join(d['name_en'] for d in instance_of_data) + ' '+objectname_en
+        
         filename_base = os.path.splitext(os.path.basename(filename))[0]
         filename_extension = os.path.splitext(os.path.basename(filename))[1]
         commons_filename = (
@@ -422,8 +406,8 @@ class Fileprocessor:
         st = """== {{int:filedesc}} ==
 {{Information
 |description="""
-        st += "{{en|1=" + objectname_en + "}}"
-        st += "{{ru|1=" + objectname_ru + "}}"
+        st += "{{en|1=" + objectname_long_en + "}}"
+        st += "{{ru|1=" + objectname_long_ru + "}}"
         heritage_id = None
         heritage_id = self.get_heritage_id(wikidata)
         if heritage_id is not None:
@@ -527,6 +511,7 @@ class Fileprocessor:
                 
                 cameramodels_dict = {
         'Pentax corporation PENTAX K10D':'Pentax K10D',
+        'Gopro HERO8 Black':'GoPro Hero8 Black',
         'Samsung SM-G7810':'Samsung Galaxy S20 FE 5G',
         'Olympus imaging corp.':'Olympus',
         }
@@ -581,6 +566,16 @@ class Fileprocessor:
 
             return metadata
 
+    def check_exif_valid(self,path):
+
+            cmd = [self.exiftool_path, path, "-datetimeoriginal", "-csv"]
+            process = subprocess.run(cmd)
+            print('return code:', process.returncode)
+            if process.returncode == 0:
+                return True
+            else:
+                return False
+            
     def image2datetime(self, path):
 
         with open(path, "rb") as image_file:
@@ -606,8 +601,12 @@ class Fileprocessor:
 
     def image2coords(self,path):
         exiftool_metadata = self.image2camera_params(path)
-        lat = round(float(exiftool_metadata.get('gpslatitude')), 6)
-        lon = round(float(exiftool_metadata.get('gpslongitude')), 6)
+        try:
+            lat = round(float(exiftool_metadata.get('gpslatitude')), 6)
+            lon = round(float(exiftool_metadata.get('gpslongitude')), 6)
+        except:
+            self.logger.warning('no coordinates in '+path)
+            return None
     
         geo_dict = {}
         geo_dict = {"lat": lat, "lon": lon}

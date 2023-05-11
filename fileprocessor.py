@@ -152,28 +152,26 @@ class Fileprocessor:
         return object_wd
     
     def get_territorial_entity(self,wd_record)->dict:
-        cmd = ['wb', 'gt', '--json', '--no-minimize',wd_record['claims']['P131'][0]['value'] ]
+        try:
+            cmd = ['wb', 'gt', '--json', '--no-minimize',wd_record['claims']['P131'][0]['value'] ]
+        except:
+            return None
         response = subprocess.run(cmd, capture_output=True)
-        object_wd = json.loads(response.stdout.decode())
+        try:
+            object_wd = json.loads(response.stdout.decode())
+        except:
+            self.logger.error('check '+' '.join(cmd))
+            quit()
         return object_wd
         
-    def make_image_texts_vehicle(self, filename, vehicle, system, model, street, number, route=None) -> dict:
+    def make_image_texts_vehicle(self, filename, vehicle,  model, street, number, system=None, city=None,route=None) -> dict:
         assert os.path.isfile(filename)
-        assert vehicle in ['tram','trolleybus','bus', 'train']
-        vehicle_ru_dict={'tram':'трамвай','trolleybus':'троллейбус','bus':'автобус', 'train':'поезд'}
+
+        vehicle_ru_dict={'tram':'трамвай','trolleybus':'троллейбус','bus':'автобус', 'train':'поезд','auto':'автомобиль', 'plane':'самолёт'}
         taken_on_location = "Russia"
         wikidata_4_structured_data=list()
         
 
-        if self.is_wikidata_id(system):
-            system_wdid = system
-        else:
-            system_wdid = self.search_wikidata_by_string(system,stop_on_error=True)        
-        system_wd = self.get_wikidata(system_wdid)
-        system_names = system_wd["labels"]
-        wikidata_4_structured_data.append(system_wd['id'])
-        city_name_en = self.get_territorial_entity(system_wd)['labels']['en']
-        city_name_ru = self.get_territorial_entity(system_wd)['labels']['ru']
         
         if self.is_wikidata_id(model):
             model_wdid = model
@@ -191,6 +189,26 @@ class Fileprocessor:
         street_names = street_wd["labels"]
         wikidata_4_structured_data.append(street_wd['id'])
         
+        if system is not None:
+            if self.is_wikidata_id(system):
+                system_wdid = system
+            else:
+                system_wdid = self.search_wikidata_by_string(system,stop_on_error=True)        
+            system_wd = self.get_wikidata(system_wdid)
+            system_names = system_wd["labels"]
+            wikidata_4_structured_data.append(system_wd['id'])
+            city_name_en = self.get_territorial_entity(system_wd)['labels']['en']
+            city_name_ru = self.get_territorial_entity(system_wd)['labels']['ru']
+        
+        elif system is None:
+        
+            city_wd = self.get_territorial_entity(street_wd)
+
+            city_name_en = city_wd['labels']['en']
+            city_name_ru = city_wd['labels']['ru']
+            
+            wikidata_4_structured_data.append(city_wd['id'])
+                    
         '''
         prototype
         https://commons.wikimedia.org/wiki/File:Moscow_tram_LM-99AE_3032_-_panoramio_(1).jpg
@@ -301,10 +319,13 @@ class Fileprocessor:
             transports=transports[vehicle],
             route=route,
             city=city_name_en) + "\n"
-        text = text + "[[Category:" + system_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
+        if 'system_wd' in locals(): text = text + "[[Category:" + system_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
         text = text + "[[Category:" + model_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
-        text = text + "[[Category:" + street_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
-        text = text + "[[Category:Photographs by Artem Svetlov/Moscow]]" + "\n"
+        try:
+            text = text + "[[Category:" + street_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
+        except:
+            pass
+        text = text + "[[Category:Photographs by Artem Svetlov/Russia]]" + "\n"
 
 
         
@@ -595,6 +616,9 @@ class Fileprocessor:
                         dt_str.decode("UTF-8"), "%Y:%m:%d %H:%M:%S"
                     )
 
+            if dt_obj is None:
+                dt_obj = datetime.strptime(os.path.basename(path)[0:15], '%Y%m%d_%H%M%S')
+            
             if dt_obj is None:
                 return None
             return dt_obj

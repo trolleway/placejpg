@@ -23,6 +23,9 @@ class Fileprocessor:
     exiftool_path = "exiftool"
     
     wikidata_cache = dict()
+    optional_langs = ('de','fr','it','es','pt','uk','be',)
+    chunk_size = 102400
+    
 
     def prepare_wikidata_url(self,wikidata)->str:
         # convert string https://www.wikidata.org/wiki/Q4412648 to Q4412648
@@ -43,7 +46,7 @@ class Fileprocessor:
             keep_filename=True,  # Keep the filename as is
             verify_description=verify_description,  # Ask for verification of the description
             targetSite=site,  # The site object for Wikimedia Commons
-            chunk_size=100000,
+            chunk_size=self.chunk_size,
         )
 
         # Try to run the upload robot
@@ -103,15 +106,19 @@ class Fileprocessor:
         cmd = ["wb", "gt", "--json", "--no-minimize", wikidata]
         response = subprocess.run(cmd, capture_output=True)
         object_wd = json.loads(response.stdout.decode())
-
+        object_record={'names':{}}
         try:
-            object_record = {
-                "name_en": object_wd["labels"]["en"],
-                "name_ru": object_wd["labels"]["ru"],
+            object_record['names'] = {
+                "en": object_wd["labels"]["en"],
+                "ru": object_wd["labels"]["ru"],
             }
         except:
-            self.logger.error('object https://www.wikidata.org/wiki/'+wikidata+' must has name_ru and name_en')
+            self.logger.error('object https://www.wikidata.org/wiki/'+wikidata+' must has name ru and name en')
             quit()
+        
+        for lang in self.optional_langs:
+            if lang in object_wd["labels"]:
+                object_record['names'][lang]=object_wd["labels"][lang]
         if "P373" in object_wd["claims"]:
             object_record['commons'] = object_wd["claims"]["P373"][0]["value"]
         if "P31" in object_wd["claims"]:
@@ -336,6 +343,7 @@ class Fileprocessor:
         self, filename, wikidata, place_en, place_ru, no_building=False, country='', photographer='Artem Svetlov'
     ) -> dict:
         # return file description texts
+        # there is no excact 'city' in wikidata, use manual input cityname
 
         assert os.path.isfile(filename), 'not found '+filename
 
@@ -348,7 +356,9 @@ class Fileprocessor:
             wd_record = self.get_object_wikidata(wikidata)
             
         else:
-            wd_record = self.get_building_record_wikidata(wikidata)
+            wd_record = self.get_object_wikidata(wikidata)
+            wd_record_building = self.get_building_record_wikidata(wikidata)
+            self.pp.pprint(wd_record_building)
         instance_of_data = list()
         
         if 'instance_of_list' in wd_record:
@@ -356,42 +366,48 @@ class Fileprocessor:
                 instance_of_data.append(self.get_object_wikidata(i['value']))
         
 
-        # there is no excact 'city' in wikidata, use manual input cityname
-        wd_record["addr:place:en"] = place_en
-        wd_record["addr:place:ru"] = place_ru
-        
+
         taken_on_location = country
 
         text = ""
+        objectnames = {}
         if no_building:
-            objectname_en = wd_record["name_en"]
-            objectname_ru = wd_record["name_ru"]
+            objectnames['en'] = wd_record['names']["en"]
+            objectnames['ru'] = wd_record['names']["ru"]
+            for lang in self.optional_langs:
+                if lang in wd_record['names']:objectnames[lang] = wd_record['names'][lang]
         else:
-            objectname_en = (
-                wd_record["addr:place:en"]
+            objectnames['en'] = (
+                place_en
                 + " "
-                + wd_record["addr:street:en"]
+                + wd_record_building["addr:street:en"]
                 + " "
-                + wd_record["addr:housenumber:en"]
+                + wd_record_building["addr:housenumber:en"]
             )
-            objectname_ru = (
-                wd_record["addr:place:ru"]
+            objectnames['ru'] = (
+                place_ru
                 + " "
-                + wd_record["addr:street:ru"]
+                + wd_record_building["addr:street:ru"]
                 + " "
-                + wd_record["addr:housenumber:local"]
+                + wd_record_building["addr:housenumber:local"]
             )
         
-        objectname_long_ru = objectname_ru
-        objectname_long_en = objectname_en
+        objectname_long_ru = objectnames['ru']
+        objectname_long_en = objectnames['en']
+        #TODO change objectname_long_en to objectnames_long[en]
+        objectnames_long={}
         if len(instance_of_data)>0:
-            objectname_long_ru = ', '.join(d['name_ru'] for d in instance_of_data) + ' '+objectname_ru
-            objectname_long_en = ', '.join(d['name_en'] for d in instance_of_data) + ' '+objectname_en
-        
+            objectname_long_ru = ', '.join(d['names']['ru'] for d in instance_of_data) + ' '+objectnames['ru']
+            objectname_long_en = ', '.join(d['names']['en'] for d in instance_of_data) + ' '+objectnames['en']
+            for lang in self.optional_langs:
+                try:
+                    objectnames_long[lang] = ', '.join(d['names'][lang] for d in instance_of_data) + ' '+objectnames[lang]
+                except:
+                    pass
         filename_base = os.path.splitext(os.path.basename(filename))[0]
         filename_extension = os.path.splitext(os.path.basename(filename))[1]
         commons_filename = (
-            objectname_en + " " + dt_obj.strftime("%Y-%m %s") + filename_extension
+            objectnames['en'] + " " + dt_obj.strftime("%Y-%m %s") + filename_extension
         )
         commons_filename = commons_filename.replace("/", " drob ")
 
@@ -427,8 +443,11 @@ class Fileprocessor:
         st = """== {{int:filedesc}} ==
 {{Information
 |description="""
-        st += "{{en|1=" + objectname_long_en + "}}"
-        st += "{{ru|1=" + objectname_long_ru + "}}"
+        st += "{{en|1=" + objectname_long_en + "}} \n"
+        st += "{{ru|1=" + objectname_long_ru + "}} \n"
+        for lang in self.optional_langs:
+            if lang in objectnames_long:
+                st += "{{"+lang+"|1=" + objectnames_long[lang] + "}} \n"
         heritage_id = None
         heritage_id = self.get_heritage_id(wikidata)
         if heritage_id is not None:

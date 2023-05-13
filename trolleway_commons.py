@@ -193,9 +193,9 @@ class CommonsOps:
             cat.text = code
             # Save the category page
             cat.save(
-                "Creating new category for automatic naming photos of buildings in commons upload app"
+                "Creating new category"
             )
-            print("The category was created successfully.")
+            self.logger.info("The category was created successfully. https://commons.wikimedia.org/wiki/"+name)
             return True
 
     def create_commonscat(self, wikidata, dry_mode=False) -> str:

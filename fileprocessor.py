@@ -3,12 +3,14 @@ import json
 
 from exif import Image
 import exiftool
+import locale
 
 from datetime import datetime
 from dateutil import parser
 import os, logging, pprint, subprocess
 from transliterate import translit
 from pywikibot.specialbots import UploadRobot
+
 
 
 class Fileprocessor:
@@ -25,6 +27,7 @@ class Fileprocessor:
     wikidata_cache = dict()
     optional_langs = ('de','fr','it','es','pt','uk','be',)
     chunk_size = 102400
+    photographer = 'Artem Svetlov'
     
 
     def prepare_wikidata_url(self,wikidata)->str:
@@ -171,7 +174,7 @@ class Fileprocessor:
             quit()
         return object_wd
         
-    def make_image_texts_vehicle(self, filename, vehicle,  model, street, number, system=None, city=None,route=None) -> dict:
+    def make_image_texts_vehicle(self, filename, vehicle,  model, street, number, system=None, city=None,route=None, country=None, line=None) -> dict:
         assert os.path.isfile(filename)
 
         vehicle_ru_dict={'tram':'трамвай','trolleybus':'троллейбус','bus':'автобус', 'train':'поезд','auto':'автомобиль', 'plane':'самолёт'}
@@ -215,19 +218,15 @@ class Fileprocessor:
             city_name_ru = city_wd['labels']['ru']
             
             wikidata_4_structured_data.append(city_wd['id'])
-                    
-        '''
-        prototype
-        https://commons.wikimedia.org/wiki/File:Moscow_tram_LM-99AE_3032_-_panoramio_(1).jpg
         
-        Moscow tram LM-99 3021 2017-05 1495993574.jpg
-        
-         
-        
-        
-        
-        '''
-        
+        line_wdid = None
+        if line is not None:
+            if self.is_wikidata_id(line):
+                line_wdid = line
+            else:
+                line_wdid = self.search_wikidata_by_string(line,stop_on_error=True)   
+
+            wikidata_4_structured_data.append(line_wdid)
         
         objectname_en = '{city} {transport} {model} {number}'.format(
         transport = vehicle,
@@ -235,12 +234,14 @@ class Fileprocessor:
         model = model_names['en'],
         number = number
         )         
+
         objectname_ru = '{city}, {transport} {model} {number}'.format(
         city = city_name_ru,
         transport = vehicle_ru_dict[vehicle],
         model = model_names['ru'],
         number = number
         )
+  
         
         # obtain exif
         dt_obj = self.image2datetime(filename)
@@ -259,10 +260,12 @@ class Fileprocessor:
 |description="""
         st += "{{en|1=" + objectname_en +' on ' + street_names['en'] 
         if route is not None: st += ' Line '+route
+        if line_wdid is not None:st += ' '+self.get_wikidata(line_wdid)['labels']['en']
         st += "}}"
         st += "{{ru|1=" + objectname_ru + ' на '+ street_names['ru'].replace('Улица','улица').replace('Проспект','проспект') 
         if route is not None: st += ' Маршрут '+route
-        
+        if line_wdid is not None:st += ' '+self.get_wikidata(line_wdid)['labels']['ru']
+                  
         st += "}}"
         
 
@@ -320,7 +323,7 @@ class Fileprocessor:
 """
         )
 
-        transports = {'tram':'Trams','trolleybus':'Trolleybuses','bus':'Buses'}
+        transports = {'tram':'Trams','trolleybus':'Trolleybuses','bus':'Buses','train':'Trains'}
         if route is not None:
             text = text + "[[Category:{transports} on route {route} in {city}]]".format(
             transports=transports[vehicle],
@@ -332,8 +335,21 @@ class Fileprocessor:
             text = text + "[[Category:" + street_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
         except:
             pass
-        text = text + "[[Category:Photographs by Artem Svetlov/Russia]]" + "\n"
-
+        text = text + "[[Category:Photographs by "+self.photographer+'/'+country+"]]" + "\n"
+        if line is not None: text = text + "[[Category:"+self.get_wikidata(line_wdid)["claims"]["P373"][0]["value"]+"]]" + "\n"
+        
+        
+        #locale.setlocale(locale.LC_ALL, 'en_GB')
+        if vehicle == 'train':
+            text += "[[Category:Railway photographs taken on "+dt_obj.strftime("%Y-%m-%d")+"]]" + "\n"
+            if isinstance(country, str):
+                text += "[[Category:"+dt_obj.strftime("%B %Y")+" in rail transport in "+country+"]]" + "\n"
+        
+        if vehicle == 'tram':
+            text += "[[Category:Railway photographs taken on "+dt_obj.strftime("%Y-%m-%d")+"]]" + "\n"
+            if isinstance(country, str):
+                text += "[[Category:"+dt_obj.strftime("%B %Y")+" in tram transport in "+country+"]]" + "\n"
+        
 
         
         return {"name": commons_filename, "text": text, "structured_data_on_commons": wikidata_4_structured_data}

@@ -18,7 +18,8 @@ parser.add_argument('-c','--city', type=str, required='auto' in sys.argv or '-s'
 parser.add_argument('-m','--model', type=str, required=True, help='wikidata id or wikidata name of vehicle model')
 parser.add_argument('-r','--street', type=str, required=False, help='wikidata id or wikidata name of streer or highway')
 parser.add_argument('-n','--number', type=str, required=True, help='vehicle number')
-parser.add_argument('-ro','--route', type=str, required=False, help='vehicle line/route')
+parser.add_argument('-ro','--route', type=str, required=False, help='vehicle route text')
+parser.add_argument('-l','--line', type=str, required=False, help='railway line wikidata object')
 
 parser.add_argument(
     "-dry", "--dry-run", action="store_const", required=False, default=False, const=True
@@ -52,7 +53,10 @@ for filename in files:
             vehicle=args.vehicle, system=args.system, model=args.model, street=args.street,
             route = args.route,
             number = args.number,
-            city = args.city
+            city = args.city,
+            country='Russia',
+            line = args.line,
+            
         )
         
 

@@ -132,7 +132,7 @@ class Fileprocessor:
 
     def is_wikidata_id(self,text)->bool:
         # check if string is valid wikidata id
-        if text.startswith('Q'):
+        if text.startswith('Q') and text[1:].isnumeric():
             return True
         else:
             return False
@@ -174,7 +174,7 @@ class Fileprocessor:
             quit()
         return object_wd
         
-    def make_image_texts_vehicle(self, filename, vehicle,  model, street, number, system=None, city=None,route=None, country=None, line=None) -> dict:
+    def make_image_texts_vehicle(self, filename, vehicle,  model, street, number, system=None, city=None,route=None, country=None, line=None, rail=None) -> dict:
         assert os.path.isfile(filename)
 
         vehicle_ru_dict={'tram':'трамвай','trolleybus':'троллейбус','bus':'автобус', 'train':'поезд','auto':'автомобиль', 'plane':'самолёт'}
@@ -182,14 +182,15 @@ class Fileprocessor:
         wikidata_4_structured_data=list()
         
 
+        if model is not None:
+            if self.is_wikidata_id(model):
+                model_wdid = model
+            else:
+                model_wdid = self.search_wikidata_by_string(model,stop_on_error=True)
+            model_wd = self.get_wikidata(model_wdid)
+            model_names = model_wd["labels"]
+            wikidata_4_structured_data.append(model_wd['id'])
         
-        if self.is_wikidata_id(model):
-            model_wdid = model
-        else:
-            model_wdid = self.search_wikidata_by_string(model,stop_on_error=True)
-        model_wd = self.get_wikidata(model_wdid)
-        model_names = model_wd["labels"]
-        wikidata_4_structured_data.append(model_wd['id'])
 
         if self.is_wikidata_id(street):
             street_wdid = street
@@ -278,7 +279,7 @@ class Fileprocessor:
             + dt_obj.isoformat()
             + "|location="
             + taken_on_location
-            + "}}"
+            + "|source=EXIF}}"
             + "\n"
         )
         st += "}}\n"
@@ -353,10 +354,68 @@ class Fileprocessor:
 
         
         return {"name": commons_filename, "text": text, "structured_data_on_commons": wikidata_4_structured_data}
+    
+    def get_date_information_part(self,dt_obj,taken_on_location):
+        st = ''
+        st += (  
+            """|source={{own}}
+|author={{Creator:""" +self.photographer+"""}}
+|date="""
+            + "{{Taken on|"
+            + dt_obj.isoformat()
+            + "|location="
+            + taken_on_location
+            + "|source=EXIF}}"
+            + "\n"
+        )
+        return st
+    def get_tech_templates(self,filename,geo_dict,country):
+        text = ''
+        if 'stitch' in filename:
+            text = text + "{{Panorama}}" + "\n"
+
+        if geo_dict is not None:
+            st = (
+                "{{Location dec|"
+                + str(geo_dict.get("lat"))
+                + "|"
+                + str(geo_dict.get("lon"))
+            )
+            if "direction" in geo_dict:
+                st += "|heading:" + str(geo_dict.get("direction"))
+            st += "}}\n"
+            text += st
+
+            if "dest_lat" in geo_dict:
+                st = (
+                    "{{object location|"
+                    + str(geo_dict.get("dest_lat"))
+                    + "|"
+                    + str(geo_dict.get("dest_lon"))
+                    + "}}"
+                    + "\n"
+                )
+                text += st
+        text += self.get_camera_text(filename)
+
+
+        text = (
+            text
+            + """== {{int:license-header}} ==
+{{self|cc-by-sa-4.0|author=""" +self.photographer+"""}}
+"""
+        )
         
+        text = text + "[[Category:Photographs by "+self.photographer+'/'+country+"]]" + "\n"
+        if 'ShiftN' in filename:
+            text = text + "[[Category:Corrected with ShiftN]]" + "\n"
+        if 'stitch' in filename:
+            text = text + "[[Category:Photographs by "+self.photographer+'/Stitched panoramics]]' + "\n"
+            
+        return text
         
     def make_image_texts(
-        self, filename, wikidata, place_en, place_ru, no_building=False, country='', photographer='Artem Svetlov'
+        self, filename, wikidata, place_en, place_ru, no_building=False, country='', photographer='Artem Svetlov', rail=''
     ) -> dict:
         # return file description texts
         # there is no excact 'city' in wikidata, use manual input cityname
@@ -369,7 +428,8 @@ class Fileprocessor:
         
 
         if no_building:
-            wd_record = self.get_object_wikidata(wikidata)
+            wdid = self.take_user_wikidata_id(wikidata)
+            wd_record = self.get_object_wikidata(wdid)
             
         else:
             wd_record = self.get_object_wikidata(wikidata)
@@ -383,7 +443,7 @@ class Fileprocessor:
         
 
 
-        taken_on_location = country
+        
 
         text = ""
         objectnames = {}
@@ -470,67 +530,111 @@ class Fileprocessor:
             st += "{{Cultural Heritage Russia|" + heritage_id + "}}"
         st += " {{ on Wikidata|" + wikidata + "}}"
         st += "\n"
-        st += (
-            """|source={{own}}
-|author={{Creator:Artem Svetlov}}
-|date="""
-            + "{{Taken on|"
-            + dt_obj.isoformat()
-            + "|location="
-            + taken_on_location
-            + "}}"
-            + "\n"
-        )
+        st += self.get_date_information_part(dt_obj,country)
+
+        
         st += "}}\n"
 
         text += st
         
-        if 'stitch' in filename:
-            text = text + "{{Panorama}}" + "\n"
-
-        if geo_dict is not None:
-            st = (
-                "{{Location dec|"
-                + str(geo_dict.get("lat"))
-                + "|"
-                + str(geo_dict.get("lon"))
-            )
-            if "direction" in geo_dict:
-                st += "|heading:" + str(geo_dict.get("direction"))
-            st += "}}\n"
-            text += st
-
-            if "dest_lat" in geo_dict:
-                st = (
-                    "{{object location|"
-                    + str(geo_dict.get("dest_lat"))
-                    + "|"
-                    + str(geo_dict.get("dest_lon"))
-                    + "}}"
-                    + "\n"
-                )
-                text += st
-        text += self.get_camera_text(filename)
-
-
-        text = (
-            text
-            + """== {{int:license-header}} ==
-{{self|cc-by-sa-4.0|author=Artem Svetlov}}
-"""
-        )
+        text = text + self.get_tech_templates(filename,geo_dict,country)
+        if rail:
+            text += "[[Category:Railway photographs taken on "+dt_obj.strftime("%Y-%m-%d")+"]]" + "\n"
+            if isinstance(country, str) and len(country)>3:
+                text += "[[Category:"+dt_obj.strftime("%B %Y")+" in rail transport in "+country+"]]" + "\n"
 
         text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
         
-        text = text + "[[Category:Photographs by "+photographer+'/'+taken_on_location+"]]" + "\n"
-        if 'ShiftN' in filename:
-            text = text + "[[Category:Corrected with ShiftN]]" + "\n"
-        if 'stitch' in filename:
-            text = text + "[[Category:Photographs by "+photographer+'/Stitched panoramics]]' + "\n"
+
 
         return {"name": commons_filename, "text": text}
 
-    
+    def take_user_wikidata_id(self, wdid)->str:
+        # parse user input wikidata string. 
+        # it may be wikidata id, wikidata uri, string.
+        # call search if need
+        # return valid wikidata id
+        if self.is_wikidata_id(wdid):
+            result_wdid = wdid
+        else:
+            result_wdid = self.search_wikidata_by_string(wdid,stop_on_error=True)
+        
+        return result_wdid
+        
+    def get_shutterstock_desc(self,wikidata_list, filename, country, city)->dict:
+        #https://support.submit.shutterstock.com/s/article/How-do-I-include-metadata-with-my-content?language=en_US
+        '''
+        Column A: Filename
+Column B: Description
+Column C: Keywords (separated by commas)
+Column D: Categories ( 1 or 2, separated by commas, must be selected from this list)
+Column E*: Illustration (Yes or No)
+Column F*: Mature Content (Yes or No)
+Column G*: Editorial (Yes or No)
+
+he Illustration , Mature Content, and Editorial tags are optional and can be included or excluded from your CSV 
+ Think of your title as a news headline and try to answer the main questions of: Who, What, When, Where, and Why. Be descriptive and use words that capture the emotion or mood of the image.
+ Keywords must be in English, however, exceptions are made for scientific Latin names of plants and animals, names of places, and foreign terms or phrases commonly used in the English language.
+
+
+Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red color
+
+
+        '''
+        desc={
+        'Filename':filename,
+        'Description':'',
+        'Keywords':'',
+        'Categories':'',
+        'Editorial':'Yes',
+        }
+        keywords = list()
+        
+        objects_wikidata = list()
+        for obj_wdid in wikidata_list:
+            obj_wdid = self.take_user_wikidata_id(obj_wdid)
+            obj_wd = self.get_object_wikidata(obj_wdid)
+            objects_wikidata.append(obj_wd)
+        
+        if self.is_wikidata_id(city):
+                city_wdid = city
+        else:
+            city_wdid = self.search_wikidata_by_string(city,stop_on_error=True)
+        city_wd = self.get_wikidata(city_wdid)
+        
+        # get country, only actual values. key --all returns historical values
+        cmd = ['wd', 'claims', city_wdid, 'P17', '--json']
+        response = subprocess.run(cmd, capture_output=True)
+        country_json = json.loads(response.stdout.decode())
+        country_wdid = country_json[0]
+        country_wd = self.get_object_wikidata(country_wdid)
+        
+        
+        
+        dt_obj = self.image2datetime(filename) 
+        object_captions = list()
+        for obj_wd in objects_wikidata:
+            object_captions.append(obj_wd['labels']['en'])
+
+        d = '{city}, {country} - {date}: {caption}'.format(
+        city = city_wd['labels']['en'],
+        country = country_wd["labels"]["en"],
+        date = dt_obj.strftime("%B %-d %Y"),
+        caption = ' '.join(object_captions)
+        )
+        
+        for obj_wd in objects_wikidata:
+            keywords.append(obj_wd['labels']['en'])
+        
+        keywords.append(city_wd['labels']['en'])
+        keywords.append(city_wd['labels']['ru'])
+        keywords.append(country_wd["labels"]["ru"])
+        
+        
+        return d,keywords
+        
+        
+        
     def get_camera_text(self,filename)->str:
         st = ''
         
@@ -738,6 +842,22 @@ class Fileprocessor:
             commonsfilename = "File:" + commonsfilename
         commonsfilename = commonsfilename.replace("_", " ")
         return commonsfilename
+    
+    def write_iptc(path,caption,keywords):
+        #path can be both filename or directory
+        assert os.path.isfile(filename)
+        '''
+        To prevent duplication when adding new items, specific items can be deleted then added back again in the same command. For example, the following command adds the keywords "one" and "two", ensuring that they are not duplicated if they already existed in the keywords of an image:
+
+exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
+        '''
+        if isinstance(keywords,list) and len(keywords)>0:
+            for keyword in keywords:
+                cmd = [self.exiftool_path , '-keywords-="'+keyword+'"','-keywords+="'+keyword+'"', path]
+                response = subprocess.run(cmd, capture_output=True)
+        if isinstance(caption,str):        
+            cmd = [self.exiftool_path , '-Caption-Abstract="'+caption+'"', path]
+            response = subprocess.run(cmd, capture_output=True)
 
     def print_structured_data(self, commonsfilename):
         commonsfilename = self.prepare_commonsfilename(commonsfilename)

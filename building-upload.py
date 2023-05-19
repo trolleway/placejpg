@@ -20,6 +20,7 @@ parser.add_argument(
     "--verify", action="store_const", required=False, default=False, const=True
 )
 parser.add_argument("--country", type=str,required=False, default='Russia', help='Country for {{Taken on}} template')
+parser.add_argument("--rail", action="store_const", required=False, default=False, const=True, help='add to https://commons.wikimedia.org/wiki/Category:Railway_photographs_by_date')
 parser.add_argument(
     "--no-building",
     action="store_const",
@@ -41,7 +42,8 @@ else:
 
 
 
-wikidata = fileprocessor.prepare_wikidata_url(args.wikidata)
+wikidata = fileprocessor.take_user_wikidata_id(fileprocessor.prepare_wikidata_url(args.wikidata))
+
 uploaded_paths = list()
 for filename in files:
     if fileprocessor.check_exif_valid(filename):
@@ -52,7 +54,8 @@ for filename in files:
             place_en="Moscow",
             place_ru="Москва",
             no_building=args.no_building,
-            country=args.country.capitalize()
+            country=args.country.capitalize(),
+            rail=args.rail
         )
 
         if args.dry_run:

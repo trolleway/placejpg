@@ -20,6 +20,7 @@ parser.add_argument(
     "--verify", action="store_const", required=False, default=False, const=True
 )
 parser.add_argument("--country", type=str,required=False, default='Russia', help='Country for {{Taken on}} template')
+parser.add_argument('-s',"--secondary-objects", type=str, nargs='+',required=False, default='Russia', help='secondary wikidata objects, used in category calc with country')
 parser.add_argument("--rail", action="store_const", required=False, default=False, const=True, help='add to https://commons.wikimedia.org/wiki/Category:Railway_photographs_by_date')
 parser.add_argument(
     "--no-building",
@@ -43,6 +44,10 @@ else:
 
 
 wikidata = fileprocessor.take_user_wikidata_id(fileprocessor.prepare_wikidata_url(args.wikidata))
+secondary_wikidata_ids = list()
+for inp_wikidata in args.secondary_objects:
+    wdid = fileprocessor.take_user_wikidata_id(fileprocessor.prepare_wikidata_url(inp_wikidata))
+    secondary_wikidata_ids.append(wdid)
 
 uploaded_paths = list()
 for filename in files:
@@ -62,22 +67,30 @@ for filename in files:
             print()
             print(texts["name"])
             print(texts["text"])
-            continue
+
 
         wikidata_list = list()
         wikidata_list.append(wikidata)
-        fileprocessor.upload_file(
-            filename, texts["name"], texts["text"], verify_description=args.verify
-        )
-        fileprocessor.append_image_descripts_claim(texts["name"], wikidata_list)
+        wikidata_list += secondary_wikidata_ids
+        
+        if not args.dry_run:
+            fileprocessor.upload_file(
+                filename, texts["name"], texts["text"], verify_description=args.verify
+            )
+        if not args.dry_run:
+            fileprocessor.append_image_descripts_claim(texts["name"], wikidata_list)
+        else:
+            print('will append '+' '.join(wikidata_list))
+            
         uploaded_paths.append('https://commons.wikimedia.org/wiki/File:'+texts["name"].replace(' ', '_'))
     else:
-        fileprocessor.logger.warning('can not open file '+filename+', skipped')
+        print('can not open file '+filename+', skipped')
         continue
+
+if not args.dry_run:
+    print('uploaded: ')
+else:
+    print('emulating upload. URL will be: ')
+
+print("\n".join(uploaded_paths))
         
-if len(uploaded_paths)>1:    
-    print('Uploaded:')
-    for element in uploaded_paths:
-        print(element)
-elif len(uploaded_paths)==1:
-    print('Uploaded '+uploaded_paths[0])

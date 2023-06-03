@@ -5,8 +5,10 @@
 import os, subprocess, logging, argparse, sys
 
 from fileprocessor import Fileprocessor
+from model_wiki import Model_wiki
 
 fileprocessor = Fileprocessor()
+modelwiki = Model_wiki()
 
 parser = argparse.ArgumentParser(
     description="upload photos of buildings to Wikimedia Commons "
@@ -79,6 +81,7 @@ for filename in files:
             )
         if not args.dry_run:
             fileprocessor.append_image_descripts_claim(texts["name"], wikidata_list)
+            modelwiki.create_category_taken_on_day(args.country.capitalize(),texts['dt_obj'].strftime("%Y-%m-%d"))
         else:
             print('will append '+' '.join(wikidata_list))
             

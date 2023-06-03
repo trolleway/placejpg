@@ -381,7 +381,7 @@ class Fileprocessor:
                     dt_obj.strftime("%B %Y") + \
                     " in tram transport in "+country+"]]" + "\n"
 
-        return {"name": commons_filename, "text": text, "structured_data_on_commons": wikidata_4_structured_data}
+        return {"name": commons_filename, "text": text, "structured_data_on_commons": wikidata_4_structured_data, "dt_obj": dt_obj}
 
     def get_date_information_part(self, dt_obj, taken_on_location):
         st = ''
@@ -578,7 +578,7 @@ class Fileprocessor:
 
         text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
 
-        return {"name": commons_filename, "text": text}
+        return {"name": commons_filename, "text": text, "dt_obj": dt_obj}
 
     def take_user_wikidata_id(self, wdid) -> str:
         # parse user input wikidata string.

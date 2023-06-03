@@ -5,14 +5,16 @@
 import os, subprocess, logging, argparse, sys
 
 from fileprocessor import Fileprocessor
+from model_wiki import Model_wiki
 
 fileprocessor = Fileprocessor()
+modelwiki = Model_wiki()
 
 parser = argparse.ArgumentParser(
     description="upload photos of vehicle to Wikimedia Commons "
 )
 parser.add_argument("filepath")
-parser.add_argument('-v','--vehicle', type=str, required=True, choices=['tram','trolleybus','bus', 'train','station'])
+parser.add_argument('-v','--vehicle', type=str, required=True, choices=['tram','trolleybus','bus', 'train','station','auto'])
 parser.add_argument('-s','--system', type=str, required=False, help='wikidata id or wikidata name of transport system. Not applied to "auto" ')
 parser.add_argument('-c','--city', type=str, required='auto' in sys.argv or '-s' not in sys.argv, help='wikidata id or wikidata name of city for "auto" ')
 parser.add_argument('-m','--model', type=str, required='station' not in sys.argv, help='wikidata id or wikidata name of vehicle model')
@@ -20,6 +22,7 @@ parser.add_argument('-r','--street', type=str, required=False, help='wikidata id
 parser.add_argument('-n','--number', type=str, required='station' not in sys.argv, help='vehicle number')
 parser.add_argument('-ro','--route', type=str, required=False, help='vehicle route text')
 parser.add_argument('-l','--line', type=str, required=False, help='railway line wikidata object')
+parser.add_argument("--country", type=str,required=False, default='Russia', help='Country for {{Taken on}} template')
 
 parser.add_argument(
     "-dry", "--dry-run", action="store_const", required=False, default=False, const=True
@@ -54,7 +57,7 @@ for filename in files:
             route = args.route,
             number = args.number,
             city = args.city,
-            country='Russia',
+            country=args.country.capitalize(),
             line = args.line,
             
         )
@@ -74,6 +77,7 @@ for filename in files:
         )
         fileprocessor.append_image_descripts_claim(texts["name"], wikidata_list)
         uploaded_paths.append('https://commons.wikimedia.org/wiki/File:'+texts["name"].replace(' ', '_'))
+        modelwiki.create_category_taken_on_day(args.country.capitalize(),texts['dt_obj'].strftime("%Y-%m-%d"))
     else:
         fileprocessor.logger.warning('can not open file '+filename+', skipped')
         continue

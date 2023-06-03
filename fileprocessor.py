@@ -13,7 +13,7 @@ import pprint
 import subprocess
 from transliterate import translit
 from pywikibot.specialbots import UploadRobot
-
+import tempfile
 
 class Fileprocessor:
     logging.basicConfig(
@@ -36,6 +36,7 @@ class Fileprocessor:
 
         wikidata = str(wikidata).strip()
         wikidata = wikidata.replace('https://www.wikidata.org/wiki/', '')
+
         return wikidata
 
     def upload_file(self, filepath, commons_name, description, verify_description=True):
@@ -655,6 +656,9 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
         for obj_wd in objects_wikidata:
             keywords.append(obj_wd['labels']['en'])
+            aliases = obj_wd['aliases'].get('en',None)
+            if type(aliases) == list and len(aliases)>0:
+                keywords+=aliases
 
         keywords.append(city_wd['labels']['en'])
         keywords.append(city_wd['labels']['ru'])
@@ -876,16 +880,29 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
     def write_iptc(self, path, caption, keywords):
         # path can be both filename or directory
         assert os.path.exists(path)
+        
         '''
         To prevent duplication when adding new items, specific items can be deleted then added back again in the same command. For example, the following command adds the keywords "one" and "two", ensuring that they are not duplicated if they already existed in the keywords of an image:
 
 exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         '''
+        
+        #workaround for write utf-8 keywords: write them to file
+        argfiletext = ''
         if isinstance(keywords, list) and len(keywords) > 0:
             for keyword in keywords:
-                cmd = [self.exiftool_path, '-preserve', '-overwrite_original', '-charset iptc=UTF8', '-keywords-=' +
-                       keyword+'', '-keywords+='+keyword+'', path]
-                response = subprocess.run(cmd, capture_output=True)
+                argfiletext += '-keywords-='+keyword+''+" \n"+'-keywords+='+keyword+' '+"\n"
+                
+        argfile = tempfile.NamedTemporaryFile()
+        argfilename = 't.txt'
+        with open(argfilename, 'w') as f:
+            f.write(argfiletext)
+        
+        cmd = [self.exiftool_path, '-preserve', '-overwrite_original', '-charset iptc=UTF8', '-charset', 'utf8', '-codedcharacterset=utf8',
+        '-@', argfilename, path]
+        print(' '.join(cmd))
+        response = subprocess.run(cmd, capture_output=True)
+        
         if isinstance(caption, str):
             cmd = [self.exiftool_path, '-preserve', '-overwrite_original',
                    '-Caption-Abstract='+caption+'', path]
@@ -1056,3 +1073,43 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 print("Got an error from the API, the following request were made:")
                 print(request)
                 print("Error: {}".format(e))
+                
+    def commons2stock_dev(self,url,city_wdid,images_dir = 'stocks', dry_run=False):
+        
+        site = pywikibot.Site('commons', 'commons')
+        file_page = pywikibot.FilePage(site,url.replace('https://commons.wikimedia.org/wiki/',''))
+        
+        data_item = file_page.data_item()
+        data_item.get()
+        
+        wd_ids = list()
+
+        for prop in data_item.claims:
+            if prop != 'P180': continue
+            for statement in data_item.claims[prop]:
+                if isinstance(statement.target, pywikibot.page._wikibase.ItemPage):
+                    print(prop, statement.target.id)
+                    wd_ids.append(statement.target.id)
+        
+        if not os.path.isdir(images_dir):
+            os.makedirs(images_dir)
+        filename = os.path.join(images_dir,url.replace('https://commons.wikimedia.org/wiki/File:',''))
+        if not os.path.exists(filename):
+            self.logger.debug('download: '+filename)
+            file_page.download(filename)
+        
+        caption, keywords = self.get_shutterstock_desc(
+        filename=filename,
+        wikidata_list=wd_ids,
+        city=city_wdid,
+        )
+        
+        if dry_run:
+            print()
+            print(filename)
+            print(caption)
+            print(', '.join(keywords))
+            return
+
+        self.write_iptc(filename, caption, keywords)
+        #processed_files.append(filename)

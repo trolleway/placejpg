@@ -2,7 +2,11 @@
 # -*- coding: utf-8 -*-
 
 
-import os, subprocess, logging, argparse, sys
+import os
+import subprocess
+import logging
+import argparse
+import sys
 
 from fileprocessor import Fileprocessor
 
@@ -15,8 +19,9 @@ parser = argparse.ArgumentParser(
 parser.add_argument("filepath")
 parser.add_argument("wikidata", type=str, nargs='+')
 
-parser.add_argument(    "-с", "--city", type=str, required=True)
-parser.add_argument(    "-dry", "--dry-run", action="store_const", required=False, default=False, const=True)
+parser.add_argument("-с", "--city", type=str, required=True)
+parser.add_argument("-dry", "--dry-run", action="store_const",
+                    required=False, default=False, const=True)
 
 
 args = parser.parse_args()
@@ -33,10 +38,12 @@ else:
 
 
 
-city_wdid = fileprocessor.take_user_wikidata_id(fileprocessor.prepare_wikidata_url(args.wikidata))
-wikidata_ids=list()
+city_wdid = fileprocessor.take_user_wikidata_id(
+    fileprocessor.prepare_wikidata_url(args.city))
+wikidata_ids = list()
 for inp_wikidata in args.wikidata:
-    wdid = fileprocessor.take_user_wikidata_id(fileprocessor.prepare_wikidata_url(inp_wikidata))
+    wdid = fileprocessor.take_user_wikidata_id(
+        fileprocessor.prepare_wikidata_url(inp_wikidata))
     wikidata_ids.append(wdid)
 
 processed_files = list()
@@ -57,15 +64,15 @@ for filename in files:
             print(', '.join(keywords))
             continue
 
-        fileprocessor.write_iptc(filename,caption, keywords)
+        fileprocessor.write_iptc(filename, caption, keywords)
         processed_files.append(filename)
     else:
         fileprocessor.logger.warning('can not open file '+filename+', skipped')
         continue
-        
-if len(processed_files)>1:    
+
+if len(processed_files) > 1:
     print('Updated:')
     for element in processed_files:
         print(element)
-elif len(processed_files)==1:
+elif len(processed_files) == 1:
     print('Updated '+processed_files[0])

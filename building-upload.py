@@ -79,8 +79,8 @@ for filename in files:
             fileprocessor.upload_file(
                 filename, texts["name"], texts["text"], verify_description=args.verify
             )
+        fileprocessor.append_image_descripts_claim(texts["name"], wikidata_list, args.dry_run)
         if not args.dry_run:
-            fileprocessor.append_image_descripts_claim(texts["name"], wikidata_list)
             modelwiki.create_category_taken_on_day(args.country.capitalize(),texts['dt_obj'].strftime("%Y-%m-%d"))
         else:
             print('will append '+' '.join(wikidata_list))

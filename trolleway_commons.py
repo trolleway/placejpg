@@ -403,6 +403,7 @@ class CommonsOps:
             print(response.stdout.decode())
             quit()
         result = None
+        
         if "ru" not in street_dict_wd["labels"]:
             print("street " + wikidata_street_url + " must have name ru")
             result = False

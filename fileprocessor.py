@@ -593,7 +593,7 @@ class Fileprocessor:
 
         return result_wdid
 
-    def get_shutterstock_desc(self, wikidata_list, filename, city) -> str:
+    def get_shutterstock_desc(self, wikidata_list, filename, city, date=None) -> str:
         # https://support.submit.shutterstock.com/s/article/How-do-I-include-metadata-with-my-content?language=en_US
         '''
         Column A: Filename
@@ -642,7 +642,12 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
         country_wdid = country_json[0]
         country_wd = self.get_wikidata(country_wdid)
 
-        dt_obj = self.image2datetime(filename)
+        try:
+            dt_obj = self.image2datetime(filename)
+        except:
+            assert date is not None,'in image '+filename+'date can not be read from exif, need set date in --date yyyy-mm-dd'
+            dt_obj = datetime.strptime(date, "%Y-%m-%d")
+            
         object_captions = list()
         for obj_wd in objects_wikidata:
             object_captions.append(obj_wd['labels']['en'])
@@ -703,9 +708,11 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                     'Gopro HERO8 Black': 'GoPro Hero8 Black',
                     'Samsung SM-G7810': 'Samsung Galaxy S20 FE 5G',
                     'Olympus imaging corp.': 'Olympus',
+                    'Nikon corporation NIKON': 'Nikon',
                 }
                 lensmodel_dict = {
                     'OLYMPUS M.12-40mm F2.8': 'Olympus M.Zuiko Digital ED 12-40mm f/2.8 PRO',
+                    'smc PENTAX-DA 35mm F2.4 AL':'SMC Pentax-DA 35mm F2.4'
                 }
                 for camerastring in cameramodels_dict.keys():
                     if camerastring in st:
@@ -995,9 +1002,13 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         stringclaim.setTarget(4212644)  # Using a string
         item.addClaim(stringclaim, summary="Adding string claim")
 
-    def append_image_descripts_claim(self, commonsfilename, entity_list):
+    def append_image_descripts_claim(self, commonsfilename, entity_list, dry_run):
         assert isinstance(entity_list, list)
         assert len(entity_list) > 0
+        if dry_run:
+            print('simulate add entities')
+            self.pp.pprint(entity_list)
+            return
         commonsfilename = self.prepare_commonsfilename(commonsfilename)
 
         site = pywikibot.Site("commons", "commons")
@@ -1005,7 +1016,6 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         site.get_tokens("csrf")  # preload csrf token
         page = pywikibot.Page(site, title=commonsfilename, ns=6)
         media_identifier = "M{}".format(page.pageid)
-        print(media_identifier)
 
         # fetch exist structured data
 
@@ -1074,7 +1084,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 print(request)
                 print("Error: {}".format(e))
                 
-    def commons2stock_dev(self,url,city_wdid,images_dir = 'stocks', dry_run=False):
+    def commons2stock_dev(self,url,city_wdid,images_dir = 'stocks', dry_run=False, date=None):
         
         site = pywikibot.Site('commons', 'commons')
         file_page = pywikibot.FilePage(site,url.replace('https://commons.wikimedia.org/wiki/',''))
@@ -1102,6 +1112,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         filename=filename,
         wikidata_list=wd_ids,
         city=city_wdid,
+        date = date,
         )
         
         if dry_run:

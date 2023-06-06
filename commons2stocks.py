@@ -23,6 +23,7 @@ parser.add_argument("url",help='URL of Wikimedia commons file')
 parser.add_argument("-с", "--city", type=str, required=True)
 parser.add_argument("-dry", "--dry-run", action="store_const",
                     required=False, default=False, const=True)
+parser.add_argument("--date", type=str, required=False)
 
 
 args = parser.parse_args()
@@ -30,7 +31,7 @@ args = parser.parse_args()
 #open commons file
 
 
-fileprocessor.commons2stock_dev(args.url, args.city, dry_run = args.dry_run)
+fileprocessor.commons2stock_dev(args.url, args.city, dry_run = args.dry_run, date=args.date)
 quit()
 
 if os.path.isfile(args.filepath):

@@ -96,13 +96,15 @@ class Model_wiki:
         category = pywikibot.Category(site, categoryname)
         gen = pagegenerators.CategorizedPageGenerator(category, recurse=True, start=None, total=None, content=True, namespaces=None)
         
+        logging.getLogger().setLevel(logging.ERROR)
+        logging.getLogger('foo').debug('bah')
 
         location = location.capitalize()
         #assert len(pages)>0, len(pages)
         for page in gen:
-            self.page_template_taken_on(page,location, dry_run, interactive)
+            self.page_template_taken_on(page,location, dry_run, interactive,verbose=False)
         
-    def page_template_taken_on(self, page, location, dry_run=True, interactive=False):
+    def page_template_taken_on(self, page, location, dry_run=True, interactive=False, verbose=True):
         assert page
         texts = dict()
         texts[0] = page.text
@@ -124,8 +126,10 @@ class Model_wiki:
 
         
         datestr = self.get_date_from_pagetext(texts[1])
+        if datestr == False:
+            return False
         if '/' in datestr:
-            raise ValueError('Slash symbols in date causes side-effects. Normalize date in '+page.full_url()
+            raise ValueError('Slash symbols in date causes side-effects. Normalize date in '+page.full_url())
         assert datestr, 'invalid date parce in '+page.full_url()
         print('will create category '+location+' on '+datestr)
         
@@ -141,9 +145,10 @@ class Model_wiki:
         assert '|location='+location+'}}' in texts[2]
         self.difftext(texts[1],texts[2])        
         
-        print('----------- proposed page content ----------- '+datestr+ '--------')
-       
-        print(texts[2])
+        if verbose:
+            print('----------- proposed page content ----------- '+datestr+ '--------')
+           
+            print(texts[2])
         if not dry_run and not interactive:
             page.text = texts[2]
             page.save('add {{Taken on location}} template')
@@ -154,10 +159,10 @@ class Model_wiki:
             # Remove white spaces after the answers and convert the characters into lower cases.
             answer = answer.strip().lower()
          
-        if answer in ["yes", "y", "1"]:
-            page.text = texts[2]
-            page.save('add {{Taken on location}} template')
-            self.create_category_taken_on_day(location,datestr)
+            if answer in ["yes", "y", "1"]:
+                page.text = texts[2]
+                page.save('add {{Taken on location}} template')
+                self.create_category_taken_on_day(location,datestr)
 
 
 
@@ -170,11 +175,12 @@ class Model_wiki:
                 if is_triggered==1: print('text changed:')
                 print(text1.splitlines()[l])
                 print(text2.splitlines()[l])
+                print('^^^^^')
                 
     def _text_get_template_replace_on_location(self,test_str,location):
         import re
         
-        regex = r"^.*Information[\s\S]*?Date\s*?=.*location=(?P<datecontent>[\s\S]*?)[\|\}}\n].*$"
+        regex = r"^.*(?:Information|photograph)[\s\S]*?Date\s*?=.*location=(?P<datecontent>[\s\S]*?)[\|\}}\n].*$"
         
         
         matches = re.finditer(regex, test_str, re.UNICODE | re.MULTILINE | re.IGNORECASE)
@@ -201,23 +207,23 @@ class Model_wiki:
         
         import re
 
-        regex = r"^.*Information[\s\S]*?Date\s*?=.*location=(?P<datecontent>[\s\S]*?)[\|\}}\n].*$"
+        regex = r"^.*(?:Information|photograph)[\s\S]*?Date\s*?=.*location=(?P<datecontent>[\s\S]*?)[\|\}}\n].*$"
 
         matches = re.search(regex, test_str, re.IGNORECASE | re.UNICODE | re.MULTILINE)
 
         if matches:
-            print ("Match was found at {start}-{end}: {match}".format(start = matches.start(), end = matches.end(), match = matches.group()))
+
             
             for groupNum in range(0, len(matches.groups())):
                 groupNum = groupNum + 1
                 
-                print ("Group {groupNum} found at {start}-{end}: {group}".format(groupNum = groupNum, start = matches.start(groupNum), end = matches.end(groupNum), group = matches.group(groupNum)))
+
                 return(matches.group(groupNum))
     
     def is_taken_on_in_text(self,test_str):
         import re
 
-        regex = r"^.*Information[\s\S]*?Date\s*?=.*?(taken on|According to Exif data)\s*?[\|\n].*$"
+        regex = r"^.*(?:Information|photograph)[\s\S]*?Date\s*?=.*?(taken on|According to Exif data)\s*?[\|\n].*$"
 
 
         matches = re.search(regex, test_str, re.IGNORECASE | re.UNICODE | re.MULTILINE)
@@ -230,7 +236,7 @@ class Model_wiki:
                 
   
                 
-                #print ("Group {groupNum} found at {start}-{end}: {group}".format(groupNum = groupNum, start = matches.start(groupNum), end = matches.end(groupNum), group = matches.group(groupNum)))
+
                 
                 if matches.group(groupNum) is not None: return True
         return False
@@ -243,7 +249,7 @@ class Model_wiki:
         # test_str name comes from onine regex editor
         import re
         
-        regex = r"^.*Information[\s\S]*?Date\s*?=(?P<datecontent>[\s\S]*?)[\|\n].*$"
+        regex = r"^.*(?:Information|photograph)[\s\S]*?Date\s*?=(?P<datecontent>[\s\S]*?)[\|\n].*$"
         
         
         matches = re.finditer(regex, test_str, re.UNICODE | re.MULTILINE | re.IGNORECASE)
@@ -261,9 +267,9 @@ class Model_wiki:
                 groupend = match.end(groupNum)
                 content =  match.group(groupNum)
                 
-                print ("Group {groupNum} found at {start}-{end}: {group}".format(groupNum = groupNum, start = match.start(groupNum), end = match.end(groupNum), group = match.group(groupNum)))
+
         
-        text = test_str[0:groupstart] + ' {{Taken on|'+content.strip()+"}}\n"+test_str[groupend:]
+        text = test_str[0:groupstart] + ' {{Taken on|'+content.strip()+"}}"+test_str[groupend:]
         return text
 
             
@@ -274,7 +280,7 @@ class Model_wiki:
         # test_str name comes from onine regex editor
         import re
         
-        regex = r"^.*Information[\s\S]*Date\s*=\s*{{(?:Taken on|According to Exif data)\s*\|[\s\S]*?(?P<taken_on_end>)}}.*$"
+        regex = r"^.*(?:Information|photograph)[\s\S]*Date\s*=\s*{{(?:Taken on|According to Exif data)\s*\|[\s\S]*?(?P<taken_on_end>)}}.*$"
         
         
         matches = re.finditer(regex, test_str, re.MULTILINE | re.IGNORECASE)
@@ -290,7 +296,7 @@ class Model_wiki:
                 groupend = match.end(groupNum)
                 content =  match.group(groupNum)
                 
-                print ("Group {groupNum} found at {start}-{end}: {group}".format(groupNum = groupNum, start = match.start(groupNum), end = match.end(groupNum), group = match.group(groupNum)))
+
         
         text = test_str[0:groupstart] + '|location='+location+""+test_str[groupend:]
         return text
@@ -300,14 +306,12 @@ class Model_wiki:
         # test_str name comes from onine regex editor
         import re
         
-        regex = r"^.*Information[\s\S]*Date\s*=\s*{{(?:Taken on|According to Exif data)\s*\|(?P<datecontent>[\s\S]*?)}}.*$"
+        regex = r"^.*?(?:Information|photograph)[\s\S]*?Date\s*=\s*{{(?:Taken on|According to Exif data)\s*\|(?P<datecontent>[\s\S]*?)(?:}}|\|).*$"
         
         
         matches = re.finditer(regex, test_str, re.MULTILINE | re.IGNORECASE)
-
+        
         for matchNum, match in enumerate(matches, start=1):
-            
-
             
             for groupNum in range(0, len(match.groups())):
                 groupNum = groupNum + 1
@@ -316,9 +320,10 @@ class Model_wiki:
                 groupend = match.end(groupNum)
                 content =  match.group(groupNum)
                 
-                print ("Group {groupNum} found at {start}-{end}: {group}".format(groupNum = groupNum, start = match.start(groupNum), end = match.end(groupNum), group = match.group(groupNum)))
         
-        assert content != '', "not found date in \n"+test_str
+        if content == '':
+            print("not found date in \n"+test_str)
+            return False
         text = content.strip()
         text = text[:10]
         try:
@@ -329,7 +334,8 @@ class Model_wiki:
         return text
 
     def create_category_taken_on_day(self, location, yyyymmdd):
-        assert len(yyyymmdd) == 10
+        if len(yyyymmdd) != 10:
+            return False
 
         categoryname = '{location}_photographs_taken_on_{yyyymmdd}'.format(
             location=location, yyyymmdd=yyyymmdd)

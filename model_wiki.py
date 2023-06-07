@@ -142,7 +142,7 @@ class Model_wiki:
             
         if texts[2] == False:
             return False
-        assert '|location='+location+'}}' in texts[2]
+        if '|location='+location+'}}' not in texts[2]: return False
         self.difftext(texts[1],texts[2])        
         
         if verbose:

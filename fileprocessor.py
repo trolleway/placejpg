@@ -720,6 +720,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                     'Samsung SM-G7810': 'Samsung Galaxy S20 FE 5G',
                     'Olympus imaging corp.': 'Olympus',
                     'Nikon corporation NIKON': 'Nikon',
+                    'Panasonic': 'Panasonic Lumix',
                 }
                 lensmodel_dict = {
                     'OLYMPUS M.12-40mm F2.8': 'Olympus M.Zuiko Digital ED 12-40mm f/2.8 PRO',

@@ -104,6 +104,17 @@ class Fileprocessor:
 
         return building_record
 
+    def input2list_wikidata(self,inp):
+        if inp is None or inp == False: return list()
+        if isinstance(inp,str):
+            inp=([inp])
+        secondary_wikidata_ids = list()
+        for inp_wikidata in inp
+            wdid = self.take_user_wikidata_id(self.prepare_wikidata_url(inp_wikidata))
+            secondary_wikidata_ids.append(wdid)
+        return secondary_wikidata_ids
+    
+    
     def get_wikidata_simplified(self, wikidata) -> dict:
         # get all claims of this wikidata objects
 

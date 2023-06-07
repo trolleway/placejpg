@@ -109,7 +109,7 @@ class Fileprocessor:
         if isinstance(inp,str):
             inp=([inp])
         secondary_wikidata_ids = list()
-        for inp_wikidata in inp
+        for inp_wikidata in inp:
             wdid = self.take_user_wikidata_id(self.prepare_wikidata_url(inp_wikidata))
             secondary_wikidata_ids.append(wdid)
         return secondary_wikidata_ids

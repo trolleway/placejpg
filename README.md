@@ -4,6 +4,18 @@ python docker/termux script for upload to wikimedia commons photos of buildings 
 Automation script for upload my photo collection to Wikimedia Commons. Automatic create Wikidata objects, Commons categories, generate image descriptions based on Wikidata and EXIF. 
 Limited to process images of buildings and vehicles. 
 
+## Usage
+
+### Upload files to Wikimedia Commons using search wikidata object
+
+```
+python3 building-upload.py --no-building --location "United States" "Hollywood Boulevard"  i/imgfolder
+# Uploads files from i/imgfolder to Wikimedia Commons. Search in Wikidata for "Hollywood Boulevard", use Commons Category for this object. Append template {{Taken on|yyyy-mm-dd|location=United States}}
+
+python3 building-upload.py --no-building "Q382500" --location Russia -dry   i/imgfolder
+# Uploads files from i/imgfolder to Wikimedia Commons. Use Wikidata object Q382500, use Commons Category for this object. Append template {{Taken on|yyyy-mm-dd|location=Russia}}
+```
+
 ## Install
 
 ### Install in Windows/Linux

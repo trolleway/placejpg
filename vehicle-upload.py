@@ -75,7 +75,7 @@ for filename in files:
         fileprocessor.upload_file(
             filename, texts["name"], texts["text"], verify_description=args.verify
         )
-        fileprocessor.append_image_descripts_claim(texts["name"], wikidata_list)
+        fileprocessor.append_image_descripts_claim(texts["name"], wikidata_list, args.dry_run)
         uploaded_paths.append('https://commons.wikimedia.org/wiki/File:'+texts["name"].replace(' ', '_'))
         modelwiki.create_category_taken_on_day(args.country.capitalize(),texts['dt_obj'].strftime("%Y-%m-%d"))
     else:

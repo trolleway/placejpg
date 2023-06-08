@@ -79,7 +79,7 @@ class Model_wiki:
                 
     def url_add_template_taken_on(self, pagename,location, dry_run=True):
         assert pagename
-        location = location.capitalize()
+        location = location.title()
         site = pywikibot.Site("commons", "commons")
         site.login()
         site.get_tokens("csrf")  # preload csrf token
@@ -99,7 +99,7 @@ class Model_wiki:
         logging.getLogger().setLevel(logging.ERROR)
         logging.getLogger('foo').debug('bah')
 
-        location = location.capitalize()
+        location = location.title()
         #assert len(pages)>0, len(pages)
         for page in gen:
             self.page_template_taken_on(page,location, dry_run, interactive,verbose=False)
@@ -108,6 +108,11 @@ class Model_wiki:
         assert page
         texts = dict()
         texts[0] = page.text
+        
+        if '.svg'.upper() in page.full_url().upper(): return False
+        if '.tif'.upper() in page.full_url().upper(): return False
+        if '.png'.upper() in page.full_url().upper(): return False
+        if '.ogg'.upper() in page.full_url().upper(): return False
 
 
         if '{{Information'.upper() not in texts[0].upper():
@@ -122,7 +127,7 @@ class Model_wiki:
             raise ValueError('invalid page text in ' +page.full_url())
         assert 'Taken on'.upper() in texts[1].upper() or 'According to Exif data'.upper() in texts[1].upper(), 'wrong text in '+page.title()
         
-        self.difftext(texts[0],texts[1])
+        
 
         
         datestr = self.get_date_from_pagetext(texts[1])
@@ -130,6 +135,8 @@ class Model_wiki:
             return False
         if '/' in datestr:
             raise ValueError('Slash symbols in date causes side-effects. Normalize date in '+page.full_url())
+        if len(datestr) < len('yyyy-mm-dd'):
+            return False
         assert datestr, 'invalid date parce in '+page.full_url()
         print('will create category '+location+' on '+datestr)
         
@@ -143,7 +150,7 @@ class Model_wiki:
         if texts[2] == False:
             return False
         if '|location='+location+'}}' not in texts[2]: return False
-        self.difftext(texts[1],texts[2])        
+        self.difftext(texts[0],texts[2])        
         
         if verbose:
             print('----------- proposed page content ----------- '+datestr+ '--------')
@@ -329,7 +336,7 @@ class Model_wiki:
         try:
             parser.parse(text)
         except:
-            print('invalid date: '+text)
+            print('invalid date: '+text )
             return False
         return text
 
@@ -354,7 +361,7 @@ class Model_wiki:
         else:
             self.logger.info('page alreaty exists '+pagename)
 
-        if location == 'Moscow':
+        if location in('Moscow', 'Saint Petersburg'):
             self.create_category_taken_on_day('Russia', yyyymmdd)
 
     def is_category_exists(self, categoryname):

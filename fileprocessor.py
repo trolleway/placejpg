@@ -104,6 +104,17 @@ class Fileprocessor:
 
         return building_record
 
+    def input2list_wikidata(self,inp):
+        if inp is None or inp == False: return list()
+        if isinstance(inp,str):
+            inp=([inp])
+        secondary_wikidata_ids = list()
+        for inp_wikidata in inp:
+            wdid = self.take_user_wikidata_id(self.prepare_wikidata_url(inp_wikidata))
+            secondary_wikidata_ids.append(wdid)
+        return secondary_wikidata_ids
+    
+    
     def get_wikidata_simplified(self, wikidata) -> dict:
         # get all claims of this wikidata objects
 
@@ -709,6 +720,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                     'Samsung SM-G7810': 'Samsung Galaxy S20 FE 5G',
                     'Olympus imaging corp.': 'Olympus',
                     'Nikon corporation NIKON': 'Nikon',
+                    'Panasonic': 'Panasonic Lumix',
                 }
                 lensmodel_dict = {
                     'OLYMPUS M.12-40mm F2.8': 'Olympus M.Zuiko Digital ED 12-40mm f/2.8 PRO',

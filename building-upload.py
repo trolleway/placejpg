@@ -46,10 +46,8 @@ else:
 
 
 wikidata = fileprocessor.take_user_wikidata_id(fileprocessor.prepare_wikidata_url(args.wikidata))
-secondary_wikidata_ids = list()
-for inp_wikidata in args.secondary_objects:
-    wdid = fileprocessor.take_user_wikidata_id(fileprocessor.prepare_wikidata_url(inp_wikidata))
-    secondary_wikidata_ids.append(wdid)
+secondary_wikidata_ids = fileprocessor.input2list_wikidata(args.secondary_objects)
+
 
 uploaded_paths = list()
 for filename in files:

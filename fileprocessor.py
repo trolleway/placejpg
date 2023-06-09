@@ -193,9 +193,8 @@ class Fileprocessor:
     def make_image_texts_vehicle(self, filename, vehicle,  model, street, number, system=None, city=None, route=None, country=None, line=None, rail=None) -> dict:
         assert os.path.isfile(filename)
 
-        vehicle_ru_dict = {'tram': 'трамвай', 'trolleybus': 'троллейбус',
-                           'bus': 'автобус', 'train': 'поезд', 'auto': 'автомобиль', 'plane': 'самолёт'}
-        taken_on_location = "Russia"
+        vehicle_names = {'ru': {'tram': 'трамвай', 'trolleybus': 'троллейбус',
+                           'bus': 'автобус', 'train': 'поезд', 'auto': 'автомобиль', 'plane': 'самолёт'}}
         wikidata_4_structured_data = list()
 
         if model is not None:
@@ -259,8 +258,8 @@ class Fileprocessor:
 
         objectname_ru = '{city}, {transport} {model} {number}'.format(
             city=city_name_ru,
-            transport=vehicle_ru_dict[vehicle],
-            model=model_names['ru'],
+            transport=vehicle_names['ru'][vehicle],
+            model=model_names.get('ru', model_names['en']),
             number=number
         )
 
@@ -304,7 +303,7 @@ class Fileprocessor:
             + "{{Taken on|"
             + dt_obj.isoformat()
             + "|location="
-            + taken_on_location
+            + country
             + "|source=EXIF}}"
             + "\n"
         )

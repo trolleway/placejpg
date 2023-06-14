@@ -14,6 +14,8 @@ import subprocess
 from transliterate import translit
 from pywikibot.specialbots import UploadRobot
 import tempfile
+import warnings
+
 
 class Fileprocessor:
     logging.basicConfig(
@@ -30,6 +32,7 @@ class Fileprocessor:
     optional_langs = ('de', 'fr', 'it', 'es', 'pt', 'uk', 'be',)
     chunk_size = 102400
     photographer = 'Artem Svetlov'
+
 
     def prepare_wikidata_url(self, wikidata) -> str:
         # convert string https://www.wikidata.org/wiki/Q4412648 to Q4412648
@@ -63,6 +66,7 @@ class Fileprocessor:
             print(f"API error: {e.code}: {e.info}")
 
     def get_building_record_wikidata(self, wikidata) -> dict:
+        warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)
         # get all claims of this wikidata objects
         cmd = ["wb", "gt", "--props", "claims",
                "--json", "--no-minimize", wikidata]
@@ -104,18 +108,11 @@ class Fileprocessor:
 
         return building_record
 
-    def input2list_wikidata(self,inp):
-        if inp is None or inp == False: return list()
-        if isinstance(inp,str):
-            inp=([inp])
-        secondary_wikidata_ids = list()
-        for inp_wikidata in inp:
-            wdid = self.take_user_wikidata_id(self.prepare_wikidata_url(inp_wikidata))
-            secondary_wikidata_ids.append(wdid)
-        return secondary_wikidata_ids
+
     
     
     def get_wikidata_simplified(self, wikidata) -> dict:
+        warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)
         # get all claims of this wikidata objects
 
         if wikidata in self.wikidata_cache:
@@ -147,6 +144,7 @@ class Fileprocessor:
         return object_record
 
     def is_wikidata_id(self, text) -> bool:
+        warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)
         # check if string is valid wikidata id
         if text.startswith('Q') and text[1:].isnumeric():
             return True
@@ -154,6 +152,7 @@ class Fileprocessor:
             return False
 
     def search_wikidata_by_string(self, text, stop_on_error=True) -> str:
+        warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)
         cmd = ['wb', 'search', '--json', text]
 
         response = subprocess.run(cmd, capture_output=True)
@@ -165,18 +164,21 @@ class Fileprocessor:
         return object_wd[0]['id']
 
     def get_wikidata_labels(self, wikidata) -> dict:
+        warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)
         cmd = ['wb', 'gt', '--props', 'labels', '--json', wikidata]
         response = subprocess.run(cmd, capture_output=True)
         object_wd = json.loads(response.stdout.decode())
         return object_wd['labels']
 
     def get_wikidata(self, wikidata) -> dict:
+        warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)
         cmd = ['wb', 'gt', '--json', '--no-minimize', wikidata]
         response = subprocess.run(cmd, capture_output=True)
         object_wd = json.loads(response.stdout.decode())
         return object_wd
 
     def get_territorial_entity(self, wd_record) -> dict:
+        warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)
         try:
             cmd = ['wb', 'gt', '--json', '--no-minimize',
                    wd_record['claims']['P131'][0]['value']]
@@ -454,12 +456,15 @@ class Fileprocessor:
 
         return text
 
-    def make_image_texts(
+    def make_image_texts_building(
         self, filename, wikidata, place_en, place_ru, no_building=False, country='', photographer='Artem Svetlov', rail=''
     ) -> dict:
         # return file description texts
         # there is no excact 'city' in wikidata, use manual input cityname
 
+        #from model_wiki import Model_wiki
+        #modelwiki = Model_wiki()
+    
         assert os.path.isfile(filename), 'not found '+filename
 
         # obtain exif
@@ -467,8 +472,8 @@ class Fileprocessor:
         geo_dict = self.image2coords(filename)
 
         if no_building:
-            wdid = self.take_user_wikidata_id(wikidata)
-            wd_record = self.get_wikidata_simplified(wdid)
+            #wdid = modelwiki.wikidata_input2id(wikidata)
+            wd_record = self.get_wikidata_simplified(wikidata)
 
         else:
             wd_record = self.get_wikidata_simplified(wikidata)
@@ -590,7 +595,138 @@ class Fileprocessor:
 
         return {"name": commons_filename, "text": text, "dt_obj": dt_obj}
 
+    def make_image_texts_simple(
+        self, filename, wikidata, country='', photographer='Artem Svetlov', rail='', secondary_wikidata_ids=list()
+    ) -> dict:
+        # return file description texts
+        # there is no excact 'city' in wikidata, use manual input cityname
+
+        #from model_wiki import Model_wiki
+        #modelwiki = Model_wiki()
+    
+        assert os.path.isfile(filename), 'not found '+filename
+
+        # obtain exif
+        dt_obj = self.image2datetime(filename)
+        geo_dict = self.image2coords(filename)
+
+        wd_record = self.get_wikidata_simplified(wikidata)
+
+        instance_of_data = list()
+        if 'instance_of_list' in wd_record:
+            for i in wd_record['instance_of_list']:
+                instance_of_data.append(
+                    self.get_wikidata_simplified(i['value']))
+
+        text = ""
+        objectnames = {}
+
+        objectnames['en'] = wd_record['names']["en"]
+        objectnames['ru'] = wd_record['names']["ru"]
+        for lang in self.optional_langs:
+            if lang in wd_record['names']:
+                objectnames[lang] = wd_record['names'][lang]
+
+
+        objectname_long_ru = objectnames['ru']
+        objectname_long_en = objectnames['en']
+        # TODO change objectname_long_en to objectnames_long[en]
+        objectnames_long = {}
+        if len(instance_of_data) > 0:
+            objectname_long_ru = ', '.join(
+                d['names']['ru'] for d in instance_of_data) + ' '+objectnames['ru']
+            objectname_long_en = ', '.join(
+                d['names']['en'] for d in instance_of_data) + ' '+objectnames['en']
+            for lang in self.optional_langs:
+                try:
+                    objectnames_long[lang] = ', '.join(
+                        d['names'][lang] for d in instance_of_data) + ' '+objectnames[lang]
+                except:
+                    pass
+        filename_base = os.path.splitext(os.path.basename(filename))[0]
+        filename_extension = os.path.splitext(os.path.basename(filename))[1]
+        commons_filename = (
+            objectnames['en'] + " " +
+            dt_obj.strftime("%Y-%m %s") + filename_extension
+        )
+        commons_filename = commons_filename.replace("/", " drob ")
+
+        prototype = """== {{int:filedesc}} ==
+{{Information
+|description={{en|1=2nd Baumanskaya Street 1 k1}}{{ru|1=Вторая Бауманская улица дом 1 К1}} {{ on Wikidata|Q86663303}}  {{Building address|Country=RU|Street name=2-я Бауманская улица|House number=1 К1}}  
+|source={{own}}
+|author={{Creator:Artem Svetlov}}
+|date={{According to Exif data|2022-07-03|location=Moscow}}
+}}
+
+{{Location|55.769326012498155|37.68742327500131}}
+{{Taken with|Pentax K10D|sf=1|own=1}}
+
+{{Photo Information
+ |Model                 = Olympus mju II
+ |ISO                   = 200
+ |Lens                  = 
+ |Focal length          = 35
+ |Focal length 35mm     = 35
+ |Support               = freehand
+ |Film                  = Kodak Gold 200
+ |Developer             = C41
+ }}
+ 
+    == {{int:license-header}} ==
+    {{self|cc-by-sa-4.0|author=Артём Светлов}}
+
+    [[Category:2nd Baumanskaya Street 1 k1]]
+    [[Category:Photographs by Artem Svetlov/Moscow]]
+
+    """
+        st = """== {{int:filedesc}} ==
+{{Information
+|description="""
+        st += "{{en|1=" + objectname_long_en + "}} \n"
+        st += "{{ru|1=" + objectname_long_ru + "}} \n"
+        for lang in self.optional_langs:
+            if lang in objectnames_long:
+                st += "{{"+lang+"|1=" + objectnames_long[lang] + "}} \n"
+        heritage_id = None
+        heritage_id = self.get_heritage_id(wikidata)
+        if heritage_id is not None:
+            st += "{{Cultural Heritage Russia|" + heritage_id + "}}"
+        st += " {{ on Wikidata|" + wikidata + "}}"
+        st += "\n"
+        st += self.get_date_information_part(dt_obj, country)
+
+        st += "}}\n"
+
+        text += st
+
+        text = text + self.get_tech_templates(filename, geo_dict, country)
+        if rail:
+            text += "[[Category:Railway photographs taken on " + \
+                dt_obj.strftime("%Y-%m-%d")+"]]" + "\n"
+            if isinstance(country, str) and len(country) > 3:
+                text += "[[Category:" + \
+                    dt_obj.strftime("%B %Y") + \
+                    " in rail transport in "+country+"]]" + "\n"
+
+        if len(secondary_wikidata_ids)<1:
+            text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
+        else:
+            for wdid in secondary_wikidata_ids:
+                from model_wiki import Model_wiki  as Model_wiki_ask
+                modelwiki = Model_wiki_ask()
+                cat = modelwiki.get_category_object_in_location(wdid,wikidata)
+                if cat is not None: 
+                    text = text + cat + "\n"
+                else:
+                    wd_record = self.get_wikidata_simplified(wdid)
+                    text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
+            
+        return {"name": commons_filename, "text": text, "dt_obj": dt_obj}
+
+
     def take_user_wikidata_id(self, wdid) -> str:
+        warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)
         # parse user input wikidata string.
         # it may be wikidata id, wikidata uri, string.
         # call search if need
@@ -927,6 +1063,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             response = subprocess.run(cmd, capture_output=True)
 
     def print_structured_data(self, commonsfilename):
+        warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)
         commonsfilename = self.prepare_commonsfilename(commonsfilename)
         commons_site = pywikibot.Site("commons", "commons")
 
@@ -949,6 +1086,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     print(prop, statement.target)
 
     def get_heritage_id(self, wikidata) -> str:
+        warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)
         # if wikidata object "heritage designation" is one of "culture heritage in Russia" - return russian monument id
 
         # get all claims of this wikidata objects
@@ -1014,6 +1152,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         item.addClaim(stringclaim, summary="Adding string claim")
 
     def append_image_descripts_claim(self, commonsfilename, entity_list, dry_run):
+        warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)
         assert isinstance(entity_list, list)
         assert len(entity_list) > 0
         if dry_run:

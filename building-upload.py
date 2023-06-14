@@ -45,23 +45,36 @@ else:
 
 
 
-wikidata = fileprocessor.take_user_wikidata_id(fileprocessor.prepare_wikidata_url(args.wikidata))
-secondary_wikidata_ids = fileprocessor.input2list_wikidata(args.secondary_objects)
+#wikidata = fileprocessor.take_user_wikidata_id(fileprocessor.prepare_wikidata_url(args.wikidata))
+from model_wiki import Model_wiki
+modelwiki = Model_wiki()
+wikidata = modelwiki.wikidata_input2id(args.wikidata)
+secondary_wikidata_ids = modelwiki.input2list_wikidata(args.secondary_objects)
 
 
 uploaded_paths = list()
 for filename in files:
     if fileprocessor.check_exif_valid(filename):
         print(filename+' valid')
-        texts = fileprocessor.make_image_texts(
-            filename=filename,
-            wikidata=wikidata,
-            place_en="Moscow",
-            place_ru="Москва",
-            no_building=args.no_building,
-            country=args.country.capitalize(),
-            rail=args.rail
-        )
+        if args.no_building:
+            texts = fileprocessor.make_image_texts_simple(
+                filename=filename,
+                wikidata=wikidata,
+                country=args.country.capitalize(),
+                rail=args.rail,
+                secondary_wikidata_ids = secondary_wikidata_ids
+            )            
+        else:
+            
+            texts = fileprocessor.make_image_texts_building(
+                filename=filename,
+                wikidata=wikidata,
+                place_en="Moscow",
+                place_ru="Москва",
+                no_building=args.no_building,
+                country=args.country.capitalize(),
+                rail=args.rail
+            )
 
         if args.dry_run:
             print()

@@ -16,9 +16,11 @@ from pywikibot.specialbots import UploadRobot
 from pywikibot import pagegenerators
 import urllib
 import wikitextparser as wtp
+from simple_term_menu import TerminalMenu
 
 
 from fileprocessor import Fileprocessor
+
 
 
 class Model_wiki:
@@ -170,9 +172,82 @@ class Model_wiki:
                 page.text = texts[2]
                 page.save('add {{Taken on location}} template')
                 self.create_category_taken_on_day(location,datestr)
+    
 
+    def take_user_wikidata_id(self, wdid) -> str:
+        # parse user input wikidata string.
+        # it may be wikidata id, wikidata uri, string.
+        # call search if need
+        # return valid wikidata id
+        if Model_wiki.is_wikidata_id(wdid):
+            result_wdid = wdid
+        else:
+            result_wdid = Model_wiki.search_wikidata_by_string(
+                wdid, stop_on_error=True)
 
+        return result_wdid
+        
+    @staticmethod
+    def is_wikidata_id(text) -> bool:
+        # check if string is valid wikidata id
+        if text.startswith('Q') and text[1:].isnumeric():
+            return True
+        else:
+            return False
+            
+    @staticmethod
+    def search_wikidata_by_string(text, stop_on_error=True) -> str:
+        warnings.warn('use wikidata_input2id', DeprecationWarning, stacklevel=2)
+        cmd = ['wb', 'search', '--json', text]
 
+        response = subprocess.run(cmd, capture_output=True)
+        object_wd = json.loads(response.stdout.decode())
+        if stop_on_error:
+            if not len(object_wd) > 0:
+                raise ValueError('not found in wikidata: '+text)
+
+        return object_wd[0]['id']
+        
+    def wikidata_input2id(self,inp)->str:
+        
+        modelwiki = Model_wiki()
+        
+        #detect user input string for wikidata
+        #if user print a query - search wikidata
+        #returns wikidata id
+        
+        inp = self.prepare_wikidata_url(inp)
+        if inp.startswith('Q'): return inp
+        
+        # search
+        cmd = ['wb','search',inp,'--json','--lang','en']
+        response = subprocess.run(cmd, capture_output=True)
+        
+        try:
+            result_wd = json.loads(response.stdout.decode())
+        except:
+            self.logger.error('error parce json from wikibase query')
+            self.logger.error(' '.join(cmd))
+            self.logger.error(response.stdout.decode())
+            
+        candidates = list()
+        for element in result_wd:
+            candidates.append(element['id']+' '+element['display']['label']['value']+' '+element['display'].get('description',{'value':''})['value'])
+        terminal_menu = TerminalMenu(candidates, title="Select street")
+        menu_entry_index = terminal_menu.show()
+        selected_url = result_wd[menu_entry_index]['id']
+        print('For '+inp+' selected '+selected_url+' '+result_wd[menu_entry_index].get("description",'[no description]'))
+        return selected_url
+
+    def prepare_wikidata_url(self,wikidata)->str:
+        # convert string https://www.wikidata.org/wiki/Q4412648 to Q4412648
+        
+        wikidata = str(wikidata).strip()
+        wikidata = wikidata.replace('https://www.wikidata.org/wiki/','')
+        if wikidata[0].isdigit() and not wikidata.upper().startswith('Q'):
+            wikidata = 'Q'+wikidata
+        return wikidata
+        
     def difftext(self,text1,text2):
         l = 0
         is_triggered = 0
@@ -279,7 +354,17 @@ class Model_wiki:
         text = test_str[0:groupstart] + ' {{Taken on|'+content.strip()+"}}"+test_str[groupend:]
         return text
 
-            
+    def input2list_wikidata(self,inp):
+
+        if inp is None or inp == False: return list()
+        if isinstance(inp,str):
+            inp=([inp])
+        secondary_wikidata_ids = list()
+        for inp_wikidata in inp:
+            wdid = self.wikidata_input2id(inp_wikidata)
+            secondary_wikidata_ids.append(wdid)
+        return secondary_wikidata_ids
+        
     def _text_add_template_taken_on_location(self,test_str, location):
 
         if '|location'.upper() in test_str.upper():
@@ -388,11 +473,58 @@ class Model_wiki:
             lat=lat, lon=lon), total=8, namespaces=None, site=site)
 
         return pages
+        
+    def get_wd_by_wdid(self,wdid)->dict:
+        # if need python-only implementation: replace to pywikibot this
+        
+        cmd = ['wb', 'gt', '--json', '--no-minimize', wdid]
+        response = subprocess.run(cmd, capture_output=True)
+        object_wd = json.loads(response.stdout.decode())
+        return object_wd
+    
+    def get_upper_location_wdid(self,wdobj):
+        if 'P131' in wdobj['claims']:
+            return self.get_wd_by_wdid(wdobj['claims']['P131'][0]['value'])
+        
+        return None
+    def get_category_object_in_location(self,object_wdid,location_wdid)->str:
+        
+        stop_hieraechy_walk = False
+        cnt = 0
+        geoobject_wd = self.get_wd_by_wdid(location_wdid)
+        while not stop_hieraechy_walk:
+            cnt=cnt+1
+            if cnt > 6: stop_hieraechy_walk = True
+            logging.info(str(object_wdid)+' '+str(geoobject_wd['id']))
+            union_category_name = self.search_commonscat_by_2_wikidata(object_wdid,geoobject_wd['id'])
+            if union_category_name is not None:
+                return '[[Category:'+union_category_name+']]'
+            
+            upper_wd = self.get_upper_location_wdid(geoobject_wd)
+            if upper_wd is None: stop_hieraechy_walk = True
+            geoobject_wd = upper_wd
+            
+            
+        return None
+    def search_commonscat_by_2_wikidata(self,abstract_wdid,geo_wdid):
+    
+        sample = """
+                        SELECT DISTINCT ?item ?itemLabel WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE]". }
+  {
+    SELECT DISTINCT ?item WHERE {
+      ?item p:P971 ?statement0.
+      ?statement0 (ps:P971) wd:Q22698.
+      ?item p:P971 ?statement1.
+      ?statement1 (ps:P971) wd:Q649.
+    }
+    LIMIT 100
+  }
+}
 
-    def search_category_by_wikidata_union(self, wikidata, country_wdid) -> str:
-        # for given wikidata objects "PARK" and "COUNTRYNAME" finds CATEGORY:PARKS IN COUNTRYNAME usind P971
-
-        sample = '''
+        """
+        
+        template = '''
         SELECT DISTINCT ?item ?itemLabel WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE]". }
   {
@@ -406,7 +538,46 @@ class Model_wiki:
   }
 }
 '''
-        sparql = sample
+        sparql = template
+        sparql = sparql.replace('$SUBJECT', abstract_wdid)
+        sparql = sparql.replace('$COUNTRY', geo_wdid)
+
+
+        site = pywikibot.Site("wikidata", "wikidata")
+        repo = site.data_repository()
+
+        generator = pagegenerators.PreloadingEntityGenerator(pagegenerators.WikidataSPARQLPageGenerator(sparql,site=repo))
+        for item in generator:
+            item_dict = item.get()
+            claim_list = item_dict["claims"].get('P373',())
+            for claim in claim_list:
+                commonscat = claim.getTarget()
+                return commonscat
+        return None
+
+        
+    def dev_search_wikidata_union_commons_cat(self, wikidata, country_wdid) -> str:
+        # for given wikidata objects "PARK" and "COUNTRYNAME" finds CATEGORY:PARKS IN COUNTRYNAME usind P971. returns category name
+
+        sample = '''
+
+wb sparql t.sparql --format json
+'''
+        template = '''
+        SELECT DISTINCT ?item ?itemLabel WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE]". }
+  {
+    SELECT DISTINCT ?item WHERE {
+      ?item p:P971 ?statement0.
+      ?statement0 (ps:P971) wd:$SUBJECT.
+      ?item p:P971 ?statement1.
+      ?statement1 (ps:P971) wd:$COUNTRY.
+    }
+    LIMIT 100
+  }
+}
+'''
+        sparql = template
         sparql = sparql.replace('$SUBJECT', wikidata)
         sparql = sparql.replace('$COUNTRY', country_wdid)
 
@@ -429,4 +600,4 @@ class Model_wiki:
         except:
             return None
 
-        return ''
+        return None

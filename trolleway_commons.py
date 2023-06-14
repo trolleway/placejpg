@@ -8,6 +8,7 @@ from num2words import num2words
 from transliterate import translit
 import argparse
 from simple_term_menu import TerminalMenu
+import warnings
 
 
 class CommonsOps:
@@ -315,6 +316,7 @@ class CommonsOps:
         return category_name
         
     def wikidata_input2id(self,inp)->str:
+        warnings.warn('need move to model_wiki', DeprecationWarning, stacklevel=2)
         #detect user input string for wikidata
         #if user print a query - search wikidata
         #returns wikidata id
@@ -323,7 +325,7 @@ class CommonsOps:
         if inp.startswith('Q'): return inp
         
         # search
-        cmd = ['wb','search',inp,'--json']
+        cmd = ['wb','search',inp,'--json','--lang','ru']
         response = subprocess.run(cmd, capture_output=True)
         try:
             result_wd = json.loads(response.stdout.decode())

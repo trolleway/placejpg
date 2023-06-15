@@ -481,13 +481,21 @@ class Model_wiki:
         response = subprocess.run(cmd, capture_output=True)
         object_wd = json.loads(response.stdout.decode())
         return object_wd
+        
+    def get_best_claim(self,wdid,prop)->str:
+        assert prop.startswith('P')
+        cmd = ['wb', 'claims', wdid, prop, '--json']
+        response = subprocess.run(cmd, capture_output=True)
+        object_wd = json.loads(response.stdout.decode())
+        return object_wd[0]
     
     def get_upper_location_wdid(self,wdobj):
         if 'P131' in wdobj['claims']:
-            return self.get_wd_by_wdid(wdobj['claims']['P131'][0]['value'])
+            return self.get_best_claim(wdobj['id'],'P131')
+            #return self.get_wd_by_wdid(wdobj['claims']['P131'][0]['value'])
         
         return None
-    def get_category_object_in_location(self,object_wdid,location_wdid)->str:
+    def get_category_object_in_location(self,object_wdid,location_wdid,verbose=False)->str:
         
         stop_hieraechy_walk = False
         cnt = 0
@@ -495,17 +503,111 @@ class Model_wiki:
         while not stop_hieraechy_walk:
             cnt=cnt+1
             if cnt > 6: stop_hieraechy_walk = True
-            logging.info(str(object_wdid)+' '+str(geoobject_wd['id']))
+            if verbose:
+                print(geoobject_wd['id'])
+                print('search category for union '+str(object_wdid)+' '+str(geoobject_wd['id']))
+            
             union_category_name = self.search_commonscat_by_2_wikidata(object_wdid,geoobject_wd['id'])
             if union_category_name is not None:
                 return '[[Category:'+union_category_name+']]'
             
-            upper_wd = self.get_upper_location_wdid(geoobject_wd)
-            if upper_wd is None: stop_hieraechy_walk = True
+            upper_wdid = self.get_upper_location_wdid(geoobject_wd)
+            if upper_wdid is None: 
+                stop_hieraechy_walk = True
+                continue
+            upper_wd = self.get_wd_by_wdid(upper_wdid)
             geoobject_wd = upper_wd
             
             
         return None
+        
+    def append_image_descripts_claim(self, commonsfilename, entity_list, dry_run):
+
+        assert isinstance(entity_list, list)
+        assert len(entity_list) > 0
+        if dry_run:
+            print('simulate add entities')
+            self.pp.pprint(entity_list)
+            return
+        from fileprocessor import Fileprocessor
+        fileprocessor = Fileprocessor()    
+        commonsfilename = fileprocessor.prepare_commonsfilename(commonsfilename)
+
+        site = pywikibot.Site("commons", "commons")
+        site.login()
+        site.get_tokens("csrf")  # preload csrf token
+        page = pywikibot.Page(site, title=commonsfilename, ns=6)
+        media_identifier = "M{}".format(page.pageid)
+
+        # fetch exist structured data
+
+        request = site.simple_request(
+            action="wbgetentities", ids=media_identifier)
+        raw = request.submit()
+        existing_data = None
+        if raw.get("entities").get(media_identifier).get("pageid"):
+            existing_data = raw.get("entities").get(media_identifier)
+
+        try:
+            depicts = existing_data.get("statements").get("P180")
+        except:
+            depicts = None
+        for entity in entity_list:
+            if depicts is not None:
+                # Q80151 (hat)
+                if any(
+                    statement["mainsnak"]["datavalue"]["value"]["id"] == entity
+                    for statement in depicts
+                ):
+                    print(
+                        "There already exists a statement claiming that this media depicts a "
+                        + entity
+                        + " continue to next entity"
+                    )
+                    continue
+
+            statement_json = {
+                "claims": [
+                    {
+                        "mainsnak": {
+                            "snaktype": "value",
+                            "property": "P180",
+                            "datavalue": {
+                                "type": "wikibase-entityid",
+                                "value": {
+                                    "numeric-id": entity.replace("Q", ""),
+                                    "id": entity,
+                                },
+                            },
+                        },
+                        "type": "statement",
+                        "rank": "normal",
+                    }
+                ]
+            }
+
+            csrf_token = site.tokens["csrf"]
+            payload = {
+                "action": "wbeditentity",
+                "format": "json",
+                "id": media_identifier,
+                "data": json.dumps(statement_json, separators=(",", ":")),
+                "token": csrf_token,
+                "summary": "adding depicts statement",
+                # in case you're using a bot account (which you should)
+                "bot": False,
+            }
+
+            request = site.simple_request(**payload)
+            try:
+                request.submit()
+            except pywikibot.data.api.APIError as e:
+                print("Got an error from the API, the following request were made:")
+                print(request)
+                print("Error: {}".format(e))
+                
+                
+                
     def search_commonscat_by_2_wikidata(self,abstract_wdid,geo_wdid):
     
         sample = """

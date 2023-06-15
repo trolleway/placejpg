@@ -643,13 +643,7 @@ class Fileprocessor:
                         d['names'][lang] for d in instance_of_data) + ' '+objectnames[lang]
                 except:
                     pass
-        filename_base = os.path.splitext(os.path.basename(filename))[0]
-        filename_extension = os.path.splitext(os.path.basename(filename))[1]
-        commons_filename = (
-            objectnames['en'] + " " +
-            dt_obj.strftime("%Y-%m %s") + filename_extension
-        )
-        commons_filename = commons_filename.replace("/", " drob ")
+
 
         prototype = """== {{int:filedesc}} ==
 {{Information
@@ -709,19 +703,37 @@ class Fileprocessor:
                     dt_obj.strftime("%B %Y") + \
                     " in rail transport in "+country+"]]" + "\n"
 
+        from model_wiki import Model_wiki  as Model_wiki_ask
+        modelwiki = Model_wiki_ask()
         if len(secondary_wikidata_ids)<1:
             text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
         else:
+            text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
             for wdid in secondary_wikidata_ids:
-                from model_wiki import Model_wiki  as Model_wiki_ask
-                modelwiki = Model_wiki_ask()
-                cat = modelwiki.get_category_object_in_location(wdid,wikidata)
+                cat = modelwiki.get_category_object_in_location(wdid,wikidata,verbose=False)
                 if cat is not None: 
                     text = text + cat + "\n"
                 else:
                     wd_record = self.get_wikidata_simplified(wdid)
+                    
+                    assert 'commons' in wd_record, 'https://www.wikidata.org/wiki/'+wdid + ' must have commons'
                     text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
-            
+        
+        filename_base = os.path.splitext(os.path.basename(filename))[0]
+        filename_extension = os.path.splitext(os.path.basename(filename))[1]
+        commons_filename = (
+            objectnames['en'] + " " +
+            dt_obj.strftime("%Y-%m %s") + filename_extension
+        )
+        commons_filename = commons_filename.replace("/", " drob ")
+        
+        try:
+
+            administrative_name = modelwiki.get_wd_by_wdid(modelwiki.get_upper_location_wdid(modelwiki.get_wd_by_wdid(wikidata)))['labels']['en']
+            commons_filename = administrative_name + '_'+commons_filename
+        except:
+            pass
+        
         return {"name": commons_filename, "text": text, "dt_obj": dt_obj}
 
 

@@ -361,8 +361,16 @@ class Fileprocessor:
         if 'system_wd' in locals():
             text = text + \
                 "[[Category:" + system_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
-        text = text + \
-            "[[Category:" + model_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
+        # category for model. search for category like "ZIU-9 in Moscow"
+        from model_wiki import Model_wiki  as Model_wiki_ask
+        modelwiki = Model_wiki_ask()
+        
+        cat = modelwiki.get_category_object_in_location(model_wd['id'],street_wd['id'],verbose=True)
+        if cat is not None: 
+            text = text + cat + "\n"
+        else:
+            text = text + \
+                "[[Category:" + model_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
         try:
             text = text + \
                 "[[Category:" + street_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
@@ -719,6 +727,7 @@ class Fileprocessor:
                     assert 'commons' in wd_record, 'https://www.wikidata.org/wiki/'+wdid + ' must have commons'
                     text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
         
+        # file name on commons
         filename_base = os.path.splitext(os.path.basename(filename))[0]
         filename_extension = os.path.splitext(os.path.basename(filename))[1]
         commons_filename = (
@@ -727,8 +736,8 @@ class Fileprocessor:
         )
         commons_filename = commons_filename.replace("/", " drob ")
         
+        # add district name to file name
         try:
-
             administrative_name = modelwiki.get_wd_by_wdid(modelwiki.get_upper_location_wdid(modelwiki.get_wd_by_wdid(wikidata)))['labels']['en']
             commons_filename = administrative_name + '_'+commons_filename
         except:

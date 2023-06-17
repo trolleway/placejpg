@@ -22,7 +22,7 @@ parser.add_argument(
     "--verify", action="store_const", required=False, default=False, const=True
 )
 parser.add_argument("--country", type=str,required=False, default='Russia', help='Country for {{Taken on}} template')
-parser.add_argument('-s',"--secondary-objects", type=str, nargs='+',required=False, default='Russia', help='secondary wikidata objects, used in category calc with country')
+parser.add_argument('-s',"--secondary-objects", type=str, nargs='+',required=False,  help='secondary wikidata objects, used in category calc with country')
 parser.add_argument("--rail", action="store_const", required=False, default=False, const=True, help='add to https://commons.wikimedia.org/wiki/Category:Railway_photographs_by_date')
 parser.add_argument(
     "--no-building",

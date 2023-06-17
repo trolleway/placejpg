@@ -96,14 +96,20 @@ class Model_wiki:
         site.login()
         site.get_tokens("csrf")  # preload csrf token
         category = pywikibot.Category(site, categoryname)
-        gen = pagegenerators.CategorizedPageGenerator(category, recurse=True, start=None, total=None, content=True, namespaces=None)
+        regex='(?i)date.*=.*\d\d\d\d-\d\d-\d\d.*\}\}'
+        regex='(?i)Information[\S\s]*date[\S\s]*=[\S\s]*\d\d\d\d-\d\d-\d\d.*\}\}'
+        gen1 = pagegenerators.CategorizedPageGenerator(category, recurse=True, start=None, total=None, content=True, namespaces=None)
+        gen2 = pagegenerators.RegexBodyFilterPageGenerator(gen1,regex)
+        regex
+        gen2 = pagegenerators.RegexBodyFilterPageGenerator(gen1,regex)
         
         logging.getLogger().setLevel(logging.ERROR)
         logging.getLogger('foo').debug('bah')
 
         location = location.title()
-        #assert len(pages)>0, len(pages)
+
         for page in gen:
+            
             self.page_template_taken_on(page,location, dry_run, interactive,verbose=False)
         
     def page_template_taken_on(self, page, location, dry_run=True, interactive=False, verbose=True):
@@ -504,11 +510,11 @@ class Model_wiki:
             cnt=cnt+1
             if cnt > 6: stop_hieraechy_walk = True
             if verbose:
-                print(geoobject_wd['id'])
                 print('search category for union '+str(object_wdid)+' '+str(geoobject_wd['id']))
             
             union_category_name = self.search_commonscat_by_2_wikidata(object_wdid,geoobject_wd['id'])
             if union_category_name is not None:
+                print('found '+ '[[Category:'+union_category_name+']]')
                 return '[[Category:'+union_category_name+']]'
             
             upper_wdid = self.get_upper_location_wdid(geoobject_wd)

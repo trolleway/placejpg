@@ -192,12 +192,14 @@ class Fileprocessor:
             quit()
         return object_wd
 
-    def make_image_texts_vehicle(self, filename, vehicle,  model, street, number, system=None, city=None, route=None, country=None, line=None, rail=None) -> dict:
+    def make_image_texts_vehicle(self, filename, vehicle,  model, street, number, system=None, city=None, route=None, country=None, line=None, rail=None, facing=None, color_list=None) -> dict:
         assert os.path.isfile(filename)
 
         vehicle_names = {'ru': {'tram': 'трамвай', 'trolleybus': 'троллейбус',
                            'bus': 'автобус', 'train': 'поезд', 'auto': 'автомобиль', 'plane': 'самолёт'}}
         wikidata_4_structured_data = list()
+        
+        assert facing in ('left','right',None)
 
         if model is not None:
             if self.is_wikidata_id(model):
@@ -400,6 +402,18 @@ class Fileprocessor:
                 text += "[[Category:" + \
                     dt_obj.strftime("%B %Y") + \
                     " in tram transport in "+country+"]]" + "\n"
+        
+        if facing is not None:
+            text += "[[Category:"+transports[vehicle]+" facing " +  facing + "]]\n"        
+        if number is not None:
+            text += "[[Category:Number "+number+" on vehicles]]\n"
+        if dt_obj is not None:
+            text += "[[Category:{transports} in {city} photographed in {year}]]\n".format(
+            transports = +transports[vehicle],
+            city=city_name_en,
+            year = dt_obj.strftime("%Y"),
+            )
+
 
         return {"name": commons_filename, "text": text, "structured_data_on_commons": wikidata_4_structured_data, "dt_obj": dt_obj}
 
@@ -718,7 +732,7 @@ class Fileprocessor:
         else:
             text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
             for wdid in secondary_wikidata_ids:
-                cat = modelwiki.get_category_object_in_location(wdid,wikidata,verbose=False)
+                cat = modelwiki.get_category_object_in_location(wdid,wikidata,verbose=True)
                 if cat is not None: 
                     text = text + cat + "\n"
                 else:

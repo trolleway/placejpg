@@ -21,7 +21,7 @@ parser.add_argument(
 parser.add_argument(
     "--verify", action="store_const", required=False, default=False, const=True
 )
-parser.add_argument("--country", type=str,required=False, default='Russia', help='Country for {{Taken on}} template')
+parser.add_argument("--location", type=str,required=False, default='Russia', help='Country for {{Taken on}} template')
 parser.add_argument('-s',"--secondary-objects", type=str, nargs='+',required=False,  help='secondary wikidata objects, used in category calc with country')
 parser.add_argument("--rail", action="store_const", required=False, default=False, const=True, help='add to https://commons.wikimedia.org/wiki/Category:Railway_photographs_by_date')
 parser.add_argument(
@@ -60,7 +60,7 @@ for filename in files:
             texts = fileprocessor.make_image_texts_simple(
                 filename=filename,
                 wikidata=wikidata,
-                country=args.country.capitalize(),
+                country=args.location.capitalize(),
                 rail=args.rail,
                 secondary_wikidata_ids = secondary_wikidata_ids
             )            
@@ -72,7 +72,7 @@ for filename in files:
                 place_en="Moscow",
                 place_ru="Москва",
                 no_building=args.no_building,
-                country=args.country.capitalize(),
+                country=args.location.capitalize(),
                 rail=args.rail
             )
 
@@ -92,7 +92,7 @@ for filename in files:
             )
         modelwiki.append_image_descripts_claim(texts["name"], wikidata_list, args.dry_run)
         if not args.dry_run:
-            modelwiki.create_category_taken_on_day(args.country.capitalize(),texts['dt_obj'].strftime("%Y-%m-%d"))
+            modelwiki.create_category_taken_on_day(args.location.capitalize(),texts['dt_obj'].strftime("%Y-%m-%d"))
         else:
             print('will append '+' '.join(wikidata_list))
             

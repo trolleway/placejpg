@@ -18,11 +18,13 @@ parser.add_argument('-v','--vehicle', type=str, required=True, choices=['tram','
 parser.add_argument('-s','--system', type=str, required=False, help='wikidata id or wikidata name of transport system. Not applied to "auto" ')
 parser.add_argument('-c','--city', type=str, required='auto' in sys.argv or '-s' not in sys.argv, help='wikidata id or wikidata name of city for "auto" ')
 parser.add_argument('-m','--model', type=str, required='station' not in sys.argv, help='wikidata id or wikidata name of vehicle model')
-parser.add_argument('-r','--street', type=str, required=False, help='wikidata id or wikidata name of streer or highway')
+parser.add_argument('-st','--street', type=str, required=False, help='wikidata id or wikidata name of streer or highway')
 parser.add_argument('-n','--number', type=str, required='station' not in sys.argv, help='vehicle number')
 parser.add_argument('-ro','--route', type=str, required=False, help='vehicle route text')
 parser.add_argument('-l','--line', type=str, required=False, help='railway line wikidata object')
-parser.add_argument("--country", type=str,required=False, default='Russia', help='Country for {{Taken on}} template')
+parser.add_argument("--location", type=str,required=False, default='Russia', help='Country for {{Taken on}} template')
+parser.add_argument('--facing', type=str, required=False,  choices=['Left','Right'], help='puts in [[Category:Trolleybuses facing left]]')
+parser.add_argument('--color_list', type=str, nargs='+', required=False,  help='puts in [[Category:Green and yellow trams]]')
 
 parser.add_argument(
     "-dry", "--dry-run", action="store_const", required=False, default=False, const=True
@@ -57,8 +59,10 @@ for filename in files:
             route = args.route,
             number = args.number,
             city = args.city,
-            country=args.country.capitalize(),
+            location=args.location.capitalize(),
             line = args.line,
+            facing=args.facing,
+            color_list=args.color_list,
             
         )
         
@@ -77,7 +81,7 @@ for filename in files:
         )
         fileprocessor.append_image_descripts_claim(texts["name"], wikidata_list, args.dry_run)
         uploaded_paths.append('https://commons.wikimedia.org/wiki/File:'+texts["name"].replace(' ', '_'))
-        modelwiki.create_category_taken_on_day(args.country.capitalize(),texts['dt_obj'].strftime("%Y-%m-%d"))
+        modelwiki.create_category_taken_on_day(args.location.capitalize(),texts['dt_obj'].strftime("%Y-%m-%d"))
     else:
         fileprocessor.logger.warning('can not open file '+filename+', skipped')
         continue

@@ -192,14 +192,14 @@ class Fileprocessor:
             quit()
         return object_wd
 
-    def make_image_texts_vehicle(self, filename, vehicle,  model, street, number, system=None, city=None, route=None, country=None, line=None, rail=None, facing=None, color_list=None) -> dict:
+    def make_image_texts_vehicle(self, filename, vehicle,  model, street, number, system=None, city=None, route=None, location=None, line=None, rail=None, facing=None, color_list=None) -> dict:
         assert os.path.isfile(filename)
 
         vehicle_names = {'ru': {'tram': 'трамвай', 'trolleybus': 'троллейбус',
                            'bus': 'автобус', 'train': 'поезд', 'auto': 'автомобиль', 'plane': 'самолёт'}}
         wikidata_4_structured_data = list()
         
-        assert facing in ('left','right',None)
+        assert facing in ('Left','Right',None)
 
         if model is not None:
             if self.is_wikidata_id(model):
@@ -307,7 +307,7 @@ class Fileprocessor:
             + "{{Taken on|"
             + dt_obj.isoformat()
             + "|location="
-            + country
+            + location
             + "|source=EXIF}}"
             + "\n"
         )
@@ -353,8 +353,13 @@ class Fileprocessor:
 """
         )
 
-        transports = {'tram': 'Trams', 'trolleybus': 'Trolleybuses',
-                      'bus': 'Buses', 'train': 'Trains'}
+        transports = {
+        'tram': 'Trams', 
+        'trolleybus': 'Trolleybuses',
+      'bus': 'Buses',
+      'train': 'Trains',
+      'auto':'Automobiles'
+                      }
         if route is not None:
             text = text + "[[Category:{transports} on route {route} in {city}]]".format(
                 transports=transports[vehicle],
@@ -379,7 +384,7 @@ class Fileprocessor:
         except:
             pass
         text = text + "[[Category:Photographs by " + \
-            self.photographer+'/'+country+"]]" + "\n"
+            self.photographer+'/'+location+"]]" + "\n"
         if line is not None:
             text = text + \
                 "[[Category:" + \
@@ -390,27 +395,38 @@ class Fileprocessor:
         if vehicle == 'train':
             text += "[[Category:Railway photographs taken on " + \
                 dt_obj.strftime("%Y-%m-%d")+"]]" + "\n"
-            if isinstance(country, str):
+            if isinstance(location, str):
                 text += "[[Category:" + \
                     dt_obj.strftime("%B %Y") + \
-                    " in rail transport in "+country+"]]" + "\n"
+                    " in rail transport in "+location+"]]" + "\n"
 
         if vehicle == 'tram':
             text += "[[Category:Railway photographs taken on " + \
                 dt_obj.strftime("%Y-%m-%d")+"]]" + "\n"
-            if isinstance(country, str):
+            if isinstance(location, str):
                 text += "[[Category:" + \
                     dt_obj.strftime("%B %Y") + \
-                    " in tram transport in "+country+"]]" + "\n"
+                    " in tram transport in "+location+"]]" + "\n"
         
         if facing is not None:
-            text += "[[Category:"+transports[vehicle]+" facing " +  facing + "]]\n"        
+            facing = facing.capitalize()
+            assert facing in ('Left','Right')
+            text += "[[Category:"+transports[vehicle]+" facing " +  facing + "]]\n"  
+            if facing == 'Left': wikidata_4_structured_data.append('Q119570753')
+            if facing == 'Right': wikidata_4_structured_data.append('Q119570670')
+        if color_list is not None:
+            colorname = ''
+            colorname = ' and '.join(color_list)
+            text += "[[Category:{colorname} {transports}]]\n".format(
+            transports = transports[vehicle],
+            colorname = colorname)
+            
         if number is not None:
             text += "[[Category:Number "+number+" on vehicles]]\n"
         if dt_obj is not None:
             text += "[[Category:{transports} in {city} photographed in {year}]]\n".format(
-            transports = +transports[vehicle],
-            city=city_name_en,
+            transports = transports[vehicle],
+            city = city_name_en,
             year = dt_obj.strftime("%Y"),
             )
 

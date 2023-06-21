@@ -34,6 +34,23 @@ class Fileprocessor:
     photographer = 'Artem Svetlov'
 
 
+    def input2filelist(self,filepath):
+        if os.path.isfile(filepath):
+            files = [filepath]
+            assert os.path.isfile(filepath)
+            uploaded_folder_path = os.path.join(os.path.dirname(filepath),'commons_uploaded')
+        elif os.path.isdir(filepath):
+            files = os.listdir(filepath)
+            files = [os.path.join(filepath, x) for x in files]
+            files = list(filter(lambda name: 'commons_uploaded' not in name , files))
+
+            
+            uploaded_folder_path = os.path.join(filepath,'commons_uploaded')
+        else:
+            raise Exception("filepath should be file or directory")
+        return files, uploaded_folder_path
+    
+    
     def prepare_wikidata_url(self, wikidata) -> str:
         # convert string https://www.wikidata.org/wiki/Q4412648 to Q4412648
 

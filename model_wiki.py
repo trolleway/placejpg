@@ -33,6 +33,7 @@ class Model_wiki:
     pp = pprint.PrettyPrinter(indent=4)
 
     wiki_content_cache = dict()
+    cache_category_object_in_location = dict()
 
     def wikipedia_get_page_content(self, page) -> str:
 
@@ -502,7 +503,9 @@ class Model_wiki:
         
         return None
     def get_category_object_in_location(self,object_wdid,location_wdid,verbose=False)->str:
-        
+        cache_key = str(object_wdid)+'/'+location_wdid
+        if cache_key in self.cache_category_object_in_location:
+            return '[[Category:'+self.cache_category_object_in_location[cache_key]+']]'
         stop_hieraechy_walk = False
         cnt = 0
         geoobject_wd = self.get_wd_by_wdid(location_wdid)
@@ -515,6 +518,7 @@ class Model_wiki:
             union_category_name = self.search_commonscat_by_2_wikidata(object_wdid,geoobject_wd['id'])
             if union_category_name is not None:
                 print('found '+ '[[Category:'+union_category_name+']]')
+                self.cache_category_object_in_location[cache_key]=union_category_name
                 return '[[Category:'+union_category_name+']]'
             
             upper_wdid = self.get_upper_location_wdid(geoobject_wd)

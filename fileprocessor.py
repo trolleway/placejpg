@@ -29,7 +29,7 @@ class Fileprocessor:
     exiftool_path = "exiftool"
 
     wikidata_cache = dict()
-    optional_langs = ('de', 'fr', 'it', 'es', 'pt', 'uk', 'be',)
+    optional_langs = ('de', 'fr', 'it', 'es', 'pt', 'uk', 'be','ja')
     chunk_size = 102400
     photographer = 'Artem Svetlov'
 
@@ -428,22 +428,22 @@ class Fileprocessor:
         if facing is not None:
             facing = facing.capitalize()
             assert facing in ('Left','Right')
-            text += "[[Category:"+transports[vehicle]+" facing " +  facing + "]]\n"  
+            text += "[[Category:"+transports[vehicle]+" facing " +  facing.lower() + "]]\n"  
             if facing == 'Left': wikidata_4_structured_data.append('Q119570753')
             if facing == 'Right': wikidata_4_structured_data.append('Q119570670')
         if color_list is not None:
             colorname = ''
             colorname = ' and '.join(color_list)
             text += "[[Category:{colorname} {transports}]]\n".format(
-            transports = transports[vehicle],
+            transports = transports[vehicle].lower(),
             colorname = colorname)
             
         if number is not None:
             text += "[[Category:Number "+number+" on vehicles]]\n"
         if dt_obj is not None:
-            text += "[[Category:{transports} in {city} photographed in {year}]]\n".format(
+            text += "[[Category:{transports} in {location} photographed in {year}]]\n".format(
             transports = transports[vehicle],
-            city = city_name_en,
+            location = location,
             year = dt_obj.strftime("%Y"),
             )
 

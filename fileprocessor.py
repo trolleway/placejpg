@@ -213,7 +213,7 @@ class Fileprocessor:
         assert os.path.isfile(filename)
 
         vehicle_names = {'ru': {'tram': 'трамвай', 'trolleybus': 'троллейбус',
-                           'bus': 'автобус', 'train': 'поезд', 'auto': 'автомобиль', 'plane': 'самолёт'}}
+                           'bus': 'автобус', 'train': 'поезд', 'locomotive':'локомотив', 'auto': 'автомобиль', 'plane': 'самолёт'}}
         wikidata_4_structured_data = list()
         
         assert facing in ('Left','Right',None)
@@ -375,6 +375,7 @@ class Fileprocessor:
         'trolleybus': 'Trolleybuses',
       'bus': 'Buses',
       'train': 'Trains',
+      'locomotive': 'Locomotives',
       'auto':'Automobiles'
                       }
         if route is not None:
@@ -409,7 +410,7 @@ class Fileprocessor:
                     "claims"]["P373"][0]["value"]+"]]" + "\n"
 
         # locale.setlocale(locale.LC_ALL, 'en_GB')
-        if vehicle == 'train':
+        if vehicle in ('train','locomotive'):
             text += "[[Category:Railway photographs taken on " + \
                 dt_obj.strftime("%Y-%m-%d")+"]]" + "\n"
             if isinstance(location, str):
@@ -906,10 +907,13 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
         #self.pp.pprint(self.image2camera_params_exif_disused(path))
         
                 """
-
+                
                 st += '{{Photo Information|Model = ' + make + " " + model
                 if image_exif.get("lensmodel", '') != "" and image_exif.get("lensmodel", '') != "":
                     st += '|Lens = ' + image_exif.get("lensmodel")
+                    #if image_exif.get("lensmodel") == 'A Series Lens':
+                    #    self.pp.pprint(image_exif)
+                    #    quit()
                 if image_exif.get("fnumber", '') != "" and image_exif.get("fnumber", '') != "":
                     st += '|Aperture = f/' + str(image_exif.get("fnumber"))
                 if image_exif.get("'focallengthin35mmformat'", '') != "" and image_exif.get("'focallengthin35mmformat'", '') != "":
@@ -941,6 +945,8 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                 for lensstring in lensmodel_dict.keys():
                     if lensstring in st:
                         st = st.replace(lensstring, lensmodel_dict[lensstring])
+                
+                st = st.replace('Canon Canon','Canon')
 
                 return st
         else:

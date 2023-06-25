@@ -240,10 +240,10 @@ class Model_wiki:
         candidates = list()
         for element in result_wd:
             candidates.append(element['id']+' '+element['display']['label']['value']+' '+element['display'].get('description',{'value':''})['value'])
-        terminal_menu = TerminalMenu(candidates, title="Select street")
+        terminal_menu = TerminalMenu(candidates, title="Select wikidata entity for " + inp)
         menu_entry_index = terminal_menu.show()
         selected_url = result_wd[menu_entry_index]['id']
-        print('For '+inp+' selected '+selected_url+' '+result_wd[menu_entry_index].get("description",'[no description]'))
+        print('For '+inp+' selected 【'+selected_url+' '+result_wd[menu_entry_index].get("description",'[no description]')+'】')
         return selected_url
 
     def prepare_wikidata_url(self,wikidata)->str:

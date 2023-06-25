@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser(
     description="upload photos of vehicle to Wikimedia Commons "
 )
 parser.add_argument("filepath")
-parser.add_argument('-v','--vehicle', type=str, required=True, choices=['tram','trolleybus','bus', 'train','station','auto'])
+parser.add_argument('-v','--vehicle', type=str, required=True, choices=['tram','trolleybus','bus', 'train','locomotive','station','auto'])
 parser.add_argument('-s','--system', type=str, required=False, help='wikidata id or wikidata name of transport system. Not applied to "auto" ')
 parser.add_argument('-c','--city', type=str, required='auto' in sys.argv or '-s' not in sys.argv, help='wikidata id or wikidata name of city for "auto" ')
 parser.add_argument('-m','--model', type=str, required='station' not in sys.argv, help='wikidata id or wikidata name of vehicle model')

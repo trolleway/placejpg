@@ -260,7 +260,7 @@ class Model_wiki:
             i=i+1
         print('Enter a number:')
         result=input()
-        return result    
+        return int(result.strip())    
     def prepare_wikidata_url(self,wikidata)->str:
         # convert string https://www.wikidata.org/wiki/Q4412648 to Q4412648
         

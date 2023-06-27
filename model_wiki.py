@@ -240,6 +240,8 @@ class Model_wiki:
         candidates = list()
         for element in result_wd:
             candidates.append(element['id']+' '+element['display']['label']['value']+' '+element['display'].get('description',{'value':''})['value'])
+        if len(candidates) == 1:
+            selected_url = result_wd[0['id']
         try:
             terminal_menu = TerminalMenu(candidates, title="Select wikidata entity for " + inp)
             menu_entry_index = terminal_menu.show()
@@ -248,13 +250,14 @@ class Model_wiki:
             menu_entry_index = self.user_select(candidates)
         selected_url = result_wd[menu_entry_index]['id']
         print('For '+inp+' selected 【'+selected_url+' '+result_wd[menu_entry_index].get("description",'[no description]')+'】')
+        quit()
         return selected_url
 
     def user_select(self,candidates):
         i=0
         for element in candidates:
-            i=i+1
             print(str(i).rpad(3)+': '+element)
+            i=i+1
         print('Enter a number:')
         result=input()
         return result    

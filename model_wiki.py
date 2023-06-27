@@ -241,7 +241,7 @@ class Model_wiki:
         for element in result_wd:
             candidates.append(element['id']+' '+element['display']['label']['value']+' '+element['display'].get('description',{'value':''})['value'])
         if len(candidates) == 1:
-            selected_url = result_wd[0['id']
+            selected_url = result_wd[0]['id']
         try:
             terminal_menu = TerminalMenu(candidates, title="Select wikidata entity for " + inp)
             menu_entry_index = terminal_menu.show()

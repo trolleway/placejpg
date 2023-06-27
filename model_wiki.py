@@ -242,15 +242,16 @@ class Model_wiki:
             candidates.append(element['id']+' '+element['display']['label']['value']+' '+element['display'].get('description',{'value':''})['value'])
         if len(candidates) == 1:
             selected_url = result_wd[0]['id']
-        try:
-            terminal_menu = TerminalMenu(candidates, title="Select wikidata entity for " + inp)
-            menu_entry_index = terminal_menu.show()
-        except:
-            #special for run in temmux
-            menu_entry_index = self.user_select(candidates)
-        selected_url = result_wd[menu_entry_index]['id']
+        else:
+            try:
+                terminal_menu = TerminalMenu(candidates, title="Select wikidata entity for " + inp)
+                menu_entry_index = terminal_menu.show()
+            except:
+                #special for run in temmux
+                menu_entry_index = self.user_select(candidates)
+            selected_url = result_wd[menu_entry_index]['id']
         print('For '+inp+' selected 【'+selected_url+' '+result_wd[menu_entry_index].get("description",'[no description]')+'】')
-        quit()
+        
         return selected_url
 
     def user_select(self,candidates):

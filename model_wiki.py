@@ -242,6 +242,7 @@ class Model_wiki:
             candidates.append(element['id']+' '+element['display']['label']['value']+' '+element['display'].get('description',{'value':''})['value'])
         if len(candidates) == 1:
             selected_url = result_wd[0]['id']
+            return selected_url
         else:
             try:
                 terminal_menu = TerminalMenu(candidates, title="Select wikidata entity for " + inp)

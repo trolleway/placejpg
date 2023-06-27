@@ -256,7 +256,7 @@ class Model_wiki:
     def user_select(self,candidates):
         i=0
         for element in candidates:
-            print(str(i).rpad(3)+': '+element)
+            print(str(i).rjust(3)+': '+element)
             i=i+1
         print('Enter a number:')
         result=input()

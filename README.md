@@ -72,6 +72,13 @@ Create building and upload files from directory i/21
 ./add-building.py --street "Волжский бульвар" --housenumber "21" --coords "55.70592 37.74983" -cs osm --levels 5 --levels_url https://www.reformagkh.ru/myhouse/profile/view/8113254 --year 1962 --year_url https://www.reformagkh.ru/myhouse/profile/view/8113254 --photos i/21 #г. Москва, б-р. Волжский, д. 21
 ```
 
+## Create building in Wkimedia Commons from OSM data in QGIS
+
+1. Download Overpasss data
+2. Use expression for generate command
+
+'./add-building.py --street "'|| "addr:street" || '" --housenumber "'|| "addr:housenumber" || '" --coords "' ||round(y(point_on_surface( @geometry)),4) || ' ' || round(x(point_on_surface( @geometry)),4) ||'" -cs osm --levels '||"building:levels" || ' --photos "i/'|| replace("addr:housenumber",'/','_')||'"' 
+
 ## Used image params
 
 * GPS coordinates

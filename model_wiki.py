@@ -240,12 +240,24 @@ class Model_wiki:
         candidates = list()
         for element in result_wd:
             candidates.append(element['id']+' '+element['display']['label']['value']+' '+element['display'].get('description',{'value':''})['value'])
-        terminal_menu = TerminalMenu(candidates, title="Select wikidata entity for " + inp)
-        menu_entry_index = terminal_menu.show()
+        try:
+            terminal_menu = TerminalMenu(candidates, title="Select wikidata entity for " + inp)
+            menu_entry_index = terminal_menu.show()
+        except:
+            #special for run in temmux
+            menu_entry_index = self.user_select(candidates)
         selected_url = result_wd[menu_entry_index]['id']
         print('For '+inp+' selected 【'+selected_url+' '+result_wd[menu_entry_index].get("description",'[no description]')+'】')
         return selected_url
 
+    def user_select(self,candidates):
+        i=0
+        for element in candidates:
+            i=i+1
+            print(str(i).rpad(3)+': '+element)
+        print('Enter a number:')
+        result=input()
+        return result    
     def prepare_wikidata_url(self,wikidata)->str:
         # convert string https://www.wikidata.org/wiki/Q4412648 to Q4412648
         

@@ -928,10 +928,12 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                     'Olympus imaging corp.': 'Olympus',
                     'Nikon corporation NIKON': 'Nikon',
                     'Panasonic': 'Panasonic Lumix',
+                    'Hmd global Nokia 5.3': 'Nokia 5.3',
                 }
                 lensmodel_dict = {
                     'OLYMPUS M.12-40mm F2.8': 'Olympus M.Zuiko Digital ED 12-40mm f/2.8 PRO',
-                    'smc PENTAX-DA 35mm F2.4 AL':'SMC Pentax-DA 35mm F2.4'
+                    'smc PENTAX-DA 35mm F2.4 AL':'SMC Pentax-DA 35mm F2.4',
+                    'smc PENTAX-DA 14mm F2.8 EDIF':'SMC PENTAX DA 14 mm f/2.8 ED IF',
                 }
                 for camerastring in cameramodels_dict.keys():
                     if camerastring in st:

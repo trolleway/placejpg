@@ -154,6 +154,8 @@ class Fileprocessor:
                 object_record['names'][lang] = object_wd["labels"][lang]
         if "P373" in object_wd["claims"]:
             object_record['commons'] = object_wd["claims"]["P373"][0]["value"]
+        else:
+            object_record['commons'] = object_wd["sitelinks"]["commonswiki"]["title"].replace('Category:','')
         if "P31" in object_wd["claims"]:
             object_record['instance_of_list'] = object_wd["claims"]["P31"]
         self.wikidata_cache[wikidata] = object_record

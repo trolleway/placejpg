@@ -662,8 +662,8 @@ class Fileprocessor:
         # return file description texts
         # there is no excact 'city' in wikidata, use manual input cityname
 
-        #from model_wiki import Model_wiki
-        #modelwiki = Model_wiki()
+        from model_wiki import Model_wiki  as Model_wiki_ask
+        modelwiki = Model_wiki_ask()
     
         assert os.path.isfile(filename), 'not found '+filename
 
@@ -671,13 +671,13 @@ class Fileprocessor:
         dt_obj = self.image2datetime(filename)
         geo_dict = self.image2coords(filename)
 
-        wd_record = self.get_wikidata_simplified(wikidata)
+        wd_record = modelwiki.get_wikidata_simplified(wikidata)
 
         instance_of_data = list()
         if 'instance_of_list' in wd_record:
             for i in wd_record['instance_of_list']:
                 instance_of_data.append(
-                    self.get_wikidata_simplified(i['value']))
+                    modelwiki.get_wikidata_simplified(i['value']))
 
         text = ""
         objectnames = {}
@@ -764,8 +764,8 @@ class Fileprocessor:
                     dt_obj.strftime("%B %Y") + \
                     " in rail transport in "+country+"]]" + "\n"
 
-        from model_wiki import Model_wiki  as Model_wiki_ask
-        modelwiki = Model_wiki_ask()
+        #from model_wiki import Model_wiki  as Model_wiki_ask
+        #modelwiki = Model_wiki_ask()
         if len(secondary_wikidata_ids)<1:
             text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
         else:
@@ -775,7 +775,7 @@ class Fileprocessor:
                 if cat is not None: 
                     text = text + cat + "\n"
                 else:
-                    wd_record = self.get_wikidata_simplified(wdid)
+                    wd_record = modelwiki.get_wikidata_simplified(wdid)
                     
                     assert 'commons' in wd_record, 'https://www.wikidata.org/wiki/'+wdid + ' must have commons'
                     text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
@@ -901,17 +901,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                 make = make.capitalize()
                 st = "{{Taken with|" + make + " " + model + "|sf=1|own=1}}" + "\n"
 
-                """
-        self.pp.pprint(metadata)
-        
-        print(metadata.get('model'))
-        print(metadata.get('make'))
-        print(metadata.get('lensmodel'))
-        print(metadata.get('fnumber'))
-        print(metadata.get('focallengthin35mmformat'))
-        #self.pp.pprint(self.image2camera_params_exif_disused(path))
-        
-                """
+
                 
                 st += '{{Photo Information|Model = ' + make + " " + model
                 if image_exif.get("lensmodel", '') != "" and image_exif.get("lensmodel", '') != "":

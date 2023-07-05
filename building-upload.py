@@ -64,7 +64,6 @@ uploaded_paths = list()
 for filename in files:
     if 'commons_uploaded' in filename: continue
     if fileprocessor.check_exif_valid(filename):
-        print(filename+' valid')
         if args.no_building:
             texts = fileprocessor.make_image_texts_simple(
                 filename=filename,

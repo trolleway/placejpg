@@ -17,6 +17,7 @@ from pywikibot import pagegenerators
 import urllib
 import wikitextparser as wtp
 from simple_term_menu import TerminalMenu
+import pickle
 
 
 from fileprocessor import Fileprocessor
@@ -34,7 +35,37 @@ class Model_wiki:
 
     wiki_content_cache = dict()
     cache_category_object_in_location = dict()
+    wikidata_cache = dict()
+    wikidata_cache_filename = 'temp_wikidata_cache.dat'
+    optional_langs = ('de', 'fr', 'it', 'es', 'pt', 'uk', 'be','ja')
+    
+    def __init__(self):
+        self.wikidata_cache = self.wikidata_cache_load(wikidata_cache_filename=self.wikidata_cache_filename)
+        
+    def wikidata_cache_load(self,wikidata_cache_filename):
+        if os.path.isfile(wikidata_cache_filename) == False:
+            cache = {'entities_simplified':{},'entities_non_simplified':{},'best_claims':{},'commonscat_by_2_wikidata':{}}
+            return cache
+        else:
+            file = open(wikidata_cache_filename, 'rb')
 
+            # dump information to that file
+            cache = pickle.load(file)
+
+            # close the file
+            file.close()
+            return cache
+    
+    def wikidata_cache_save(self,cache,wikidata_cache_filename)->bool:
+        file = open(wikidata_cache_filename, 'wb')
+
+        # dump information to that file
+        pickle.dump(cache, file)
+
+        # close the file
+        file.close()
+
+        
     def wikipedia_get_page_content(self, page) -> str:
 
         # check cache
@@ -112,6 +143,44 @@ class Model_wiki:
         for page in gen:
             
             self.page_template_taken_on(page,location, dry_run, interactive,verbose=False)
+        
+    def get_wikidata_simplified(self, wikidata) -> dict:
+
+        # get all claims of this wikidata objects
+        if wikidata in self.wikidata_cache['entities_simplified']:
+            return self.wikidata_cache['entities_simplified'][wikidata]
+
+        cmd = ["wb", "gt", "--json", "--no-minimize", wikidata]
+        response = subprocess.run(cmd, capture_output=True)
+        object_wd = json.loads(response.stdout.decode())
+        object_record = {'names': {}}
+        try:
+            object_record['names'] = {
+                "en": object_wd["labels"]["en"],
+                "ru": object_wd["labels"]["ru"],
+            }
+        except:
+            self.logger.error('object https://www.wikidata.org/wiki/' +
+                              wikidata+' must has name ru and name en')
+            quit()
+
+        for lang in self.optional_langs:
+            if lang in object_wd["labels"]:
+                object_record['names'][lang] = object_wd["labels"][lang]
+        if "P373" in object_wd["claims"]:
+            object_record['commons'] = object_wd["claims"]["P373"][0]["value"]
+        elif 'commonswiki' in object_wd["sitelinks"]:
+            object_record['commons'] = object_wd["sitelinks"]["commonswiki"]["title"].replace('Category:','')
+        else:
+            object_record['commons'] = None
+                              
+        if "P31" in object_wd["claims"]:
+            object_record['instance_of_list'] = object_wd["claims"]["P31"]
+            
+        self.wikidata_cache['entities_simplified'][wikidata] = object_record
+        self.wikidata_cache_save(self.wikidata_cache,self.wikidata_cache_filename)
+
+        return object_record
         
     def page_template_taken_on(self, page, location, dry_run=True, interactive=False, verbose=True):
         assert page
@@ -498,19 +567,35 @@ class Model_wiki:
 
         return pages
         
-    def get_wd_by_wdid(self,wdid)->dict:
+    def get_wd_by_wdid(self,wikidata)->dict:
         # if need python-only implementation: replace to pywikibot this
+        if wikidata in self.wikidata_cache['entities_non_simplified']:
+            return self.wikidata_cache['entities_non_simplified'][wikidata]
         
-        cmd = ['wb', 'gt', '--json', '--no-minimize', wdid]
+        cmd = ['wb', 'gt', '--json', '--no-minimize', wikidata]
         response = subprocess.run(cmd, capture_output=True)
         object_wd = json.loads(response.stdout.decode())
+        
+        self.wikidata_cache['entities_non_simplified'][wikidata] = object_wd
+        self.wikidata_cache_save(self.wikidata_cache,self.wikidata_cache_filename)
+        
         return object_wd
         
     def get_best_claim(self,wdid,prop)->str:
         assert prop.startswith('P')
+        
+        cache_key='wdid'+str(wdid)+'prop'+str(prop)
+        
+        if cache_key in self.wikidata_cache['best_claims']:
+            return self.wikidata_cache['best_claims'][cache_key]
+        
         cmd = ['wb', 'claims', wdid, prop, '--json']
         response = subprocess.run(cmd, capture_output=True)
         object_wd = json.loads(response.stdout.decode())
+        
+        self.wikidata_cache['best_claims'][cache_key] = object_wd[0]
+        self.wikidata_cache_save(self.wikidata_cache,self.wikidata_cache_filename)        
+        
         return object_wd[0]
     
     def get_upper_location_wdid(self,wdobj):
@@ -637,6 +722,10 @@ class Model_wiki:
                 
     def search_commonscat_by_2_wikidata(self,abstract_wdid,geo_wdid):
     
+        if abstract_wdid in self.wikidata_cache['commonscat_by_2_wikidata']:
+            if geo_wdid in self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid]:
+                return self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid][geo_wdid]
+                
         sample = """
                         SELECT DISTINCT ?item ?itemLabel WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE]". }
@@ -681,7 +770,16 @@ class Model_wiki:
             claim_list = item_dict["claims"].get('P373',())
             for claim in claim_list:
                 commonscat = claim.getTarget()
+                
+                if abstract_wdid not in self.wikidata_cache['commonscat_by_2_wikidata']:
+                    self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid]={}
+                self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid][geo_wdid] = commonscat
+                self.wikidata_cache_save(self.wikidata_cache,self.wikidata_cache_filename)
                 return commonscat
+        if abstract_wdid not in self.wikidata_cache['commonscat_by_2_wikidata']:
+            self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid]={}
+        self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid][geo_wdid] = None
+        self.wikidata_cache_save(self.wikidata_cache,self.wikidata_cache_filename)
         return None
 
         

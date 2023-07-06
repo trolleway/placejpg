@@ -432,8 +432,9 @@ class Fileprocessor:
                     " in tram transport in "+location+"]]" + "\n"
         
         if facing is not None:
-            facing = facing.capitalize()
-            assert facing in ('Left','Right')
+            facing = facing.strip().capitalize()
+            assert facing.strip().upper() in ('LEFT','RIGHT')
+            
             text += "[[Category:"+transports[vehicle]+" facing " +  facing.lower() + "]]\n"  
             if facing == 'Left': wikidata_4_structured_data.append('Q119570753')
             if facing == 'Right': wikidata_4_structured_data.append('Q119570670')

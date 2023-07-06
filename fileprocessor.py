@@ -379,7 +379,7 @@ class Fileprocessor:
         'tram': 'Trams', 
         'trolleybus': 'Trolleybuses',
       'bus': 'Buses',
-      'train': 'Trains',
+      'train': 'Rail vehicles',
       'locomotive': 'Locomotives',
       'auto':'Automobiles'
                       }
@@ -438,8 +438,10 @@ class Fileprocessor:
             if facing == 'Left': wikidata_4_structured_data.append('Q119570753')
             if facing == 'Right': wikidata_4_structured_data.append('Q119570670')
         if color_list is not None:
+            
             colorname = ''
-            colorname = ' and '.join(color_list)
+            colorname = ' and '.join(color_list.sorted())
+            colorname = colorname.lower().capitalize()
             text += "[[Category:{colorname} {transports}]]\n".format(
             transports = transports[vehicle].lower(),
             colorname = colorname)

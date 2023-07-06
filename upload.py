@@ -126,7 +126,7 @@ if args.dry_run:
     add_queue = input("Add to queue? Y/N    ")
 
     if add_queue.upper()=='Y':
-        cmd = 'python3 building-upload.py '
+        cmd = 'python3 upload.py '
         if args.building: cmd += '--building '
         cmd += wikidata + ' '
         cmd += '"'+args.filepath + '" '

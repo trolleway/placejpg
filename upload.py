@@ -25,7 +25,7 @@ parser.add_argument("--location", type=str,required=False, default='Russia', hel
 parser.add_argument('-s',"--secondary-objects", type=str, nargs='+',required=False,  help='secondary wikidata objects, used in category calc with country')
 parser.add_argument("--rail", action="store_const", required=False, default=False, const=True, help='add to https://commons.wikimedia.org/wiki/Category:Railway_photographs_by_date')
 parser.add_argument(
-    "--no-building",
+    "--building",
     action="store_const",
     required=False,
     default=False,
@@ -64,7 +64,7 @@ uploaded_paths = list()
 for filename in files:
     if 'commons_uploaded' in filename: continue
     if fileprocessor.check_exif_valid(filename):
-        if args.no_building:
+        if not args.building:
             texts = fileprocessor.make_image_texts_simple(
                 filename=filename,
                 wikidata=wikidata,
@@ -79,7 +79,7 @@ for filename in files:
                 wikidata=wikidata,
                 place_en="Moscow",
                 place_ru="Москва",
-                no_building=args.no_building,
+                no_building= not args.building,
                 country=args.location.capitalize(),
                 rail=args.rail
             )
@@ -127,7 +127,7 @@ if args.dry_run:
 
     if add_queue.upper()=='Y':
         cmd = 'python3 building-upload.py '
-        if args.no_building: cmd += '--no-building '
+        if args.building: cmd += '--building '
         cmd += wikidata + ' '
         cmd += '"'+args.filepath + '" '
         if args.location: cmd += '--location "'+ args.location + '" '

@@ -441,7 +441,8 @@ class Fileprocessor:
         if color_list is not None:
             
             colorname = ''
-            colorname = ' and '.join(color_list.sort())
+            color_list.sort()
+            colorname = ' and '.join(color_list)
             colorname = colorname.lower().capitalize()
             text += "[[Category:{colorname} {transports}]]\n".format(
             transports = transports[vehicle].lower(),

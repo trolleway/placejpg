@@ -131,6 +131,7 @@ if args.dry_run:
         cmd += wikidata + ' '
         cmd += '"'+args.filepath + '" '
         if args.location: cmd += '--location "'+ args.location + '" '
+        if args.rail: cmd += ' --rail '
         if len(secondary_wikidata_ids)>0: cmd += '-s ' + ' '.join(secondary_wikidata_ids)
         
         print('adding to queue')

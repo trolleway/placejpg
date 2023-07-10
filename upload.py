@@ -138,3 +138,5 @@ if args.dry_run:
         print(cmd)
         with open("queue.sh", "a") as file_object:
             file_object.write(cmd+"\n")
+    else:
+        print('not adding to queue')

@@ -898,12 +898,14 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
     def get_camera_text(self, filename) -> str:
         st = ''
         image_exif = self.image2camera_params(filename)
+
+        if image_exif.get('usepanoramaviewer'): st += "{{Pano360}} \n"
         if image_exif.get("make") is not None and image_exif.get("model") is not None:
             if image_exif.get("make") != "" and image_exif.get("model") != "":
                 make = image_exif.get("make").strip()
                 model = image_exif.get("model").strip()
                 make = make.capitalize()
-                st = "{{Taken with|" + make + " " + model + "|sf=1|own=1}}" + "\n"
+                st += "{{Taken with|" + make + " " + model + "|sf=1|own=1}}" + "\n"
 
 
                 

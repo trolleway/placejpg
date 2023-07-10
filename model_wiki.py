@@ -140,7 +140,7 @@ class Model_wiki:
 
         location = location.title()
 
-        for page in gen:
+        for page in gen2:
             
             self.page_template_taken_on(page,location, dry_run, interactive,verbose=False)
         

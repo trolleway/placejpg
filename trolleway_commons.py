@@ -22,157 +22,7 @@ class CommonsOps:
 
     commonscat_instanceof_types = ("building", "street")
 
-    def create_wikidata_building(self, data, dry_mode=False):
-        assert "street_wikidata" in data
-
-        # get street data from wikidata
-        assert data["street_wikidata"] is not None
-        cmd = ["wd", "generate-template", "--json", data["street_wikidata"]]
-        response = subprocess.run(cmd, capture_output=True)
-        street_dict_wd = json.loads(response.stdout.decode())
-        data["street_name_ru"] = street_dict_wd["labels"]["ru"]
-        data["street_name_en"] = street_dict_wd["labels"]["en"]
-
-        wikidata_template = """
-    {
-      "type": "item",
-      "labels": {
-        "ru": ""
-      },
-      "descriptions": {
-        "ru": ""
-      },
-      "aliases": {},
-      "claims": {
-        "P31": ["Q41176"],
-        "P17": "Q159",
-        "P625":{ 
-            "value":{
-          "latitude": 55.666,
-          "longitude": 37.666,
-          "precision": 0.0001,
-          "globe": "http://www.wikidata.org/entity/Q2"
-            }
-        }
-      }
-    }
-    """
-
-        data["lat"], data["lon"] = self.location_string_parse(data["latlonstr"])
-
-        assert data["lat"] is not None
-        assert data["lon"] is not None
-        assert data["street_name_ru"] is not None
-        assert data["street_name_en"] is not None
-        assert data["housenumber"] is not None
-        assert data["street_wikidata"] is not None
-        wd_object = json.loads(wikidata_template)
-        wd_object["labels"]["ru"] = data["street_name_ru"] + " " + data["housenumber"]
-        wd_object["labels"]["en"] = (
-            data["street_name_en"]
-            + " "
-            + translit(data["housenumber"], "ru", reversed=True)
-        )
-        wd_object["descriptions"]["ru"] = "Здание в Москве"
-        wd_object["descriptions"]["en"] = "Building in Moscow"
-        wd_object["aliases"] = {"ru": list()}
-        wd_object["aliases"]["ru"].append(
-            "Москва " + data["street_name_ru"] + " дом " + data["housenumber"]
-        )
-        wd_object["claims"]["P625"]["value"]["latitude"] = round(
-            float(data["lat"]), 5
-        )  # coords
-        wd_object["claims"]["P625"]["value"]["longitude"] = round(
-            float(data["lon"]), 5
-        )  # coords
-        if "coord_source" in data and data["coord_source"].lower() == "yandex maps":
-            wd_object["claims"]["P625"]["references"] = list()
-            wd_object["claims"]["P625"]["references"].append(dict())
-            wd_object["claims"]["P625"]["references"][0]["P248"] = "Q4537980"
-        if "coord_source" in data and data["coord_source"].lower() == "osm":
-            wd_object["claims"]["P625"]["references"] = list()
-            wd_object["claims"]["P625"]["references"].append(dict())
-            wd_object["claims"]["P625"]["references"][0]["P248"] = "Q936"
-        if "coord_source" in data and data["coord_source"].lower() == "reforma":
-            wd_object["claims"]["P625"]["references"] = list()
-            wd_object["claims"]["P625"]["references"].append(dict())
-            wd_object["claims"]["P625"]["references"][0]["P248"] = "Q117323686"
-        wd_object["claims"]["P669"] = {
-            "value": data["street_wikidata"],
-            "qualifiers": {"P670": data["housenumber"]},
-        }
-
-        if "year" in data:
-            wd_object["claims"]["P1619"] = {"value": {"time": str(data["year"])}}
-            if "year_source" or "year_url" in data:
-                wd_object["claims"]["P1619"]["references"] = list()
-                wd_object["claims"]["P1619"]["references"].append(dict())
-                if data.get("year_source") == "2gis":
-                    wd_object["claims"]["P1619"]["references"][0]["P248"] = "Q112119515"
-                if data.get("year_source") == "wikimapia":
-                    wd_object["claims"]["P1619"]["references"][0]["P248"] = "Q187491"
-                if 'https://2gis.ru' in data.get('year_url',''):
-                    wd_object["claims"]["P1619"]["references"][0]["P248"] = "Q112119515"
-                if 'reformagkh.ru' in data.get('year_url',''):
-                    wd_object["claims"]["P1619"]["references"][0]["P248"] = "Q117323686"
-                    
-                if "year_url" in data:
-                    wd_object["claims"]["P1619"]["references"][0]["P854"] = data[
-                        "year_url"
-                    ]
-
-        if "levels" in data:
-            wd_object["claims"]["P1101"] = {
-                "value": {"amount": int(data["levels"]), "unit": "1"}
-            }
-            if "levels_source" or "levels_url" in data:
-                wd_object["claims"]["P1101"]["references"] = list()
-                wd_object["claims"]["P1101"]["references"].append(dict())
-                if data.get("levels_source") == "2gis":
-                    wd_object["claims"]["P1101"]["references"][0]["P248"] = "Q112119515"
-                if data.get("levels_source") == "wikimapia":
-                    wd_object["claims"]["P1101"]["references"][0]["P248"] = "Q187491"
-                if 'https://2gis.ru' in data.get('levels_url',''):
-                    wd_object["claims"]["P1101"]["references"][0]["P248"] = "Q112119515"
-                if 'reformagkh.ru' in data.get('levels_url',''):
-                    wd_object["claims"]["P1101"]["references"][0]["P248"] = "Q117323686"
-
-            if "levels_url" in data:
-                wd_object["claims"]["P1101"]["references"][0]["P854"] = data["levels_url"]
-
-        with open("temp_json_data.json", "w") as outfile:
-            json.dump(wd_object, outfile)
-        if dry_mode:
-            print(json.dumps(wd_object, indent=1))
-            self.logger.info("dry mode, no creating wikidata entity")
-            return
-
-        cmd = ["wb", "create-entity", "./temp_json_data.json"]
-        print(cmd)
-        response = subprocess.run(cmd, capture_output=True)
-        if '"success":1' not in response.stdout.decode():
-            print("error create wikidata, prorably building in wikidata already crated")
-
-            error_response = response.stderr.decode()
-
-            print(error_response)
-            if "permissiondenied" in error_response:
-                raise ConnectionRefusedError(error_response)
-
-            s = error_response[error_response.find("[[") : error_response.find("]]")]
-
-            s = s.replace("[[", "")
-            s = s.replace("]]", "")
-
-            wikidata = s.split("|")[0]
-            if s == "":
-                raise ValueError
-            print("building found: https://www.wikidata.org/wiki/" + wikidata)
-            return wikidata
-            # raise ValueError
-        else:
-            building_dict_wd = json.loads(response.stdout.decode())
-            return building_dict_wd["entity"]["id"]
+    
 
     def create_commonscat_page(self, name, code) -> bool:
         # created with Bing Ai 2023-04-07
@@ -199,7 +49,7 @@ class CommonsOps:
             self.logger.info("The category was created successfully. https://commons.wikimedia.org/wiki/"+name)
             return True
 
-    def create_commonscat(self, wikidata, dry_mode=False) -> str:
+    def create_commonscat(self, wikidata, city_en, dry_mode=False ) -> str:
         if wikidata is None and dry_mode:
             print("commons category will be created here...")
             return
@@ -266,13 +116,10 @@ class CommonsOps:
         assert isinstance(levels, int)
         assert levels == 0 or levels > 0, "invalid levels:" + str(levels)
 
-        city_en = "Moscow"
-        city_ru = "Москва"
-
         code = """
 {{Object location}}
 {{Wikidata infobox}}
-{{Building address|Country=RU|City=%city_loc%|Street name=%street%|House number=%housenumber%}}
+{{Building address|Country=RU|City=%city%|Street name=%street%|House number=%housenumber%}}
 [[Category:Buildings in %city%]]
 [[Category:%streetcategory%]]
 """
@@ -287,7 +134,7 @@ class CommonsOps:
             code += "[[Category:%levelstr%-story buildings in %city%]]" + "\n"
 
         code = code.replace("%city%", city_en)
-        code = code.replace("%city_loc%", city_ru)
+        #code = code.replace("%city_loc%", city_ru)
         code = code.replace("%streetcategory%", category_street)
         code = code.replace("%street%", street_name_ru)
         code = code.replace("%year%", year)
@@ -380,16 +227,7 @@ class CommonsOps:
         category_name = building_dict_wd["labels"]["en"]
         return category_name
 
-    def location_string_parse(self, text) -> tuple:
-        if text is None:
-            return None, None
-        text = text.strip()
-        if text is None or text == "":
-            return None, None
-        struct = re.split(" |,|\t|\|", text)
-        if len(struct) < 2:
-            return None, None
-        return float(struct[0]), float(struct[-1])
+
 
     def validate_street(self, data):
         assert data["street_wikidata"] is not None
@@ -425,67 +263,3 @@ class CommonsOps:
         return result
 
 
-if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser(
-        description="Create wikidata and commons object for building"
-    )
-
-    parser.add_argument(
-        "-dry", "--dry-run", action="store_const", required=False, default=False, const=True
-    )
-
-    parser.add_argument(
-        "--building",
-        required=False, help='create commons object for this exist wikidata id'
-    )
-
-    args = parser.parse_args()
-    processor = CommonsOps()
-
-    if args.building:
-        create_categories = list()
-        create_categories.append(args.building)
-        for wd in create_categories:
-            processor.create_commonscat(wd, dry_mode=args.dry_run)
-        quit()
-
-    buildings = list()
-
-    # https://wikivoyage.toolforge.org/w/geomap.php?lang=ru
-    # dates https://flatinfo.ru/h_info1.asp?hid=189602
-    # https://wikishootme.toolforge.org/#lat=55.7701578333463&lng=37.67211914062501&zoom=18
-
-    buildings.append(
-        {
-            "housenumber": "32",
-            "street_wikidata": "Q2545285",
-            "latlonstr": "55.75301|37.58035",
-            "coord_source": "osm",
-            "levels": 18,
-            #"levels_source": "2gis",
-            "levels_url":'https://flatinfo.ru/h_info1.asp?hid=211292',
-            "year": 2013,
-            #"year_source": "2gis",
-             "year_url": 'https://flatinfo.ru/h_info1.asp?hid=211292',
-        }
-    )
-
-    '''
-
-
-    '''
-
-    validation_pass = True
-    for data in buildings:
-        if processor.validate_street(data) == False:
-            validation_pass = False
-
-    if not validation_pass:
-        print("street wikidata objects non valid")
-        quit()
-    for data in buildings:
-        building_wikidata = processor.create_wikidata_building(data, dry_mode=args.dry_run)
-        category_name = processor.create_commonscat(
-            building_wikidata, dry_mode=args.dry_run
-        )

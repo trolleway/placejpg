@@ -15,6 +15,7 @@ from transliterate import translit
 from pywikibot.specialbots import UploadRobot
 import tempfile
 import warnings
+import shutil
 
 
 class Fileprocessor:
@@ -260,8 +261,13 @@ class Fileprocessor:
 
             city_wd = self.get_territorial_entity(street_wd)
 
-            city_name_en = city_wd['labels']['en']
-            city_name_ru = city_wd['labels']['ru']
+            try:
+                city_name_en = city_wd['labels']['en']
+                city_name_ru = city_wd['labels']['ru']
+            except:
+                raise ValueError( 'object https://www.wikidata.org/wiki/' +
+                              city_wd['id']+' must has name ru and name en')
+
 
             wikidata_4_structured_data.append(city_wd['id'])
 
@@ -305,22 +311,23 @@ class Fileprocessor:
         st = """== {{int:filedesc}} ==
 {{Information
 |description="""
-        st += "{{en|1=" + objectname_en + ' on ' + street_names['en']
+        captions=dict()
+        captions['en']=objectname_en + ' on ' + street_names['en']
         if route is not None:
-            st += ' Line '+route
+            captions['en'] += ' Line '+route
         if line_wdid is not None:
-            st += ' '+self.get_wikidata(line_wdid)['labels']['en']
-        st += "}}"
-        st += "{{ru|1=" + objectname_ru + ' на ' + \
+            captions['en'] += ' '+self.get_wikidata(line_wdid)['labels']['en']
+        st += "{{en|1=" +captions['en'] + '}}'
+        
+        captions['ru']=objectname_ru + ' на ' +  \
             street_names['ru'].replace(
                 'Улица', 'улица').replace('Проспект', 'проспект')
         if route is not None:
-            st += ' Маршрут '+route
+            captions['ru'] += ' Маршрут '+route
         if line_wdid is not None:
-            st += ' '+self.get_wikidata(line_wdid)['labels']['ru']
-
-        st += "}}"
-
+            captions['ru'] += ' '+self.get_wikidata(line_wdid)['labels']['ru']
+        st += "{{ru|1=" +captions['ru'] + '}}'
+        
         st += "\n"
         st += (
             """|source={{own}}
@@ -458,7 +465,10 @@ class Fileprocessor:
             )
 
 
-        return {"name": commons_filename, "text": text, "structured_data_on_commons": wikidata_4_structured_data, "dt_obj": dt_obj}
+        return {"name": commons_filename, "text": text, 
+        "structured_data_on_commons": wikidata_4_structured_data, 
+        'captions':captions,
+        "dt_obj": dt_obj}
 
     def get_date_information_part(self, dt_obj, taken_on_location):
         st = ''
@@ -660,8 +670,68 @@ class Fileprocessor:
 
         return {"name": commons_filename, "text": text, "dt_obj": dt_obj}
 
+    def make_image_texts_standalone(self,filename,wikidata,secondary_wikidata_ids)->dict:
+        from model_wiki import Model_wiki  as Model_wiki_ask
+        modelwiki = Model_wiki_ask()
+        
+        wd_record = modelwiki.get_wikidata_simplified(wikidata)
+
+        instance_of_data = list()
+        if 'instance_of_list' in wd_record:
+            for i in wd_record['instance_of_list']:
+                instance_of_data.append(
+                    modelwiki.get_wikidata_simplified(i['value']))
+            
+            
+        objectnames = {}
+
+        objectnames['en'] = wd_record['names']["en"]
+        objectnames['ru'] = wd_record['names']["ru"]
+        
+        objectnames_long = {}
+        if len(instance_of_data) > 0:
+            objectname_long_ru = ', '.join(
+                d['names']['ru'] for d in instance_of_data) + ' '+wd_record['names']["ru"]
+            objectname_long_en = ', '.join(
+                d['names']['en'] for d in instance_of_data) + ' '+wd_record['names']["en"]
+        
+        commons_filename = self.commons_filename(filename,objectnames,wikidata,dt_obj = self.image2datetime(filename))
+        
+        objects_wikidata = list()
+        for obj_wdid in secondary_wikidata_ids:
+            obj_wdid = self.take_user_wikidata_id(obj_wdid)
+            obj_wd = self.get_wikidata(obj_wdid)
+            objects_wikidata.append(obj_wd)
+        for obj_wd in objects_wikidata:
+            objectname_long_ru = objectname_long_ru + ', '+ obj_wd['labels']['ru']
+            objectname_long_en = objectname_long_en + ', '+ obj_wd['labels']['en']
+
+        j = {'new_filename':commons_filename,'ru':objectname_long_ru,'en':objectname_long_en}
+        return j
+    
+    def copy_image4standalone(self,filename,new_filename):
+        images_dir = '2standalone'
+        if not os.path.isdir(images_dir):
+            os.makedirs(images_dir)
+        new_filename = os.path.join(images_dir,new_filename)
+        shutil.copy2(filename,new_filename)
+        
+    def create_json4standalone(self,filename,commons_filename, text_ru, text_en):
+        images_dir = '2standalone'
+        if not os.path.isdir(images_dir):
+            os.makedirs(images_dir)
+        new_filename = os.path.join(images_dir,commons_filename)
+        j = dict()
+        j['caption']=text_ru
+        j['caption_en']=text_en
+        j['hotlink_commons'] = 'https://commons.wikimedia.org/wiki/File:'+commons_filename
+        json_filename = os.path.splitext(new_filename)[0]+'.json'
+        with open(json_filename, 'w') as fp:
+            json.dump(j, fp)
+            
+        
     def make_image_texts_simple(
-        self, filename, wikidata, country='', photographer='Artem Svetlov', rail='', secondary_wikidata_ids=list()
+        self, filename, wikidata, country='', photographer='Artem Svetlov', rail='', secondary_wikidata_ids=list(),quick=False
     ) -> dict:
         # return file description texts
         # there is no excact 'city' in wikidata, use manual input cityname
@@ -672,8 +742,12 @@ class Fileprocessor:
         assert os.path.isfile(filename), 'not found '+filename
 
         # obtain exif
-        dt_obj = self.image2datetime(filename)
-        geo_dict = self.image2coords(filename)
+        if not quick:
+            dt_obj = self.image2datetime(filename)
+            geo_dict = self.image2coords(filename)
+        else:
+            dt_obj = datetime.strptime('1970:01:01 00:00:00', "%Y:%m:%d %H:%M:%S")
+            geo_dict = None
 
         wd_record = modelwiki.get_wikidata_simplified(wikidata)
 
@@ -759,7 +833,10 @@ class Fileprocessor:
 
         text += st
 
-        text = text + self.get_tech_templates(filename, geo_dict, country)
+        if not quick:
+            text = text + self.get_tech_templates(filename, geo_dict, country)
+        else:
+            text = text + " >>>>> TECH TEMPLATES SKIPPED <<<<<<\n"
         if rail:
             text += "[[Category:Railway photographs taken on " + \
                 dt_obj.strftime("%Y-%m-%d")+"]]" + "\n"
@@ -782,8 +859,13 @@ class Fileprocessor:
                     wd_record = modelwiki.get_wikidata_simplified(wdid)
                     
                     assert 'commons' in wd_record, 'https://www.wikidata.org/wiki/'+wdid + ' must have commons'
+                    assert wd_record["commons"] is not None, 'https://www.wikidata.org/wiki/'+wdid + ' must have commons'
                     text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
+        commons_filename = self.commons_filename(filename,objectnames,wikidata,dt_obj)
         
+        return {"name": commons_filename, "text": text, "dt_obj": dt_obj}
+
+    def commons_filename(self,filename,objectnames,wikidata,dt_obj)->str:
         # file name on commons
         filename_base = os.path.splitext(os.path.basename(filename))[0]
         filename_extension = os.path.splitext(os.path.basename(filename))[1]
@@ -799,9 +881,7 @@ class Fileprocessor:
             commons_filename = administrative_name + '_'+commons_filename
         except:
             pass
-        
-        return {"name": commons_filename, "text": text, "dt_obj": dt_obj}
-
+        return commons_filename
 
     def take_user_wikidata_id(self, wdid) -> str:
         warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)
@@ -898,14 +978,12 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
     def get_camera_text(self, filename) -> str:
         st = ''
         image_exif = self.image2camera_params(filename)
-
-        if image_exif.get('usepanoramaviewer'): st += "{{Pano360}} \n"
         if image_exif.get("make") is not None and image_exif.get("model") is not None:
             if image_exif.get("make") != "" and image_exif.get("model") != "":
                 make = image_exif.get("make").strip()
                 model = image_exif.get("model").strip()
                 make = make.capitalize()
-                st += "{{Taken with|" + make + " " + model + "|sf=1|own=1}}" + "\n"
+                st = "{{Taken with|" + make + " " + model + "|sf=1|own=1}}" + "\n"
 
 
                 
@@ -991,7 +1069,6 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
             return metadata
 
     def check_exif_valid(self, path):
-
         cmd = [self.exiftool_path, path, "-datetimeoriginal", "-csv"]
         process = subprocess.run(cmd)
 

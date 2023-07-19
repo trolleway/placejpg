@@ -934,15 +934,18 @@ class Model_wiki:
         generator = pagegenerators.PreloadingEntityGenerator(pagegenerators.WikidataSPARQLPageGenerator(sparql,site=repo))
         for item in generator:
             item_dict = item.get()
-            claim_list = item_dict["claims"].get('P373',())
-            for claim in claim_list:
-                commonscat = claim.getTarget()
+            try:
+                commonscat = item.getSitelink('commonswiki')
+            except:
+                claim_list = item_dict["claims"].get('P373',())
+                for claim in claim_list:
+                    commonscat = claim.getTarget()
                 
-                if abstract_wdid not in self.wikidata_cache['commonscat_by_2_wikidata']:
-                    self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid]={}
-                self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid][geo_wdid] = commonscat
-                self.wikidata_cache_save(self.wikidata_cache,self.wikidata_cache_filename)
-                return commonscat
+            if abstract_wdid not in self.wikidata_cache['commonscat_by_2_wikidata']:
+                self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid]={}
+            self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid][geo_wdid] = commonscat
+            self.wikidata_cache_save(self.wikidata_cache,self.wikidata_cache_filename)
+            return commonscat
         if abstract_wdid not in self.wikidata_cache['commonscat_by_2_wikidata']:
             self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid]={}
         self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid][geo_wdid] = None

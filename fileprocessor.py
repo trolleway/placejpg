@@ -146,9 +146,9 @@ class Fileprocessor:
                 "ru": object_wd["labels"]["ru"],
             }
         except:
-            self.logger.error('object https://www.wikidata.org/wiki/' +
+            raise ValueError('object https://www.wikidata.org/wiki/' +
                               wikidata+' must has name ru and name en')
-            quit()
+            
 
         for lang in self.optional_langs:
             if lang in object_wd["labels"]:
@@ -215,7 +215,7 @@ class Fileprocessor:
             quit()
         return object_wd
 
-    def make_image_texts_vehicle(self, filename, vehicle,  model, street, number, system=None, city=None, route=None, location=None, line=None, rail=None, facing=None, color_list=None) -> dict:
+    def make_image_texts_vehicle(self, filename, vehicle,  model, street, number, system=None, city=None, route=None, location=None, line=None, rail=None, facing=None, color_list=None, secondary_wikidata_ids=None) -> dict:
         assert os.path.isfile(filename)
 
         vehicle_names = {'ru': {'tram': 'трамвай', 'trolleybus': 'троллейбус',
@@ -398,6 +398,7 @@ class Fileprocessor:
         if 'system_wd' in locals():
             text = text + \
                 "[[Category:" + system_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
+        
         # category for model. search for category like "ZIU-9 in Moscow"
         from model_wiki import Model_wiki  as Model_wiki_ask
         modelwiki = Model_wiki_ask()
@@ -455,14 +456,30 @@ class Fileprocessor:
             transports = transports[vehicle].lower(),
             colorname = colorname)
             
-        if number is not None:
-            text += "[[Category:Number "+number+" on vehicles]]\n"
+        if number is not None and vehicle != 'tram':
+            text += "[[Category:Number "+number+" on vehicles]]\n"            
+        if number is not None and vehicle == 'tram':
+            text += "[[Category:Trams with fleet number "+number+"]]\n"
         if dt_obj is not None:
             text += "[[Category:{transports} in {location} photographed in {year}]]\n".format(
             transports = transports[vehicle],
             location = location,
             year = dt_obj.strftime("%Y"),
             )
+        
+        # categories for secondary_wikidata_ids
+        # search for geography categories using street like (ZIU-9 in Russia)
+        if type(secondary_wikidata_ids) is list and len(secondary_wikidata_ids)>0:
+            for wdid in secondary_wikidata_ids:
+                cat = modelwiki.get_category_object_in_location(wdid,street_wdid,verbose=True)
+                if cat is not None: 
+                    text = text + cat + "\n"
+                else:
+                    wd_record = modelwiki.get_wikidata_simplified(wdid)
+                    
+                    assert 'commons' in wd_record, 'https://www.wikidata.org/wiki/'+wdid + ' must have commons'
+                    assert wd_record["commons"] is not None, 'https://www.wikidata.org/wiki/'+wdid + ' must have commons'
+                    text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
 
 
         return {"name": commons_filename, "text": text, 
@@ -703,8 +720,12 @@ class Fileprocessor:
             obj_wd = self.get_wikidata(obj_wdid)
             objects_wikidata.append(obj_wd)
         for obj_wd in objects_wikidata:
-            objectname_long_ru = objectname_long_ru + ', '+ obj_wd['labels']['ru']
-            objectname_long_en = objectname_long_en + ', '+ obj_wd['labels']['en']
+            try:
+                objectname_long_ru = objectname_long_ru + ', '+ obj_wd['labels']['ru']
+                objectname_long_en = objectname_long_en + ', '+ obj_wd['labels']['en']
+            except:
+                raise ValueError('object https://www.wikidata.org/wiki/' +
+                              obj_wd['id']+' must has name ru and name en')
 
         j = {'new_filename':commons_filename,'ru':objectname_long_ru,'en':objectname_long_en}
         return j
@@ -1229,8 +1250,6 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         item = page.data_item()
         item.get()
 
-        print("Commons MID:", item.id)  # M56723871
-
         for prop in item.claims:
             for statement in item.claims[prop]:
                 if isinstance(statement.target, pywikibot.page._wikibase.ItemPage):
@@ -1299,7 +1318,6 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         item = page.data_item()
         item.get()
 
-        print("Commons MID:", item.id)  # M56723871
 
         stringclaim = pywikibot.Claim(repo, "P180")  # Adding IMDb ID (P345)
         stringclaim.setTarget(4212644)  # Using a string

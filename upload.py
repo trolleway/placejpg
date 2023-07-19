@@ -38,18 +38,6 @@ files, uploaded_folder_path = fileprocessor.input2filelist(args.filepath)
 if len(files)==0:
     print('all files already uploaded')
     quit()
-'''
-if os.path.isfile(args.filepath):
-    files = [args.filepath]
-    assert os.path.isfile(args.filepath)
-    uploaded_folder_path = os.path.join(os.path.dirname(args.filepath),'commons_uploaded')
-elif os.path.isdir(args.filepath):
-    files = os.listdir(args.filepath)
-    files = [os.path.join(args.filepath, x) for x in files]
-    uploaded_folder_path = os.path.join(args.filepath,'commons_uploaded')
-else:
-    raise Exception("filepath should be file or directory")
-'''
 
 
 #wikidata = fileprocessor.take_user_wikidata_id(fileprocessor.prepare_wikidata_url(args.wikidata))

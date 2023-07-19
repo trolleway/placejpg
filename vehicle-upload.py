@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument("filepath")
 parser.add_argument('-v','--vehicle', type=str, required=True, choices=['tram','trolleybus','bus', 'train','locomotive','station','auto'])
-parser.add_argument('-s','--system', type=str, required=False, help='wikidata id or wikidata name of transport system. Not applied to "auto" ')
+parser.add_argument('-sys','--system', type=str, required=False, help='wikidata id or wikidata name of transport system. Not applied to "auto" ')
 parser.add_argument('-c','--city', type=str, required='auto' in sys.argv or '-s' not in sys.argv, help='wikidata id or wikidata name of city for "auto" ')
 parser.add_argument('-m','--model', type=str, required='station' not in sys.argv, help='wikidata id or wikidata name of vehicle model')
 parser.add_argument('-st','--street', type=str, required=False, help='wikidata id or wikidata name of streer or highway')
@@ -25,6 +25,7 @@ parser.add_argument('-l','--line', type=str, required=False, help='railway line 
 parser.add_argument("--location", type=str,required=False, default='Russia', help='Country for {{Taken on}} template')
 parser.add_argument('--facing', type=str, required=False,  choices=['Left','Right'], help='puts in [[Category:Trolleybuses facing left]]')
 parser.add_argument('--color_list', type=str, nargs='+', required=False,  help='puts in [[Category:Green and yellow trams]]')
+parser.add_argument('-s',"--secondary-objects", type=str, nargs='+',required=False,  help='secondary wikidata objects, used in category calc with country')
 
 parser.add_argument(
     "-dry", "--dry-run", action="store_const", required=False, default=False, const=True
@@ -53,6 +54,7 @@ files = [os.path.join(args.filepath, x) for x in files]
 uploaded_paths = list()
 for filename in files:
     if fileprocessor.check_exif_valid(filename):
+        secondary_wikidata_ids = modelwiki.input2list_wikidata(args.secondary_objects)
         texts = fileprocessor.make_image_texts_vehicle(
             filename=filename,
             vehicle=args.vehicle, system=args.system, model=args.model, street=args.street,
@@ -63,6 +65,7 @@ for filename in files:
             line = args.line,
             facing=args.facing,
             color_list=args.color_list,
+            secondary_wikidata_ids=secondary_wikidata_ids,
             
         )
         

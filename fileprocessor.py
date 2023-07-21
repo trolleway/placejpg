@@ -215,7 +215,7 @@ class Fileprocessor:
             quit()
         return object_wd
 
-    def make_image_texts_vehicle(self, filename, vehicle,  model, street, number, system=None, city=None, route=None, location=None, line=None, rail=None, facing=None, color_list=None, secondary_wikidata_ids=None) -> dict:
+    def make_image_texts_vehicle(self, filename, vehicle, model, street, number, system=None, city=None, route=None, country=None, line=None, facing=None, colors=None, secondary_wikidata_ids=None) -> dict:
         assert os.path.isfile(filename)
 
         vehicle_names = {'ru': {'tram': 'трамвай', 'trolleybus': 'троллейбус',
@@ -305,6 +305,7 @@ class Fileprocessor:
             objectname_en + " " +
             dt_obj.strftime("%Y-%m %s") + filename_extension
         )
+        commons_filename = commons_filename.replace("/", " drob ")
 
         text = ''
 
@@ -328,6 +329,9 @@ class Fileprocessor:
             captions['ru'] += ' '+self.get_wikidata(line_wdid)['labels']['ru']
         st += "{{ru|1=" +captions['ru'] + '}}'
         
+        if model is not None: st += " {{on Wikidata|" + model_wdid + "}}\n"
+        st += " {{on Wikidata|" + street_wdid + "}}\n"
+        
         st += "\n"
         st += (
             """|source={{own}}
@@ -336,7 +340,7 @@ class Fileprocessor:
             + "{{Taken on|"
             + dt_obj.isoformat()
             + "|location="
-            + location
+            + country
             + "|source=EXIF}}"
             + "\n"
         )
@@ -415,7 +419,7 @@ class Fileprocessor:
         except:
             pass
         text = text + "[[Category:Photographs by " + \
-            self.photographer+'/'+location+"]]" + "\n"
+            self.photographer+'/'+country+"]]" + "\n"
         if line is not None:
             text = text + \
                 "[[Category:" + \
@@ -426,18 +430,18 @@ class Fileprocessor:
         if vehicle in ('train','locomotive'):
             text += "[[Category:Railway photographs taken on " + \
                 dt_obj.strftime("%Y-%m-%d")+"]]" + "\n"
-            if isinstance(location, str):
+            if isinstance(country, str):
                 text += "[[Category:" + \
                     dt_obj.strftime("%B %Y") + \
-                    " in rail transport in "+location+"]]" + "\n"
+                    " in rail transport in "+country+"]]" + "\n"
 
         if vehicle == 'tram':
             text += "[[Category:Railway photographs taken on " + \
                 dt_obj.strftime("%Y-%m-%d")+"]]" + "\n"
-            if isinstance(location, str):
+            if isinstance(country, str):
                 text += "[[Category:" + \
                     dt_obj.strftime("%B %Y") + \
-                    " in tram transport in "+location+"]]" + "\n"
+                    " in tram transport in "+country+"]]" + "\n"
         
         if facing is not None:
             facing = facing.strip().capitalize()
@@ -446,11 +450,11 @@ class Fileprocessor:
             text += "[[Category:"+transports[vehicle]+" facing " +  facing.lower() + "]]\n"  
             if facing == 'Left': wikidata_4_structured_data.append('Q119570753')
             if facing == 'Right': wikidata_4_structured_data.append('Q119570670')
-        if color_list is not None:
+        if colors is not None:
             
             colorname = ''
-            color_list.sort()
-            colorname = ' and '.join(color_list)
+            colors.sort()
+            colorname = ' and '.join(colors)
             colorname = colorname.lower().capitalize()
             text += "[[Category:{colorname} {transports}]]\n".format(
             transports = transports[vehicle].lower(),
@@ -461,9 +465,9 @@ class Fileprocessor:
         if number is not None and vehicle == 'tram':
             text += "[[Category:Trams with fleet number "+number+"]]\n"
         if dt_obj is not None:
-            text += "[[Category:{transports} in {location} photographed in {year}]]\n".format(
+            text += "[[Category:{transports} in {country} photographed in {year}]]\n".format(
             transports = transports[vehicle],
-            location = location,
+            country = country,
             year = dt_obj.strftime("%Y"),
             )
         
@@ -868,6 +872,8 @@ class Fileprocessor:
 
         #from model_wiki import Model_wiki  as Model_wiki_ask
         #modelwiki = Model_wiki_ask()
+        assert 'commons' in wd_record, 'https://www.wikidata.org/wiki/'+wikidata + ' must have commons'
+        assert wd_record["commons"] is not None, 'https://www.wikidata.org/wiki/'+wikidata + ' must have commons'
         if len(secondary_wikidata_ids)<1:
             text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
         else:
@@ -1446,3 +1452,182 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
 
         self.write_iptc(filename, caption, keywords)
         #processed_files.append(filename)
+
+
+    
+    def process_and_upload_file(self,filepath,desc_dict):
+        assert os.path.exists(filepath)
+        assert desc_dict['mode'] in ['object','vehicle','building']
+
+        assert 'country' in desc_dict
+        
+        if not 'secondary_objects' in desc_dict: desc_dict['secondary_objects']=list() #for simple call next function
+        if not 'dry_run' in desc_dict: desc_dict['dry_run']=False #for simple call next function
+        if not 'later' in desc_dict: desc_dict['later']=False #for simple call next function
+        if not 'verify' in desc_dict: desc_dict['verify']=False #for simple call next function
+        if 'country' in desc_dict:
+            desc_dict['country'] = desc_dict['country'].capitalize()
+        else:
+            desc_dict['country'] = None
+        
+        files, uploaded_folder_path = self.input2filelist(filepath)
+
+        if len(files)==0:
+            print(filepath+' all files already uploaded')
+            quit()
+
+        from model_wiki import Model_wiki
+        modelwiki = Model_wiki()
+        
+        secondary_wikidata_ids = modelwiki.input2list_wikidata(desc_dict['secondary_objects'])
+
+        dry_run = desc_dict['dry_run']
+        if desc_dict['later']==True: dry_run = True
+
+        uploaded_paths = list()
+
+        for filename in files:
+            if 'commons_uploaded' in filename: continue
+            if self.check_exif_valid(filename) :
+                
+                if desc_dict['mode'] == 'object':
+                    wikidata = modelwiki.wikidata_input2id(desc_dict['wikidata'])
+                    texts = self.make_image_texts_simple(
+                        filename=filename,
+                        wikidata=wikidata,
+                        country=desc_dict['country'],
+                        rail=desc_dict['rail'],
+                        secondary_wikidata_ids = secondary_wikidata_ids,
+                        quick=desc_dict['later']
+                    )    
+                    wikidata_list = list()
+                    wikidata_list.append(wikidata)
+                    wikidata_list += secondary_wikidata_ids
+                    standalone_captions_dict = self.make_image_texts_standalone(filename,wikidata,secondary_wikidata_ids)
+                elif desc_dict['mode'] == 'vehicle':
+                    
+                    desc_dict['model'] = modelwiki.wikidata_input2id(desc_dict.get('model',None))
+                    desc_dict['street'] = modelwiki.wikidata_input2id(desc_dict.get('street',None))
+                    desc_dict['system'] = modelwiki.wikidata_input2id(desc_dict.get('system',None))
+                    desc_dict['city'] = modelwiki.wikidata_input2id(desc_dict.get('city',None))
+                    desc_dict['line'] = modelwiki.wikidata_input2id(desc_dict.get('line',None))
+                    desc_dict['line'] = modelwiki.wikidata_input2id(desc_dict.get('line',None))
+                                    
+                    texts = self.make_image_texts_vehicle(
+                        filename=filename,
+                        vehicle = desc_dict['vehicle'],
+                        model = desc_dict.get('model',None),
+                        street = desc_dict.get('street',None),
+                        number = desc_dict.get('number',None),
+                        system = desc_dict.get('system',None),
+                        city = desc_dict.get('city',None),
+                        route = desc_dict.get('route',None),
+                        country = desc_dict.get('country',None),
+                        line = desc_dict.get('line',None),
+                        facing = desc_dict.get('facing',None),
+                        colors = desc_dict.get('colors',None),
+                        secondary_wikidata_ids = desc_dict.get('secondary_wikidata_ids',None)
+                    )  
+                    wikidata_list = list()
+                    wikidata_list += texts['structured_data_on_commons']
+                    wikidata_list += secondary_wikidata_ids
+                    standalone_captions_dict = {'new_filename':texts['name'],'ru':texts['captions']['ru'],'en':texts['captions']['en']}
+
+                    '''
+                     'new_filename':commons_filename,'ru':objectname_long_ru,'en':objectname_long_en
+                    '''
+                elif desc_dict['mode'] == 'buidling':
+                    
+                    texts = self.make_image_texts_building(
+                        filename=filename,
+                        wikidata=wikidata,
+                        place_en="Moscow",
+                        place_ru="Москва",
+                        no_building= not args.building,
+                        country=desc_dict['country'],
+                        rail=args.rail
+                    )
+
+                if dry_run:
+                    print()
+                    print(texts["name"])
+                    print(texts["text"])
+
+
+
+                
+                if not dry_run:
+                    self.upload_file(
+                        filename, texts["name"], texts["text"], verify_description=desc_dict['verify']
+                    )
+                    
+                    #copy uploaded file to standalone-sources dir
+                    
+                    self.copy_image4standalone(filename,standalone_captions_dict['new_filename'])
+                    self.create_json4standalone(filename,standalone_captions_dict['new_filename'],standalone_captions_dict['ru'],standalone_captions_dict['en'])
+                    
+
+                modelwiki.append_image_descripts_claim(texts["name"], wikidata_list, dry_run)
+                if not dry_run:
+                    modelwiki.create_category_taken_on_day(desc_dict['country'].capitalize(),texts['dt_obj'].strftime("%Y-%m-%d"))
+                else:
+                    print('will append '+' '.join(wikidata_list))
+                    
+                uploaded_paths.append('https://commons.wikimedia.org/wiki/File:'+texts["name"].replace(' ', '_'))
+                
+                #move uploaded file to subfolder
+                if not dry_run:
+                    if not os.path.exists(uploaded_folder_path):
+                        os.makedirs(uploaded_folder_path)
+                    shutil.move(filename, os.path.join(uploaded_folder_path, os.path.basename(filename)))
+           
+            else:
+                print('can not open file '+filename+', skipped')
+                continue
+
+        if not dry_run:
+            print('uploaded: ')
+        else:
+            print('emulating upload. URL will be: ')
+
+        print("\n".join(uploaded_paths))
+        
+        #add to job queue if not uploading now
+        if dry_run:
+            if not desc_dict['later']:
+                add_queue = input("Add to queue? Y/N    ")
+            else:
+                add_queue='Y'
+            
+            #make call string
+            if add_queue.upper()!='Y':
+                print('not adding to queue')
+                return
+            
+            if desc_dict['mode'] == 'object':
+                cmd = 'python3 upload.py '
+                cmd += wikidata + ' '
+                cmd += '"'+filepath + '" '
+
+            if desc_dict['mode'] == 'vehicle':
+                cmd = 'python3 vehicle-upload.py '
+                cmd += '"'+filepath + '" '
+                cmd += '--vehicle "'+ desc_dict['vehicle'] + '" '
+                if desc_dict['system']: cmd += '--system "'+ desc_dict['system'] + '" '
+                if desc_dict['city']: cmd += '--city "'+ desc_dict['city'] + '" '
+                if desc_dict['model']: cmd += '--model "'+ desc_dict['model'] + '" '
+                if desc_dict['street']: cmd += '--street "'+ desc_dict['street'] + '" '
+                if desc_dict['number']: cmd += '--number "'+ desc_dict['number'] + '" '
+                if desc_dict['route']: cmd += '--route "'+ desc_dict['route'] + '" '
+                if desc_dict['line']: cmd += '--line "'+ desc_dict['line'] + '" '
+                if desc_dict['facing']: cmd += '--facing "'+ desc_dict['facing'] + '" '
+                if desc_dict['colors']: cmd += '--colors "'+ ' '.join(desc_dict['colors']) + '" '
+                
+            if desc_dict['country']: cmd += '--country "'+ desc_dict['country'] + '" '
+            if len(secondary_wikidata_ids)>0: cmd += '-s ' + ' '.join(secondary_wikidata_ids)
+                
+           
+            print('adding to queue')
+            print(cmd)
+            with open("queue.sh", "a") as file_object:
+                file_object.write(cmd+"\n")

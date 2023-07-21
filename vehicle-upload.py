@@ -21,85 +21,38 @@ parser.add_argument('-m','--model', type=str, required='station' not in sys.argv
 parser.add_argument('-st','--street', type=str, required=False, help='wikidata id or wikidata name of streer or highway')
 parser.add_argument('-n','--number', type=str, required='station' not in sys.argv, help='vehicle number')
 parser.add_argument('-ro','--route', type=str, required=False, help='vehicle route text')
-parser.add_argument('-l','--line', type=str, required=False, help='railway line wikidata object')
-parser.add_argument("--location", type=str,required=False, default='Russia', help='Country for {{Taken on}} template')
+parser.add_argument('--line', type=str, required=False, help='railway line wikidata object for trains')
+parser.add_argument("--country", type=str,required=True, default='Russia', help='Country for {{Taken on}} template')
 parser.add_argument('--facing', type=str, required=False,  choices=['Left','Right'], help='puts in [[Category:Trolleybuses facing left]]')
-parser.add_argument('--color_list', type=str, nargs='+', required=False,  help='puts in [[Category:Green and yellow trams]]')
+parser.add_argument('--colors', type=str, nargs='+', required=False,  help='puts in [[Category:Green and yellow trams]]')
 parser.add_argument('-s',"--secondary-objects", type=str, nargs='+',required=False,  help='secondary wikidata objects, used in category calc with country')
 
 parser.add_argument(
     "-dry", "--dry-run", action="store_const", required=False, default=False, const=True
 )
-parser.add_argument(
-    "--verify", action="store_const", required=False, default=False, const=True, help='confirm generated captions before upload'
-)
+parser.add_argument("-l", "--later", action="store_const", required=False, default=False, help='add to job list for upload later', const=True)
+parser.add_argument(    "--verify", action="store_const", required=False, default=False, const=True)
 
 args = parser.parse_args()
 
+desc_dict=dict()
+desc_dict['mode']='vehicle'
+desc_dict['vehicle']=args.vehicle
+desc_dict['system']=args.system
+desc_dict['city']=args.city
+desc_dict['model']=args.model
+desc_dict['street']=args.street
+desc_dict['number']=args.number
+desc_dict['route']=args.route
+desc_dict['line']=args.line
+desc_dict['country']=args.country
+desc_dict['facing']=args.facing
+desc_dict['colors']=args.colors
+desc_dict['secondary_objects']=args.secondary_objects or None
 
-logging.getLogger().setLevel(logging.DEBUG)
+desc_dict['later']=args.later
+desc_dict['dry_run']=args.dry_run
 
-# ./upload-vehicle.py --vehicle tram --system 'Moscow tram' --model LM-99AE --street Q15994144 --number 3024 --dry imgs/t1
 
-if os.path.isfile(args.filepath):
-    files = [args.filepath]
-    assert os.path.isfile(args.filepath)
-elif os.path.isdir(args.filepath):
-    files = os.listdir(args.filepath)
-else:
-    raise Exception("filepath should be file or directory")
+fileprocessor.process_and_upload_file(args.filepath,desc_dict)
 
-files = [os.path.join(args.filepath, x) for x in files]
-
-uploaded_paths = list()
-for filename in files:
-    if fileprocessor.check_exif_valid(filename):
-        secondary_wikidata_ids = modelwiki.input2list_wikidata(args.secondary_objects)
-        texts = fileprocessor.make_image_texts_vehicle(
-            filename=filename,
-            vehicle=args.vehicle, system=args.system, model=args.model, street=args.street,
-            route = args.route,
-            number = args.number,
-            city = args.city,
-            location=args.location.capitalize(),
-            line = args.line,
-            facing=args.facing,
-            color_list=args.color_list,
-            secondary_wikidata_ids=secondary_wikidata_ids,
-            
-        )
-        
-
-        if args.dry_run:
-            print()
-            print('new commons file name: '+texts["name"])
-            print(texts["text"])
-            continue
-
-        wikidata_list = list()
-        wikidata_list+=texts['structured_data_on_commons']
-
-        fileprocessor.upload_file(
-            filename, texts["name"], texts["text"], verify_description=args.verify
-        )
-        
-        standalone_captions_dict = {
-        'new_filename':texts["name"],
-        'ru':texts["captions"]['ru'],
-        'en':texts["captions"]['en']}
-        fileprocessor.copy_image4standalone(filename,standalone_captions_dict['new_filename'])
-        fileprocessor.create_json4standalone(filename,standalone_captions_dict['new_filename'],standalone_captions_dict['ru'],standalone_captions_dict['en'])
-        
-        fileprocessor.append_image_descripts_claim(texts["name"], wikidata_list, args.dry_run)
-        uploaded_paths.append('https://commons.wikimedia.org/wiki/File:'+texts["name"].replace(' ', '_'))
-        modelwiki.create_category_taken_on_day(args.location.capitalize(),texts['dt_obj'].strftime("%Y-%m-%d"))
-    else:
-        fileprocessor.logger.warning('can not open file '+filename+', skipped')
-        continue
-        
-if len(uploaded_paths)>1:    
-    print('Uploaded:')
-    for element in uploaded_paths:
-        print(element)
-elif len(uploaded_paths)==1:
-    print('Uploaded '+uploaded_paths[0])

@@ -452,7 +452,7 @@ class Model_wiki:
         return object_wd[0]['id']
         
     def wikidata_input2id(self,inp)->str:
-        
+        if inp is None: return None
         modelwiki = Model_wiki()
         
         #detect user input string for wikidata
@@ -704,7 +704,7 @@ class Model_wiki:
             self.create_page(pagename, content, 'create category')
 
         else:
-            self.logger.info('page alreaty exists '+pagename)
+            self.logger.info('page already exists '+pagename)
 
         if location in('Moscow', 'Saint Petersburg'):
             self.create_category_taken_on_day('Russia', yyyymmdd)
@@ -940,6 +940,7 @@ class Model_wiki:
                 claim_list = item_dict["claims"].get('P373',())
                 for claim in claim_list:
                     commonscat = claim.getTarget()
+            commonscat = commonscat.replace('Category:','')
                 
             if abstract_wdid not in self.wikidata_cache['commonscat_by_2_wikidata']:
                 self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid]={}

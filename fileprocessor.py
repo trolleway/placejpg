@@ -215,7 +215,7 @@ class Fileprocessor:
             quit()
         return object_wd
 
-    def make_image_texts_vehicle(self, filename, vehicle, model, street, number, system=None, city=None, route=None, country=None, line=None, facing=None, colors=None, secondary_wikidata_ids=None) -> dict:
+    def make_image_texts_vehicle(self, filename, vehicle, model, number, street=None, system=None, city=None, route=None, country=None, line=None, facing=None, colors=None, secondary_wikidata_ids=None) -> dict:
         assert os.path.isfile(filename)
 
         vehicle_names = {'ru': {'tram': 'трамвай', 'trolleybus': 'троллейбус',
@@ -224,6 +224,10 @@ class Fileprocessor:
         
         assert facing in ('Left','Right',None)
 
+        # obtain exif
+        dt_obj = self.image2datetime(filename)
+        geo_dict = self.image2coords(filename)
+        
         if model is not None:
             if self.is_wikidata_id(model):
                 model_wdid = model
@@ -234,7 +238,16 @@ class Fileprocessor:
             model_names = model_wd["labels"]
             wikidata_4_structured_data.append(model_wd['id'])
 
-        if self.is_wikidata_id(street):
+        if street is None:
+            if geo_dict is None: raise Exception(filename + ' not set street, must have coordinates for search in geodata')
+            
+            regions_filepath = 'trolleybus.gpkg'
+            from model_geo import Model_Geo  as Model_geo_ask
+            modelgeo = Model_geo_ask()
+            street_wdid = modelgeo.identify_deodata(geo_dict.get("lat"),geo_dict.get("lon"),regions_filepath,'wikidata')
+            if street_wdid is None: raise Exception(filename + ' not found street in geodata, please set')
+            
+        elif self.is_wikidata_id(street):
             street_wdid = street
         else:
             street_wdid = self.search_wikidata_by_string(
@@ -242,7 +255,19 @@ class Fileprocessor:
         street_wd = self.get_wikidata(street_wdid)
         street_names = street_wd["labels"]
         wikidata_4_structured_data.append(street_wd['id'])
-
+        
+        #route 
+        
+        if route is None:
+            # extract route "34" from 3216_20070112_052_r34.jpg
+            import re
+            regex = "r(.*?)[_.\b]"
+            test_str=os.path.basename(filename)
+            
+            matches = re.finditer(regex, test_str, re.MULTILINE)
+            for match in matches:
+                route = match.group()[1:-1]
+            
         if system is not None:
             if self.is_wikidata_id(system):
                 system_wdid = system
@@ -280,6 +305,10 @@ class Fileprocessor:
                     line, stop_on_error=True)
 
             wikidata_4_structured_data.append(line_wdid)
+            
+        # trollybus garage numbers. extract 3213 from 3213_20060702_162.jpg
+        if number == 'BEFORE_UNDERSCORE':
+            number=os.path.basename(filename)[0:os.path.basename(filename).find('_')]
 
         objectname_en = '{city} {transport} {model} {number}'.format(
             transport=vehicle,
@@ -295,9 +324,7 @@ class Fileprocessor:
             number=number
         )
 
-        # obtain exif
-        dt_obj = self.image2datetime(filename)
-        geo_dict = self.image2coords(filename)
+
 
         filename_base = os.path.splitext(os.path.basename(filename))[0]
         filename_extension = os.path.splitext(os.path.basename(filename))[1]
@@ -450,8 +477,8 @@ class Fileprocessor:
             text += "[[Category:"+transports[vehicle]+" facing " +  facing.lower() + "]]\n"  
             if facing == 'Left': wikidata_4_structured_data.append('Q119570753')
             if facing == 'Right': wikidata_4_structured_data.append('Q119570670')
-        if colors is not None:
-            
+        
+        if colors is not None:        
             colorname = ''
             colors.sort()
             colorname = ' and '.join(colors)
@@ -1046,9 +1073,19 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                         st = st.replace(
                             camerastring, cameramodels_dict[camerastring])
 
+                # lens quess
+                lens_detected = ''
+                if image_exif.get("lensmodel", '') != "" and image_exif.get("lensmodel", '') != "": lens_detected = image_exif.get("lensmodel")
+                
+                print(lens_detected)
+                #quit()
+                
+                
                 if image_exif.get("lensmodel", '') != "" and image_exif.get("lensmodel", '') != "":
                     st += "{{Taken with|" + image_exif.get("lensmodel").replace(
                         '[', '').replace(']', '').replace('f/ ', 'f/') + "|sf=1|own=1}}" + "\n"
+
+                    
 
                 for lensstring in lensmodel_dict.keys():
                     if lensstring in st:
@@ -1621,7 +1658,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 if desc_dict['route']: cmd += '--route "'+ desc_dict['route'] + '" '
                 if desc_dict['line']: cmd += '--line "'+ desc_dict['line'] + '" '
                 if desc_dict['facing']: cmd += '--facing "'+ desc_dict['facing'] + '" '
-                if desc_dict['colors']: cmd += '--colors "'+ ' '.join(desc_dict['colors']) + '" '
+                if desc_dict['colors']: cmd += '--colors '+ ' '.join(desc_dict['colors']) + ' '
                 
             if desc_dict['country']: cmd += '--country "'+ desc_dict['country'] + '" '
             if len(secondary_wikidata_ids)>0: cmd += '-s ' + ' '.join(secondary_wikidata_ids)

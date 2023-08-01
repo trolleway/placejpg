@@ -7,6 +7,12 @@ import os, subprocess, logging, argparse, sys
 import trolleway_commons
 from model_wiki import Model_wiki
 
+sample_expression ='''
+
+'python3 add-building.py --building ' ||"building"|| ' --coords "' ||  round(y(point_on_surface(@geometry)),5) || ' ' || round(x(point_on_surface(@geometry)),5)|| '" --city   --street '||  "osm — lines_wikidata"  ||' -n "'||  "addr_housenumber" || '" --coord_source osm ' 
+
+'''
+
 parser = argparse.ArgumentParser(
     description="Create building entity in Wikidata and Wikimedia Commons "+''' 
     useful maps:
@@ -15,24 +21,26 @@ parser = argparse.ArgumentParser(
     wikidata objects https://wikishootme.toolforge.org/#lat=55.77&lng=37.66&zoom=18
     
     
-    '''
+    '''+ "\n expression for qgis \n"+sample_expression
 )
-sample_expression ='''
 
-'python3 add-building.py --coords "' ||  round(y(point_on_surface(@geometry)),5) || ' ' || round(x(point_on_surface(@geometry)),5)|| '" --city   --street '||  "osm — lines_wikidata"  ||' -n '||  "addr_housenumber" || ' --coord_source osm ' 
 
-'''
+
+parser.add_argument('--wikidata', type=str, required=False, help='Wikidata object optional')
+parser.add_argument('--building', type=str, required=False,default='yes', help='Value of building=* tag from openstreetmap')
 parser.add_argument('--city', type=str, required=True, help='City name string')
-parser.add_argument('--street', type=str, required=True, help='Street wikidata entity. Can bu wikidata id, wikidata url, wikidata name')
-parser.add_argument('-n','--housenumber', type=str, required=True, help='housenumber')
-parser.add_argument('-c','--coords', type=str, required=True, help='latlong string in EPSG:4326. Separators: " ", | ,')
-parser.add_argument('-cs','--coord_source', type=str, required=True, choices=['osm','yandex maps','reforma'], help='internet project - source of coordinates')
+
+parser.add_argument('--street', type=str, required='wikidata'  in sys.argv, help='Street wikidata entity. Can bu wikidata id, wikidata url, wikidata name')
+parser.add_argument('-n','--housenumber', type=str, required='wikidata'  in sys.argv, help='housenumber')
+parser.add_argument('-c','--coords', type=str, required='wikidata' in sys.argv, help='latlong string in EPSG:4326. Separators: " ", | ,')
+parser.add_argument('-cs','--coord_source', type=str, required='wikidata'  in sys.argv, choices=['osm','yandex maps','reforma'], help='internet project - source of coordinates')
 parser.add_argument('--levels', type=int, required=False, help='Building levels count')
 parser.add_argument('--levels_url', type=str, required=False, help='url for building levels refrence')
 parser.add_argument('--year', type=int, required=False, help='year built')
 parser.add_argument('--year_url', type=str, required=False, help='url for year refrence')
 parser.add_argument("--country", type=str,required=False, default='Russia', help='Country for {{Taken on}} template')
 parser.add_argument('--photos', type=str, required=False, help='Optional: call photo uploader , path to files dir ')
+parser.add_argument('--wikidata-only', action="store_const", const=True, required=False, help='Create only wikidata entity, do not create commons category ')
 
 parser.add_argument(
     "-dry", "--dry-run", action="store_const", required=False, default=False, const=True
@@ -42,9 +50,26 @@ args = parser.parse_args()
 processor = trolleway_commons.CommonsOps()
 modelwiki = Model_wiki()
 
+if args.wikidata is not None:
+    building_wikidata = modelwiki.wikidata_input2id(args.wikidata)
+    category_name = processor.create_commonscat(
+        building_wikidata, city_en=args.city, dry_mode=args.dry_run,
+        
+    )
+    print('Created https://www.wikidata.org/wiki/'+building_wikidata)
+    print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))
+    print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))
+    if args.photos:
+        cmd = ['python3','upload.py', building_wikidata, args.photos, '--country',args.country,'--later']
+        response = subprocess.run(cmd) 
+        
+    quit()
+    
+    
 buildings = list()
 building = {
         "housenumber": str(args.housenumber),
+        "building": args.building,
         "street_wikidata": processor.wikidata_input2id(str(args.street).strip()),
         "latlonstr": args.coords,
         "coord_source": args.coord_source,
@@ -73,13 +98,15 @@ if not validation_pass:
     quit()
 for data in buildings:
     building_wikidata = modelwiki.create_wikidata_building(data, dry_mode=args.dry_run)
-    category_name = processor.create_commonscat(
-        building_wikidata, city_en=args.city, dry_mode=args.dry_run,
+    if not args.wikidata_only:
+        category_name = processor.create_commonscat(
+            building_wikidata, city_en=args.city, dry_mode=args.dry_run)
         
-    )
+    if args.dry_run:
+        quit()
+        
     print('Created https://www.wikidata.org/wiki/'+building_wikidata)
-    print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))
-    print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))
+    if not args.wikidata_only: print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))
     if args.photos:
-        cmd = ['python3','building-upload.py', building_wikidata, args.photos, '--country',args.country]
+        cmd = ['python3','upload.py', building_wikidata, args.photos, '--country',args.country,'--later']
         response = subprocess.run(cmd) 

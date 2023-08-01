@@ -275,7 +275,9 @@ class Model_wiki:
 
             if "levels_url" in data:
                 wd_object["claims"]["P1101"]["references"][0]["P854"] = data["levels_url"]
-
+        if 'building' in data and data['building']=='apartments':wd_object["claims"]["P31"]='Q13402009'
+        if 'building' in data and data['building'] in ('commercial','office'):wd_object["claims"]["P31"]='Q1021645'
+            
         with open("temp_json_data.json", "w") as outfile:
             json.dump(wd_object, outfile)
         if dry_mode:

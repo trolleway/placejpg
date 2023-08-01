@@ -120,7 +120,7 @@ class CommonsOps:
 {{Object location}}
 {{Wikidata infobox}}
 {{Building address|Country=RU|City=%city%|Street name=%street%|House number=%housenumber%}}
-[[Category:Buildings in %city%]]
+[[Category:%building_function% in %city%]]
 [[Category:%streetcategory%]]
 """
 
@@ -133,6 +133,12 @@ class CommonsOps:
         if levels > 0:
             code += "[[Category:%levelstr%-story buildings in %city%]]" + "\n"
 
+        building_function='Buildings'
+        if 'Q13402009' in building_dict_wd["claims"]["P31"]: building_function = 'Apartment buildings'
+        if 'Q1021645' in building_dict_wd["claims"]["P31"]: building_function = 'Office buildings'
+        
+        
+        code = code.replace("%building_function%", building_function)
         code = code.replace("%city%", city_en)
         #code = code.replace("%city_loc%", city_ru)
         code = code.replace("%streetcategory%", category_street)

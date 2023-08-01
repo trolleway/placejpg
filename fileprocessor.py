@@ -500,18 +500,18 @@ class Fileprocessor:
         
         # categories for secondary_wikidata_ids
         # search for geography categories using street like (ZIU-9 in Russia)
-        if type(secondary_wikidata_ids) is list and len(secondary_wikidata_ids)>0:
+
+        if type(secondary_wikidata_ids) == list and len(secondary_wikidata_ids)>0:
             for wdid in secondary_wikidata_ids:
+                
                 cat = modelwiki.get_category_object_in_location(wdid,street_wdid,verbose=True)
                 if cat is not None: 
                     text = text + cat + "\n"
                 else:
                     wd_record = modelwiki.get_wikidata_simplified(wdid)
-                    
                     assert 'commons' in wd_record, 'https://www.wikidata.org/wiki/'+wdid + ' must have commons'
                     assert wd_record["commons"] is not None, 'https://www.wikidata.org/wiki/'+wdid + ' must have commons'
                     text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
-
 
         return {"name": commons_filename, "text": text, 
         "structured_data_on_commons": wikidata_4_structured_data, 
@@ -1563,7 +1563,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                         line = desc_dict.get('line',None),
                         facing = desc_dict.get('facing',None),
                         colors = desc_dict.get('colors',None),
-                        secondary_wikidata_ids = desc_dict.get('secondary_wikidata_ids',None)
+                        secondary_wikidata_ids = secondary_wikidata_ids
                     )  
                     wikidata_list = list()
                     wikidata_list += texts['structured_data_on_commons']

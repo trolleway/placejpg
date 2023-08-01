@@ -48,6 +48,7 @@ desc_dict['line']=args.line
 desc_dict['country']=args.country
 desc_dict['facing']=args.facing
 desc_dict['colors']=args.colors
+
 desc_dict['secondary_objects']=args.secondary_objects or None
 
 desc_dict['later']=args.later

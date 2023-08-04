@@ -40,7 +40,13 @@ class Model_wiki:
     wikidata_cache_filename = 'temp_wikidata_cache.dat'
     optional_langs = ('de', 'fr', 'it', 'es', 'pt', 'uk', 'be','ja')
     
+
+    
     def __init__(self):
+        if not os.path.isfile('user-config.py'):
+            raise Exception('''Now you should enter Wikimedia user data in config. Call \n cp user-config.example.py user-config.py
+        \n open user-config.py in text editor, input username,  and run this script next time''')
+        
         self.wikidata_cache = self.wikidata_cache_load(wikidata_cache_filename=self.wikidata_cache_filename)
         
     def wikidata_cache_load(self,wikidata_cache_filename):

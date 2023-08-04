@@ -222,7 +222,7 @@ class Fileprocessor:
                            'bus': 'автобус', 'train': 'поезд', 'locomotive':'локомотив', 'auto': 'автомобиль', 'plane': 'самолёт'}}
         wikidata_4_structured_data = list()
         
-        assert facing in ('Left','Right',None)
+        #assert facing in ('Left','Right',None)
 
         # obtain exif
         dt_obj = self.image2datetime(filename)
@@ -267,6 +267,7 @@ class Fileprocessor:
             matches = re.finditer(regex, test_str, re.MULTILINE)
             for match in matches:
                 route = match.group()[1:-1]
+            if route=='z': route=None
             
         if system is not None:
             if self.is_wikidata_id(system):
@@ -472,11 +473,20 @@ class Fileprocessor:
         
         if facing is not None:
             facing = facing.strip().capitalize()
-            assert facing.strip().upper() in ('LEFT','RIGHT')
+            #assert facing.strip().upper() in ('LEFT','RIGHT')
             
-            text += "[[Category:"+transports[vehicle]+" facing " +  facing.lower() + "]]\n"  
+
+            if facing == 'Left': text += "[[Category:"+transports[vehicle]+" facing " +  facing.lower() + "]]\n"
+            if facing == 'Right': text += "[[Category:"+transports[vehicle]+" facing " +  facing.lower() + "]]\n"
+            if facing == 'Side': text += "[[Category:Side views of "+transports[vehicle].lower()+"]]\n"
+            if facing == 'Rear': text += "[[Category:Rear views of "+transports[vehicle].lower()+"]]\n"
+            if facing == 'Front': text += "[[Category:Front views of "+transports[vehicle].lower()+"]]\n"
+            if facing == 'Rear three-quarter'.capitalize(): text += "[[Category:Rear three-quarter views of "+transports[vehicle].lower()+"]]\n"
+            if facing == 'Three-quarter'.capitalize(): text += "[[Category:Three-quarter views of "+transports[vehicle].lower()+"]]\n"
+            
             if facing == 'Left': wikidata_4_structured_data.append('Q119570753')
             if facing == 'Right': wikidata_4_structured_data.append('Q119570670')
+            if facing == 'Front': wikidata_4_structured_data.append('Q1972238')
         
         if colors is not None:        
             colorname = ''
@@ -1056,6 +1066,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
                 cameramodels_dict = {
                     'Pentax corporation PENTAX K10D': 'Pentax K10D',
+                    'Pentax PENTAX K-r': 'Pentax K-r',
                     'Gopro HERO8 Black': 'GoPro Hero8 Black',
                     'Samsung SM-G7810': 'Samsung Galaxy S20 FE 5G',
                     'Olympus imaging corp.': 'Olympus',
@@ -1493,6 +1504,9 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
 
     
     def process_and_upload_file(self,filepath,desc_dict):
+        if not os.path.exists(filepath):
+            print(filepath.ljust(50)+' '+' not exist')
+            quit()
         assert os.path.exists(filepath)
         assert desc_dict['mode'] in ['object','vehicle','building']
 

@@ -23,7 +23,7 @@ parser.add_argument('-n','--number', type=str, required='station' not in sys.arg
 parser.add_argument('-ro','--route', type=str, required=False, help='vehicle route text')
 parser.add_argument('--line', type=str, required=False, help='railway line wikidata object for trains')
 parser.add_argument("--country", type=str,required=True, default='Russia', help='Country for {{Taken on}} template')
-parser.add_argument('--facing', type=str, required=False,  choices=['Left','Right'], help='puts in [[Category:Trolleybuses facing left]]')
+parser.add_argument('--facing', type=str, required=False,  choices=['Left','Right', 'Front', 'Rear','Side','Three-quarter','Rear three-quarter'], help='puts in [[Category:Trolleybuses facing left]]')
 parser.add_argument('--colors', type=str, nargs='+', required=False,  help='puts in [[Category:Green and yellow trams]]')
 parser.add_argument('-s',"--secondary-objects", type=str, nargs='+',required=False,  help='secondary wikidata objects, used in category calc with country')
 

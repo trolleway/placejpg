@@ -7,3 +7,4 @@ python-dateutil
 simple_term_menu
 pyexiftool
 wikitextparser
+tqdm

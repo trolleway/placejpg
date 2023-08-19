@@ -318,7 +318,20 @@ class Model_wiki:
             building_dict_wd = json.loads(response.stdout.decode())
             return building_dict_wd["entity"]["id"]
 
-            
+    def get_wikidata(self, wikidata) -> dict:
+
+        cmd = ['wb', 'gt', '--json', '--no-minimize', wikidata]
+        response = subprocess.run(cmd, capture_output=True)
+        try:
+            object_wd = json.loads(response.stdout.decode())
+        except:
+            print(response.stdout.decode())
+            quit()
+        return object_wd
+
+
+
+        
     def get_wikidata_simplified(self, wikidata) -> dict:
 
         # get all claims of this wikidata objects
@@ -327,16 +340,28 @@ class Model_wiki:
 
         cmd = ["wb", "gt", "--json", "--no-minimize", wikidata]
         response = subprocess.run(cmd, capture_output=True)
-        object_wd = json.loads(response.stdout.decode())
-        object_record = {'names': {}}
         try:
+            object_wd = json.loads(response.stdout.decode())
+        except:
+            self.logger.error('server response not decoded')
+            self.logger.error(' '.join(cmd))
+            self.logger.error(response.stdout.decode())
+            quit()
+        object_record = {'names': {}}
+        
+        if "ru" in object_wd["labels"] and "en" in object_wd["labels"]:
             object_record['names'] = {
                 "en": object_wd["labels"]["en"],
                 "ru": object_wd["labels"]["ru"],
             }
-        except:
+        elif "en" in object_wd["labels"] and "ru" not in object_wd["labels"]:
+            object_record['names'] = {
+                "en": object_wd["labels"]["en"],
+                "ru": object_wd["labels"]["en"],
+            }
+        else:
             self.logger.error('object https://www.wikidata.org/wiki/' +
-                              wikidata+' must has name ru and name en')
+                              wikidata+' must have english label')
             quit()
 
         for lang in self.optional_langs:
@@ -426,10 +451,16 @@ class Model_wiki:
     
 
     def take_user_wikidata_id(self, wdid) -> str:
+        warnings.warn('use wikidata_input2id', DeprecationWarning, stacklevel=2)
         # parse user input wikidata string.
         # it may be wikidata id, wikidata uri, string.
         # call search if need
         # return valid wikidata id
+        
+        #accept values with hints after #: Q198271#ZIU-9
+        if '#' in wdid:
+            wdid=wdid[0:wdid.index('#')]
+            
         if Model_wiki.is_wikidata_id(wdid):
             result_wdid = wdid
         else:
@@ -459,9 +490,55 @@ class Model_wiki:
 
         return object_wd[0]['id']
         
+    def get_heritage_id(self, wikidata) -> str:
+
+        # if wikidata object "heritage designation" is one of "culture heritage in Russia" - return russian monument id
+
+        # get all claims of this wikidata objects
+        cmd = ["wb", "gt", "--props", "claims",
+               "--json", "--no-minimize", wikidata]
+        response = subprocess.run(cmd, capture_output=True)
+        try:
+            dict_wd = json.loads(response.stdout.decode())
+        except:
+            return None
+        # check heritage status of object
+        if "P1435" not in dict_wd["claims"]:
+            return None
+        if "P1483" not in dict_wd["claims"]:
+            return None
+
+        cmd = [
+            "wb",
+            "query",
+            "--property",
+            "P279",
+            "--object",
+            "Q8346700",
+            "--format",
+            "json",
+        ]
+        response = subprocess.run(cmd, capture_output=True)
+        try:
+            heritage_types = {"RU": json.loads(response.stdout.decode())}
+        except:
+            self.logger.error(' '.join(cmd))
+            self.logger.error('error parsing json'+response.stdout.decode())
+            self.logger.error(
+                'hack for termux. using hardcoded list of russian cultural heritage types from 2022')
+
+            heritage_types = {'RU': (
+                "Q23668083",
+                "Q105835744",
+                "Q105835766",
+                "Q105835774")}
+
+        for element in dict_wd["claims"]["P1435"]:
+            if element["value"] in heritage_types["RU"]:
+                return dict_wd["claims"]["P1483"][0]["value"]
+                
     def wikidata_input2id(self,inp)->str:
         if inp is None: return None
-        modelwiki = Model_wiki()
         
         #detect user input string for wikidata
         #if user print a query - search wikidata

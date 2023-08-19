@@ -26,6 +26,7 @@ parser.add_argument("--country", type=str,required=True, default='Russia', help=
 parser.add_argument('--facing', type=str, required=False,  choices=['Left','Right', 'Front', 'Rear','Side','Three-quarter','Rear three-quarter'], help='puts in [[Category:Trolleybuses facing left]]')
 parser.add_argument('--colors', type=str, nargs='+', required=False,  help='puts in [[Category:Green and yellow trams]]')
 parser.add_argument('-s',"--secondary-objects", type=str, nargs='+',required=False,  help='secondary wikidata objects, used in category calc with country')
+parser.add_argument("--progress", required=False, action="store_const", default=False, help='display progress bar for folder upload', const=True)
 
 parser.add_argument(
     "-dry", "--dry-run", action="store_const", required=False, default=False, const=True
@@ -48,6 +49,7 @@ desc_dict['line']=args.line
 desc_dict['country']=args.country
 desc_dict['facing']=args.facing
 desc_dict['colors']=args.colors
+desc_dict['progress']=args.progress
 
 desc_dict['secondary_objects']=args.secondary_objects or None
 

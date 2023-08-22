@@ -76,7 +76,8 @@ class Fileprocessor:
             aborts=True, #List of the warning types to abort upload on
             chunk_size=self.chunk_size,
         )
-
+        
+        print(commons_name)
         # Try to run the upload robot
         try:
             bot.run()
@@ -251,8 +252,6 @@ class Fileprocessor:
                 # take street from user input
                 street_wdid = modelwiki.wikidata_input2id(street)
                 if street is not None: assert street_wdid is not None
-            print('street_wdid:')
-            print(street_wdid)
 
             street_wd = modelwiki.get_wikidata(street_wdid)
             street_names = street_wd["labels"]
@@ -274,12 +273,16 @@ class Fileprocessor:
         if system is not None:
             system_wdid = modelwiki.wikidata_input2id(system)
             system_wd = modelwiki.get_wikidata(system_wdid)
+
             system_names = system_wd["labels"]
             wikidata_4_structured_data.append(system_wd['id'])
-            city_name_en = self.get_territorial_entity(system_wd)[
-                'labels']['en']
-            city_name_ru = self.get_territorial_entity(system_wd)[
-                'labels']['ru']
+            system_territorial_entity = self.get_territorial_entity(system_wd)
+            if system_territorial_entity is not None:
+                city_name_en = system_territorial_entity['labels']['en'] or ''
+                city_name_ru = system_territorial_entity['labels']['ru'] or ''
+            else:
+                city_name_en = None
+                city_name_ru = None
 
         elif system is None:
 
@@ -296,12 +299,15 @@ class Fileprocessor:
             wikidata_4_structured_data.append(city_wd['id'])
 
         line_wdid = None
+        line_names = dict()
         if line is not None:
             if self.is_wikidata_id(line):
                 line_wdid = line
             else:
                 line_wdid = self.search_wikidata_by_string(
                     line, stop_on_error=True)
+            line_wd = modelwiki.get_wikidata(line_wdid)
+            line_names = line_wd["labels"]
 
             wikidata_4_structured_data.append(line_wdid)
             
@@ -309,31 +315,64 @@ class Fileprocessor:
         if number == 'BEFORE_UNDERSCORE':
             number=os.path.basename(filename)[0:os.path.basename(filename).find('_')]
         
-        
-
-        objectname_en = '{city} {transport} {model} {number}'.format(
-            transport=vehicle,
-            city=city_name_en,
-            model=model_names['en'],
-            number=number
-        )
-
-        objectname_ru = '{city}, {transport} {model} {number}'.format(
-            city=city_name_ru,
-            transport=vehicle_names['ru'][vehicle],
-            model=model_names.get('ru', model_names['en']),
-            number=number
-        )
-
-
-
         filename_base = os.path.splitext(os.path.basename(filename))[0]
         filename_extension = os.path.splitext(os.path.basename(filename))[1]
-        commons_filename = (
-            objectname_en + " " +
-            dt_obj.strftime("%Y-%m %s") + filename_extension
-        )
+        
+        if vehicle not in ('train','locomotive'):
+            objectname_en = '{city} {transport} {model} {number}'.format(
+                transport=vehicle,
+                city=city_name_en,
+                model=model_names['en'],
+                number=number
+            )
+
+            objectname_ru = '{city}, {transport} {model} {number}'.format(
+                city=city_name_ru,
+                transport=vehicle_names['ru'][vehicle],
+                model=model_names.get('ru', model_names['en']),
+                number=number
+            )
+            commons_filename = (objectname_en + " " +dt_obj.strftime("%Y-%m %s") + filename_extension)
+        elif vehicle in ('train','locomotive'):
+            assert street_names is not None or line_names is not None
+            if system_names['en']=='':system_names['en']=''
+            if system_names['ru']=='':system_names['ru']=''
+            
+            #{model} removed
+            placenames={'ru':list(),'en':list()}
+            
+            if 'en' in line_names: 
+                if line_names['en'].len()>0: placenames['en'].append(line_names['en'])
+            if 'en' in street_names:
+                if street_names['en'] != '': placenames['en'].append(street_names['en'])
+
+            objectname_en = '{system}{number} {place}'.format(
+                system=system_names['en']+' ',
+                city=city_name_en,
+                model=model_names['en'],
+                number=number,
+                place=' '.join(placenames['en'])
+            )
+            commons_filename = '{system}{number} {dt} {place} {timestamp}{extension}'.format(
+            system=system_names['en']+' ',
+            number=number,
+            dt=dt_obj.strftime("%Y-%m"),
+            place=' '.join(placenames['en']),
+            timestamp=dt_obj.strftime("%s"),
+            extension=filename_extension
+            )
+            
+
+
+            objectname_ru = '{system}{number}'.format(
+                system=system_names['ru']+' ',
+                transport=vehicle_names['ru'][vehicle],
+                model=model_names.get('ru', model_names['en']),
+                number=number
+            )       
+
         commons_filename = commons_filename.replace("/", " drob ")
+        
 
         text = ''
 
@@ -477,7 +516,9 @@ class Fileprocessor:
                 text += "[[Category:" + \
                     dt_obj.strftime("%B %Y") + \
                     " in tram transport in "+country+"]]" + "\n"
-        
+                    
+        #do not add facing category if this is interior
+        if 'Q60998096' in secondary_wikidata_ids: facing=None
         if facing is not None:
             facing = facing.strip().capitalize()
             #assert facing.strip().upper() in ('LEFT','RIGHT')
@@ -541,6 +582,8 @@ class Fileprocessor:
                     text = text + cat + "\n"
                 else:
                     wd_record = modelwiki.get_wikidata_simplified(wdid)
+                    if wd_record is None:
+                        return None
                     secondary_objects_should_have_commonscat = False
                     if secondary_objects_should_have_commonscat:
                         assert 'commons' in wd_record, 'https://www.wikidata.org/wiki/'+wdid + ' must have commons'
@@ -812,7 +855,8 @@ class Fileprocessor:
         objectnames['en'] = wd_record['names']["en"]
         objectnames['ru'] = wd_record['names']["ru"]
         
-        objectnames_long = {}
+        objectname_long_ru = ''
+        objectname_long_en = ''
         if len(instance_of_data) > 0:
             objectname_long_ru = ', '.join(
                 d['names']['ru'] for d in instance_of_data) + ' '+wd_record['names']["ru"]
@@ -833,6 +877,7 @@ class Fileprocessor:
             except:
                 raise ValueError('object https://www.wikidata.org/wiki/' +
                               obj_wd['id']+' must has name ru and name en')
+
 
         j = {'new_filename':commons_filename,'ru':objectname_long_ru,'en':objectname_long_en}
         return j
@@ -859,7 +904,7 @@ class Fileprocessor:
             
         
     def make_image_texts_simple(
-        self, filename, wikidata, country='', photographer='Artem Svetlov', rail='', secondary_wikidata_ids=list(),quick=False
+        self, filename, wikidata, country='', rail='', secondary_wikidata_ids=list(),quick=False
     ) -> dict:
         # return file description texts
         # there is no excact 'city' in wikidata, use manual input cityname
@@ -1645,9 +1690,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     print()
                     print(texts["name"])
                     print(texts["text"])
-
-
-
+                
                 
                 if not dry_run:
                     self.upload_file(
@@ -1660,7 +1703,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     self.create_json4standalone(filename,standalone_captions_dict['new_filename'],standalone_captions_dict['ru'],standalone_captions_dict['en'])
                     
                 self.logger.info('append claims')
-                modelwiki.append_image_descripts_claim(texts["name"], wikidata_list, dry_run)
+                claims_append_result = modelwiki.append_image_descripts_claim(texts["name"], wikidata_list, dry_run)
                 if not dry_run:
                     modelwiki.create_category_taken_on_day(desc_dict['country'].capitalize(),texts['dt_obj'].strftime("%Y-%m-%d"))
                 else:
@@ -1668,6 +1711,8 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     
                 uploaded_paths.append('https://commons.wikimedia.org/wiki/File:'+texts["name"].replace(' ', '_'))
                 
+                if claims_append_result is None:
+                    continue
                 #move uploaded file to subfolder
                 if not dry_run:
                     if not os.path.exists(uploaded_folder_path):

@@ -19,6 +19,7 @@ import wikitextparser as wtp
 from simple_term_menu import TerminalMenu
 import pickle
 import re
+import traceback
 
 
 from fileprocessor import Fileprocessor
@@ -362,7 +363,7 @@ class Model_wiki:
         else:
             self.logger.error('object https://www.wikidata.org/wiki/' +
                               wikidata+' must have english label')
-            quit()
+            return None
 
         for lang in self.optional_langs:
             if lang in object_wd["labels"]:
@@ -907,7 +908,12 @@ class Model_wiki:
 
         request = site.simple_request(
             action="wbgetentities", ids=media_identifier)
-        raw = request.submit()
+        try:
+            raw = request.submit()
+        except:
+            self.logger.error(traceback.format_exc())
+            return None
+            
         existing_data = None
         if raw.get("entities").get(media_identifier).get("pageid"):
             existing_data = raw.get("entities").get(media_identifier)
@@ -970,7 +976,7 @@ class Model_wiki:
                 print(request)
                 print("Error: {}".format(e))
                 
-                
+        return True        
                 
     def search_commonscat_by_2_wikidata(self,abstract_wdid,geo_wdid):
     

@@ -21,7 +21,7 @@ parser = argparse.ArgumentParser(
     wikidata objects https://wikishootme.toolforge.org/#lat=55.77&lng=37.66&zoom=18
     
     
-    '''+ "\n expression for qgis \n"+sample_expression
+    '''+ "\n expression for qgis \n"+sample_expression + "\\ \n\n   python3 add-building.py --building apartments --city Orekhovo-Zuevo --coord_source osm  --coords 55.80474,38.9689 --levels 3 --street Q122859896 --housenumber 9" + "python3 add-building.py --snow-fix --wikidata Q113682558 --city Torzhok"
 )
 
 
@@ -38,9 +38,12 @@ parser.add_argument('--levels', type=int, required=False, help='Building levels 
 parser.add_argument('--levels_url', type=str, required=False, help='url for building levels refrence')
 parser.add_argument('--year', type=int, required=False, help='year built')
 parser.add_argument('--year_url', type=str, required=False, help='url for year refrence')
-parser.add_argument("--country", type=str,required=False, default='Russia', help='Country for {{Taken on}} template')
-parser.add_argument('--photos', type=str, required=False, help='Optional: call photo uploader , path to files dir ')
+
+#parser.add_argument("--country", type=str,required=False, default='Russia', help='Country for {{Taken on}} template') too complex, not needed
+#parser.add_argument('--photos', type=str, required=False, help='Optional: call photo uploader , path to files dir ')
 parser.add_argument('--wikidata-only', action="store_const", const=True, required=False, help='Create only wikidata entity, do not create commons category ')
+
+parser.add_argument('--snow-fix', action="store_const", const=True, required=False, help='generate wikidata building name and description from LOCATED ON STREET attribure and exit')
 
 parser.add_argument(
     "-dry", "--dry-run", action="store_const", required=False, default=False, const=True
@@ -50,7 +53,13 @@ args = parser.parse_args()
 processor = trolleway_commons.CommonsOps()
 modelwiki = Model_wiki()
 
-if args.wikidata is not None:
+if args.snow_fix is not None:
+    assert args.wikidata is not None
+    building_wikidata = modelwiki.wikidata_input2id(args.wikidata)
+    modelwiki.wikidata_set_building_entity_name(building_wikidata,city_en=args.city)
+    quit()
+    
+elif args.wikidata is not None:
     building_wikidata = modelwiki.wikidata_input2id(args.wikidata)
     category_name = processor.create_commonscat(
         building_wikidata, city_en=args.city, dry_mode=args.dry_run,

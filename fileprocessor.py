@@ -85,48 +85,7 @@ class Fileprocessor:
             # Handle API errors
             print(f"API error: {e.code}: {e.info}")
 
-    def get_building_record_wikidata(self, wikidata) -> dict:
-        warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)
-        # get all claims of this wikidata objects
-        cmd = ["wb", "gt", "--props", "claims",
-               "--json", "--no-minimize", wikidata]
-        response = subprocess.run(cmd, capture_output=True)
-        building_wd = json.loads(response.stdout.decode())
 
-        # get street of object
-        if "P669" not in building_wd["claims"]:
-            raise ValueError(
-                "object https://www.wikidata.org/wiki/"
-                + wikidata
-                + "should have street"
-            )
-
-        cmd = [
-            "wb",
-            "gt",
-            "--json",
-            "--no-minimize",
-            building_wd["claims"]["P669"][0]["value"],
-        ]
-        response = subprocess.run(cmd, capture_output=True)
-        street_wd = json.loads(response.stdout.decode())
-
-        building_record = {
-            "building": "yes",
-            "addr:street:ru": street_wd["labels"]["ru"],
-            "addr:street:en": street_wd["labels"]["en"],
-            "addr:housenumber:local": building_wd["claims"]["P669"][0]["qualifiers"][
-                "P670"
-            ][0]["value"],
-            "addr:housenumber:en": translit(
-                building_wd["claims"]["P669"][0]["qualifiers"]["P670"][0]["value"],
-                "ru",
-                reversed=True,
-            ),
-            "commons": building_wd["claims"]["P373"][0]["value"],
-        }
-
-        return building_record
 
 
     
@@ -212,7 +171,7 @@ class Fileprocessor:
             quit()
         return object_wd
 
-    def make_image_texts_vehicle(self, filename, vehicle, model, number, street=None, system=None, city=None, route=None, country=None, line=None, facing=None, colors=None, secondary_wikidata_ids=None) -> dict:
+    def make_image_texts_vehicle(self, filename, vehicle, model, number, street=None, system=None,  route=None, country=None, line=None, facing=None, colors=None, secondary_wikidata_ids=None) -> dict:
         assert os.path.isfile(filename)
         
         from model_wiki import Model_wiki  as Model_wiki_ask
@@ -241,12 +200,14 @@ class Fileprocessor:
                 if geo_dict is None: 
                     self.logger.error(filename + ' not set street, must have coordinates for search in geodata')
                     return None
-                regions_filepath = 'trolleybus.gpkg'
+                regions_filepath = street
                 from model_geo import Model_Geo  as Model_geo_ask
                 modelgeo = Model_geo_ask()
                 street_wdid = modelgeo.identify_deodata(geo_dict.get("lat"),geo_dict.get("lon"),regions_filepath,'wikidata')
                 if street_wdid is None: 
-                    self.logger.error(filename + ' not found street in geodata, please set. Continue to next file')
+                    msg=str(geo_dict.get("lat"))+' '+str(geo_dict.get("lon"))
+                    msg += ' file:'+regions_filepath
+                    self.logger.error(filename + ' not found street in geodata, please set. '+msg+' Continue to next file')
                     return None
             else:
                 # take street from user input
@@ -342,7 +303,7 @@ class Fileprocessor:
             placenames={'ru':list(),'en':list()}
             
             if 'en' in line_names: 
-                if line_names['en'].len()>0: placenames['en'].append(line_names['en'])
+                if len(line_names['en'])>0: placenames['en'].append(line_names['en'])
             if 'en' in street_names:
                 if street_names['en'] != '': placenames['en'].append(street_names['en'])
 
@@ -396,7 +357,7 @@ class Fileprocessor:
             captions['ru'] += ' '+modelwiki.get_wikidata(line_wdid)['labels']['ru']
         st += "{{ru|1=" +captions['ru'] + '}}'
         
-        if model is not None: st += " {{on Wikidata|" + model_wdid + "}}\n"
+        if model is not None: st += " {{on Wikidata|" + model_wdid[0:model_wdid.find('#')] + "}}\n"
         st += " {{on Wikidata|" + street_wdid + "}}\n"
         
         if type(secondary_wikidata_ids) == list and len(secondary_wikidata_ids)>0:
@@ -406,6 +367,9 @@ class Fileprocessor:
                 heritage_id = modelwiki.get_heritage_id(wdid)
                 if heritage_id is not None:
                     st += "{{Cultural Heritage Russia|" + heritage_id + "}}"
+                    today = datetime.today()
+                    if today.strftime('%Y-%m') == '2023-09':
+                        st += "{{Wiki Loves Monuments 2023|1=ru}}"
         
         st += "\n"
         st += (
@@ -623,14 +587,9 @@ class Fileprocessor:
         #cut to . symbol if extsts
         test_str = test_str[0:test_str.index('.')]
         
-        #split string by _
-        parts = re.split('_+', test_str)
+        lst = re.findall(r'(Q\d+)', test_str)
         
-        lst = list()
-        for part in parts:
-            if part.startswith('wikidata'):
-                lst.append(part[8:])
-        
+
         if len(lst)>0:
             self.logger.debug('from filename obtained wikidata:'+' '.join(lst))
 
@@ -816,6 +775,9 @@ class Fileprocessor:
         heritage_id = self.get_heritage_id(wikidata)
         if heritage_id is not None:
             st += "{{Cultural Heritage Russia|" + heritage_id + "}}"
+            today = datetime.today()
+            if today.strftime('%Y-%m') == '2023-09':
+                st += "{{Wiki Loves Monuments 2023|1=ru}}"
         st += " {{ on Wikidata|" + wikidata + "}}"
         st += "\n"
         st += self.get_date_information_part(dt_obj, country)
@@ -998,6 +960,9 @@ class Fileprocessor:
         heritage_id = modelwiki.get_heritage_id(wikidata)
         if heritage_id is not None:
             st += "{{Cultural Heritage Russia|" + heritage_id + "}}"
+            today = datetime.today()
+            if today.strftime('%Y-%m') == '2023-09':
+                st += "{{Wiki Loves Monuments 2023|1=ru}}"
         st += " {{ on Wikidata|" + wikidata + "}}"
         st += "\n"
         st += self.get_date_information_part(dt_obj, country)
@@ -1042,8 +1007,24 @@ class Fileprocessor:
 
     def commons_filename(self,filename,objectnames,wikidata,dt_obj)->str:
         # file name on commons
+        
+        from model_wiki import Model_wiki  as Model_wiki_ask
+        modelwiki = Model_wiki_ask()
+        
         filename_base = os.path.splitext(os.path.basename(filename))[0]
         filename_extension = os.path.splitext(os.path.basename(filename))[1]
+        #if this is building: try get machine-reading address from https://www.wikidata.org/wiki/Property:P669
+        building_info = modelwiki.get_building_record_wikidata(wikidata,stop_on_error=False)
+        if building_info is not None:
+
+            objectnames['en'] = (
+            building_info["addr:street:en"]
+            + " "
+            + building_info["addr:housenumber:en"]
+            )
+        
+
+        
         commons_filename = (
             objectnames['en'] + " " +
             dt_obj.strftime("%Y-%m %s") + filename_extension
@@ -1092,6 +1073,10 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
 
         '''
+        
+        from model_wiki import Model_wiki
+        modelwiki = Model_wiki()
+        
         desc = {
             'Filename': filename,
             'Description': '',
@@ -1103,7 +1088,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
         objects_wikidata = list()
         for obj_wdid in wikidata_list:
-            obj_wdid = self.take_user_wikidata_id(obj_wdid)
+            obj_wdid = modelwiki.wikidata_input2id(obj_wdid)
             obj_wd = modelwiki.get_wikidata(obj_wdid)
             objects_wikidata.append(obj_wd)
 
@@ -1253,6 +1238,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
             return metadata
 
     def check_exif_valid(self, path):
+        if path.lower().endswith('.stl'): return True
         cmd = [self.exiftool_path, path, "-datetimeoriginal", "-csv"]
         process = subprocess.run(cmd)
 
@@ -1264,21 +1250,24 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
     def image2datetime(self, path):
 
         with open(path, "rb") as image_file:
-            try:
-                image_exif = Image(image_file)
+            if not path.lower().endswith('.stl'):
+                try:
+                    image_exif = Image(image_file)
 
-                dt_str = image_exif.get("datetime_original", None)
-                dt_obj = datetime.strptime(dt_str, "%Y:%m:%d %H:%M:%S")
-            except:
+                    dt_str = image_exif.get("datetime_original", None)
+                    dt_obj = datetime.strptime(dt_str, "%Y:%m:%d %H:%M:%S")
+                except:
+                    dt_obj = None
+                    cmd = [self.exiftool_path, path, "-datetimeoriginal", "-csv"]
+                    exiftool_text_result = subprocess.check_output(cmd)
+                    tmp = exiftool_text_result.splitlines()[1].split(b",")
+                    if len(tmp) > 1:
+                        dt_str = tmp[1]
+                        dt_obj = datetime.strptime(
+                            dt_str.decode("UTF-8"), "%Y:%m:%d %H:%M:%S"
+                        )
+            elif path.lower().endswith('.stl'):
                 dt_obj = None
-                cmd = [self.exiftool_path, path, "-datetimeoriginal", "-csv"]
-                exiftool_text_result = subprocess.check_output(cmd)
-                tmp = exiftool_text_result.splitlines()[1].split(b",")
-                if len(tmp) > 1:
-                    dt_str = tmp[1]
-                    dt_obj = datetime.strptime(
-                        dt_str.decode("UTF-8"), "%Y:%m:%d %H:%M:%S"
-                    )
 
             if dt_obj is None:
                 dt_obj = datetime.strptime(os.path.basename(path)[
@@ -1568,6 +1557,8 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
 
     
     def process_and_upload_file(self,filepath,desc_dict):
+        from model_wiki import Model_wiki
+        modelwiki = Model_wiki()
         if not os.path.exists(filepath):
             print(filepath.ljust(50)+' '+' not exist')
             quit()
@@ -1591,8 +1582,6 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             print(filepath+' all files already uploaded')
             quit()
 
-        from model_wiki import Model_wiki
-        modelwiki = Model_wiki()
         
         dry_run = desc_dict['dry_run']
         if desc_dict['later']==True: dry_run = True
@@ -1612,20 +1601,30 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         if total_files>1 and 'progress' in desc_dict:
             progressbar_on = True
             pbar = tqdm(total=total_files)
-            
+        
         for filename in files:
             if 'commons_uploaded' in filename: continue
             if self.check_exif_valid(filename) :
 
                 secondary_wikidata_ids = modelwiki.input2list_wikidata(desc_dict['secondary_objects'])
+                
 
                 #get wikidata from filepath
 
-                if secondary_wikidata_ids == [] and '_wikidata' in filename:
+                if secondary_wikidata_ids == [] and 'wikidata' in filename:
                     secondary_wikidata_ids = self.get_wikidatalist_from_string(filename)
+                    
            
                 if desc_dict['mode'] == 'object':
-                    wikidata = modelwiki.wikidata_input2id(desc_dict['wikidata'])
+                    if desc_dict['wikidata'] == 'FROMFILENAME':
+                        self.logger.debug('get main wikidata object from filename')
+                        
+                        print(self.get_wikidatalist_from_string(filename))
+                        wikidata = self.get_wikidatalist_from_string(filename)[0]
+                        print(wikidata)
+                    else:
+                        wikidata = modelwiki.wikidata_input2id(desc_dict['wikidata'])
+                    
                     texts = self.make_image_texts_simple(
                         filename=filename,
                         wikidata=wikidata,
@@ -1655,7 +1654,6 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                         street = desc_dict.get('street',None),
                         number = desc_dict.get('number',None),
                         system = desc_dict.get('system',None),
-                        city = desc_dict.get('city',None),
                         route = desc_dict.get('route',None),
                         country = desc_dict.get('country',None),
                         line = desc_dict.get('line',None),
@@ -1674,17 +1672,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     '''
                      'new_filename':commons_filename,'ru':objectname_long_ru,'en':objectname_long_en
                     '''
-                elif desc_dict['mode'] == 'buidling':
-                    
-                    texts = self.make_image_texts_building(
-                        filename=filename,
-                        wikidata=wikidata,
-                        place_en="Moscow",
-                        place_ru="Москва",
-                        no_building= not args.building,
-                        country=desc_dict['country'],
-                        rail=args.rail
-                    )
+
 
                 if dry_run:
                     print()

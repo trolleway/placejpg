@@ -228,15 +228,15 @@ class Model_wiki:
         wd_object["claims"]["P625"]["value"]["longitude"] = round(
             float(data["lon"]), 5
         )  # coords
-        if "coord_source" in data and data["coord_source"].lower() == "yandex maps":
+        if data.get("coord_source",None) is not None and data["coord_source"].lower() == "yandex maps":
             wd_object["claims"]["P625"]["references"] = list()
             wd_object["claims"]["P625"]["references"].append(dict())
             wd_object["claims"]["P625"]["references"][0]["P248"] = "Q4537980"
-        if "coord_source" in data and data["coord_source"].lower() == "osm":
+        if data.get("coord_source",None) is not None  and data["coord_source"].lower() == "osm":
             wd_object["claims"]["P625"]["references"] = list()
             wd_object["claims"]["P625"]["references"].append(dict())
             wd_object["claims"]["P625"]["references"][0]["P248"] = "Q936"
-        if "coord_source" in data and data["coord_source"].lower() == "reforma":
+        if data.get("coord_source",None) is not None  and data["coord_source"].lower() == "reforma":
             wd_object["claims"]["P625"]["references"] = list()
             wd_object["claims"]["P625"]["references"].append(dict())
             wd_object["claims"]["P625"]["references"][0]["P248"] = "Q117323686"
@@ -546,7 +546,7 @@ class Model_wiki:
         #returns wikidata id
         
         inp = self.prepare_wikidata_url(inp)
-        if inp.startswith('Q'): return inp
+        if inp.startswith('Q'): return self.normalize_wdid(inp)
         
         # search
         cmd = ['wb','search',inp,'--json','--lang','en']
@@ -820,6 +820,40 @@ class Model_wiki:
 
         return pages
         
+    def get_building_record_wikidata(self, wikidata, stop_on_error = False) -> dict:
+        building_wd = self.get_wd_by_wdid(wikidata)
+        
+
+        # get street of object
+        if "P669" not in building_wd["claims"]:
+            if stop_on_error:
+                raise ValueError(
+                    "object https://www.wikidata.org/wiki/"
+                    + wikidata
+                    + "should have street"
+                )
+            else:
+                return None
+
+        street_wd = self.get_wd_by_wdid(building_wd["claims"]["P669"][0]["value"])
+        
+        building_record = {
+            "building": "yes",
+            "addr:street:ru": street_wd["labels"]["ru"],
+            "addr:street:en": street_wd["labels"]["en"],
+            "addr:housenumber:local": building_wd["claims"]["P669"][0]["qualifiers"][
+                "P670"
+            ][0]["value"],
+            "addr:housenumber:en": translit(
+                building_wd["claims"]["P669"][0]["qualifiers"]["P670"][0]["value"],
+                "ru",
+                reversed=True,
+            ),
+            "commons": building_wd["claims"]["P373"][0]["value"],
+        }
+
+        return building_record 
+        
     def get_wd_by_wdid(self,wikidata)->dict:
         # if need python-only implementation: replace to pywikibot this
         if wikidata in self.wikidata_cache['entities_non_simplified']:
@@ -857,7 +891,15 @@ class Model_wiki:
             #return self.get_wd_by_wdid(wdobj['claims']['P131'][0]['value'])
         
         return None
+    def normalize_wdid(self,object_wdid:str)->str:
+        #convert Q1021645#office_building to Q1021645
+        if '#' not in object_wdid:
+            return object_wdid
+        else:
+            return object_wdid[0:object_wdid.find('#')]
+        
     def get_category_object_in_location(self,object_wdid,location_wdid,verbose=False)->str:
+        object_wdid = self.normalize_wdid(object_wdid)
         cache_key = str(object_wdid)+'/'+location_wdid
         if cache_key in self.cache_category_object_in_location:
             return '[[Category:'+self.cache_category_object_in_location[cache_key]+']]'
@@ -978,6 +1020,83 @@ class Model_wiki:
                 
         return True        
                 
+    def wikidata_set_building_entity_name(self,wdid,city_en):
+        '''
+        change names and aliaces of wikidata entity for building created by SNOW https://ru-monuments.toolforge.org/snow/index.php?id=6330122000
+        
+        User should manually enter LOCATED ON STREET with HOUSE NUMBER
+        
+        Source:
+        https://www.wikidata.org/wiki/Q113683138
+        Жилой дом (Тверь)
+        
+        Result:
+        name ru     Тверь, улица Достоевского 30
+        name en     Tver Dostoevskogo street 30
+        alias (ru)  [Жилой дом (Тверь)]
+        
+        '''
+        site = pywikibot.Site("wikidata", "wikidata")
+        site.login()
+        site.get_tokens("csrf")  # preload csrf token
+        item = pywikibot.ItemPage(site, wdid)
+        item.get()
+        
+        
+        assert('en' not in item.labels)
+        assert('ru' in item.labels)
+        assert 'P669' in item.claims
+        claims = item.claims.get("P669")
+        for claim in claims:
+            # Print the street address value
+            #print(claim.getTarget().id)
+            street_id = claim.getTarget().id
+            try:
+                street_name_en = claim.getTarget().labels['en']
+            except:
+                raise ValueError('you should set label en at https://www.wikidata.org/wiki/'+claim.getTarget().id+'')
+                quit()
+            street_name_ru = claim.getTarget().labels['ru']
+            
+            # Get the qualifiers of P670 (postal code)
+            qualifiers = claim.qualifiers.get("P670")
+            
+            # Loop through the qualifiers
+            for qualifier in qualifiers:
+                # Print the postal code value
+                housenumber = qualifier.getTarget()
+        
+        print(street_name_en,street_name_ru,housenumber)
+        
+        entitynames = dict()
+        labels = dict()
+        labels['en'] = street_name_en+' '+housenumber
+        labels['ru'] = street_name_ru+' '+housenumber
+        aliases = item.aliases
+        if 'ru' not in aliases: aliases['ru']=list()
+        aliases['ru'].append(item.labels['ru'])
+        item.editAliases(aliases=aliases, summary="Move name to alias")
+        item.editLabels(labels=labels, summary="Set name from address P669+P670")
+        item.editDescriptions(descriptions={"en": "Building in "+city_en}, summary="Edit description")
+        '''
+        claimStreet = item.claims["P669"][0].getTarget()
+        print(claimStreet)
+        qualifiers = claimStreet.qualifiers.get("P670")
+        for qualifier in qualifiers:
+            print(qualifier.getTarget())
+        '''
+        
+        return 
+        
+        # Edit the entity name in English
+        item.editLabels(labels={"en": "Douglas Noel Adams"}, summary="Edit entity name")
+
+        # Add an entity alias in English
+        item.editAliases(aliases={"en": ["DNA", "Doug"]}, summary="Add entity alias")
+        item.editDescriptions(descriptions={"en": "British author and humorist"}, summary="Edit description")
+
+        
+        
     def search_commonscat_by_2_wikidata(self,abstract_wdid,geo_wdid):
     
         if abstract_wdid in self.wikidata_cache['commonscat_by_2_wikidata']:

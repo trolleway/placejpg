@@ -13,10 +13,11 @@ modelwiki = Model_wiki()
 parser = argparse.ArgumentParser(
     description="upload photos of vehicle to Wikimedia Commons "
 )
+
 parser.add_argument("filepath")
 parser.add_argument('-v','--vehicle', type=str, required=True, choices=['tram','trolleybus','bus', 'train','locomotive','station','auto'])
 parser.add_argument('-sys','--system', type=str, required=False, help='wikidata id or wikidata name of transport system. Not applied to "auto" ')
-parser.add_argument('-c','--city', type=str, required='auto' in sys.argv or '-s' not in sys.argv, help='wikidata id or wikidata name of city for "auto" ')
+parser.add_argument('-c','--city', type=str, required=False, help='wikidata id or wikidata name of city for "auto" ')
 parser.add_argument('-m','--model', type=str, required='station' not in sys.argv, help='wikidata id or wikidata name of vehicle model')
 parser.add_argument('-st','--street', type=str, default=None, required=False, help='wikidata id or wikidata name of streer or highway')
 parser.add_argument('-n','--number', type=str, required='station' not in sys.argv, help='vehicle number. Use BEFORE_UNDERSCORE to extract 3213 from 3213_20060702_162.jpg ')

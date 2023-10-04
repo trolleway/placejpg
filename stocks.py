@@ -16,10 +16,10 @@ parser = argparse.ArgumentParser(
     description="generate IPTC tags for photostock upload by links wikidata "
 )
 
-parser.add_argument("filepath")
-parser.add_argument("wikidata", type=str, nargs='+')
+parser.add_argument("filepath", help='file or directory with jpg or tiff images')
+parser.add_argument("wikidata", type=str, nargs='+', help='ore or many wikidata codes')
 
-parser.add_argument("-с", "--city", type=str, required=True)
+parser.add_argument("-с", "--city", type=str, required=True,help='English city name for caption')
 parser.add_argument("-dry", "--dry-run", action="store_const",
                     required=False, default=False, const=True)
 

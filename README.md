@@ -9,11 +9,11 @@ Limited to process images of buildings and vehicles.
 ### Upload files to Wikimedia Commons using search wikidata object
 
 ```
-python3 building-upload.py --no-building --location "United States" "Hollywood Boulevard"  i/imgfolder
+python3 upload.py  --location "United States" "Hollywood Boulevard"  i/imgfolder
 # Uploads files from i/imgfolder to Wikimedia Commons. Search in Wikidata for "Hollywood Boulevard", use Commons Category for this object. Append template {{Taken on|yyyy-mm-dd|location=United States}}
 
-python3 building-upload.py --no-building "Q382500" --location Russia -dry   i/imgfolder
-# Uploads files from i/imgfolder to Wikimedia Commons. Use Wikidata object Q382500, use Commons Category for this object. Append template {{Taken on|yyyy-mm-dd|location=Russia}}
+python3 upload.py Q382500 --location Russia --later  i/imgfolder
+# add to queue.sh command for Uploads files from i/imgfolder to Wikimedia Commons. Use Wikidata object Q382500, use Commons Category for this object. Append template {{Taken on|yyyy-mm-dd|location=Russia}}
 ```
 
 ## Install

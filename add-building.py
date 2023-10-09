@@ -68,10 +68,7 @@ elif args.wikidata is not None:
     print('Created https://www.wikidata.org/wiki/'+building_wikidata)
     print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))
     print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))
-    if args.photos:
-        cmd = ['python3','upload.py', building_wikidata, args.photos, '--country',args.country,'--later']
-        response = subprocess.run(cmd) 
-        
+
     quit()
     
     
@@ -89,8 +86,6 @@ if args.levels: building['levels'] = args.levels
 if args.levels_url: building['levels_url'] = args.levels_url               
 if args.year: building['year'] = args.year            
 if args.year_url: building['year_url'] = args.year_url            
-if args.photos: building['files_dir'] = args.photos            
-if args.photos: assert os.path.exists(args.photos)        
         
 
 
@@ -116,6 +111,3 @@ for data in buildings:
         
     print('Created https://www.wikidata.org/wiki/'+building_wikidata)
     if not args.wikidata_only: print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))
-    if args.photos:
-        cmd = ['python3','upload.py', building_wikidata, args.photos, '--country',args.country,'--later']
-        response = subprocess.run(cmd) 

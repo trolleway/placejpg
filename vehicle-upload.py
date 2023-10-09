@@ -11,7 +11,7 @@ fileprocessor = Fileprocessor()
 modelwiki = Model_wiki()
 
 parser = argparse.ArgumentParser(
-    description="upload photos of vehicle to Wikimedia Commons "
+    description="upload photos of vehicle to Wikimedia Commons. Sample filename: аа903 69_20120520_369_colorwhite_r2.JPG"
 )
 
 parser.add_argument("filepath")

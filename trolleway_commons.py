@@ -76,7 +76,10 @@ class CommonsOps:
         response = subprocess.run(cmd, capture_output=True)
         street_dict_wd = json.loads(response.stdout.decode())
         housenumber = building_dict_wd["claims"]["P669"][0]['qualifiers']['P670'][0]["value"]
-        category_street = street_dict_wd["claims"]["P373"][0]["value"]      
+        if "P373" in  street_dict_wd["claims"]:
+            category_street = street_dict_wd["claims"]["P373"][0]["value"]      
+        else:
+            category_street = str(street_dict_wd["sitelinks"]["commonswiki"])[9:]
         category_street +='|'+housenumber
                
         category_name = building_dict_wd["labels"]["en"]
@@ -256,7 +259,7 @@ class CommonsOps:
         if "en" not in street_dict_wd["labels"]:
             print("street " + wikidata_street_url + " must have name en")
             result = False
-        if "P373" not in street_dict_wd["claims"]:
+        if "P373" not in street_dict_wd["claims"] and ('commonswiki' not in street_dict_wd["sitelinks"]):
             print(
                 "street "
                 + wikidata_street_url

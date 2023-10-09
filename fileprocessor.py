@@ -1611,17 +1611,15 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
 
                 #get wikidata from filepath
 
-                if secondary_wikidata_ids == [] and 'wikidata' in filename:
+                if secondary_wikidata_ids == [] and 'Q' in filename:
                     secondary_wikidata_ids = self.get_wikidatalist_from_string(filename)
+                    
                     
            
                 if desc_dict['mode'] == 'object':
                     if desc_dict['wikidata'] == 'FROMFILENAME':
-                        self.logger.debug('get main wikidata object from filename')
-                        
-                        print(self.get_wikidatalist_from_string(filename))
                         wikidata = self.get_wikidatalist_from_string(filename)[0]
-                        print(wikidata)
+                        del secondary_wikidata_ids[0]
                     else:
                         wikidata = modelwiki.wikidata_input2id(desc_dict['wikidata'])
                     

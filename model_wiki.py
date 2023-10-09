@@ -14,6 +14,8 @@ import subprocess
 from transliterate import translit
 from pywikibot.specialbots import UploadRobot
 from pywikibot import pagegenerators
+from pywikibot import exceptions
+
 import urllib
 import wikitextparser as wtp
 from simple_term_menu import TerminalMenu
@@ -491,7 +493,54 @@ class Model_wiki:
 
         return object_wd[0]['id']
         
-    def get_heritage_id(self, wikidata) -> str:
+        
+    def get_heritage_types(self,country='RU') -> list:
+        template = '''
+        SELECT ?item ?label ?_image WHERE {
+  ?item wdt:P279 wd:Q8346700.
+  SERVICE wikibase:label {
+    bd:serviceParam wikibase:language "ru" . 
+    ?item rdfs:label ?label
+  }
+}
+LIMIT 100
+'''
+        sparql = template
+        site = pywikibot.Site("wikidata", "wikidata")
+        repo = site.data_repository()
+
+        generator = pagegenerators.PreloadingEntityGenerator(pagegenerators.WikidataSPARQLPageGenerator(sparql,site=repo))
+        items_ids=list()
+        for item in generator:
+            items_ids.append(item.id)
+        heritage_types = {"RU": items_ids}
+        return heritage_types
+        
+    def get_heritage_id(self, wdid) -> str:    
+        # if wikidata object "heritage designation" is one of "culture heritage in Russia" - return russian monument id
+        # for https://www.wikidata.org/wiki/Q113683163 reads P1483, returns '6931214010' or None
+    
+        site = pywikibot.Site("wikidata", "wikidata")
+        site.login()
+        site.get_tokens("csrf")  # preload csrf token
+        item = pywikibot.ItemPage(site, wdid)
+        item.get()
+
+        if 'P1435' not in item.claims: return None
+        if 'P1483' not in item.claims: return None
+        
+        heritage_types = self.get_heritage_types('RU')
+        claims = item.claims.get("P1435")
+        for claim in claims:
+            if claim.getTarget().id in  heritage_types['RU']:
+                heritage_claim = item.claims.get("P1483")[0]
+                return heritage_claim.getTarget()
+
+        return None
+
+
+            
+    def get_heritage_id_old(self, wikidata) -> str:
 
         # if wikidata object "heritage designation" is one of "culture heritage in Russia" - return russian monument id
 
@@ -849,8 +898,11 @@ class Model_wiki:
                 "ru",
                 reversed=True,
             ),
-            "commons": building_wd["claims"]["P373"][0]["value"],
         }
+        if "P373" in building_wd["claims"]:
+            building_record['commons'] = building_wd["claims"]["P373"][0]["value"]
+        elif 'commonswiki' in building_wd["sitelinks"]:
+            building_record['commons'] = building_wd["sitelinks"]["commonswiki"]["title"].replace('Category:','')
 
         return building_record 
         
@@ -1058,7 +1110,7 @@ class Model_wiki:
                 quit()
             street_name_ru = claim.getTarget().labels['ru']
             
-            # Get the qualifiers of P670 (postal code)
+            # Get the qualifiers of P670 
             qualifiers = claim.qualifiers.get("P670")
             
             # Loop through the qualifiers
@@ -1095,6 +1147,54 @@ class Model_wiki:
         item.editAliases(aliases={"en": ["DNA", "Doug"]}, summary="Add entity alias")
         item.editDescriptions(descriptions={"en": "British author and humorist"}, summary="Edit description")
 
+        
+    def create_wikidata_object_for_bylocation_category(self,category,wikidata1,wikidata2):
+        assert category.startswith('Category:'),'category should start with Category:  only'
+        assert wikidata1.startswith('Q'),'wikidata1 should start from Q only'
+        assert wikidata2.startswith('Q'),'wikidata2 should start from Q only'
+        category_name = category.replace('Category:','')
+        
+        site = pywikibot.Site("wikidata", "wikidata")
+        repo = site.data_repository()
+        new_item = pywikibot.ItemPage(site)
+        label_dict = {"en": category_name}
+        new_item.editLabels(labels=label_dict, summary="Setting labels")
+        
+        # CLAIM
+        claim = pywikibot.Claim(repo, 'P31') 
+        target = pywikibot.ItemPage(repo, "Q4167836") #This is Wikimedia category
+        claim.setTarget(target) #Set the target value in the local object.
+        new_item.addClaim(claim, summary='This is 	Wikimedia category') #Inserting value with summary to Q210194
+        del claim
+        del target
+        
+        # CLAIM
+        claim = pywikibot.Claim(repo, 'P971') 
+        target = pywikibot.ItemPage(repo, wikidata1) #category combines topics
+        claim.setTarget(target) #Set the target value in the local object.
+        new_item.addClaim(claim, summary='This is 	Wikimedia category') #Inserting value with summary to Q210194
+        claim = pywikibot.Claim(repo, 'P971') 
+        target = pywikibot.ItemPage(repo, wikidata2) #category combines topics
+        claim.setTarget(target) #Set the target value in the local object.
+        new_item.addClaim(claim, summary='This is 	Wikimedia category') #Inserting value with summary to Q210194
+        
+        # SITELINK
+        sitedict = {'site':'commonswiki', 'title':category}
+        new_item.setSitelink(sitedict, summary=u'Setting commons sitelink.')
+        wikidata_id = new_item.getID()
+        
+        # ADD Wikidata infobox to commons
+        site = pywikibot.Site("commons", "commons")
+        site.login()
+        site.get_tokens("csrf")  # preload csrf token
+        pagename = self.page_name_canonical(category)
+        page = pywikibot.Page(site, title=pagename)
+        
+        commons_pagetext = page.text
+        if '{{Wikidata infobox}}' not in commons_pagetext:
+            commons_pagetext = "{{Wikidata infobox}}\n"+commons_pagetext
+        page.text = commons_pagetext
+        page.save('add {{Wikidata infobox}} template')
         
         
     def search_commonscat_by_2_wikidata(self,abstract_wdid,geo_wdid):

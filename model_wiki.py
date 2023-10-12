@@ -333,7 +333,19 @@ class Model_wiki:
         return object_wd
 
 
-
+    def get_territorial_entity(self, wd_record) -> dict:
+        try:
+            cmd = ['wb', 'gt', '--json', '--no-minimize',
+                   wd_record['claims']['P131'][0]['value']]
+        except:
+            return None
+        response = subprocess.run(cmd, capture_output=True)
+        try:
+            object_wd = json.loads(response.stdout.decode())
+        except:
+            self.logger.error('check '+' '.join(cmd))
+            quit()
+        return object_wd
         
     def get_wikidata_simplified(self, wikidata) -> dict:
 
@@ -950,11 +962,13 @@ LIMIT 100
         else:
             return object_wdid[0:object_wdid.find('#')]
         
-    def get_category_object_in_location(self,object_wdid,location_wdid,verbose=False)->str:
+    def get_category_object_in_location(self,object_wdid,location_wdid,order:str=None,verbose=False)->str:
         object_wdid = self.normalize_wdid(object_wdid)
         cache_key = str(object_wdid)+'/'+location_wdid
         if cache_key in self.cache_category_object_in_location:
-            return '[[Category:'+self.cache_category_object_in_location[cache_key]+']]'
+            text = '[[Category:'+self.cache_category_object_in_location[cache_key]+']]'
+            if order: text=text.replace(']]','|'+order+']]') 
+            return text
         stop_hieraechy_walk = False
         cnt = 0
         geoobject_wd = self.get_wd_by_wdid(location_wdid)
@@ -968,7 +982,9 @@ LIMIT 100
             if union_category_name is not None:
                 print('found '+ '[[Category:'+union_category_name+']]')
                 self.cache_category_object_in_location[cache_key]=union_category_name
-                return '[[Category:'+union_category_name+']]'
+                text = '[[Category:'+union_category_name+']]'
+                if order: text=text.replace(']]','|'+order+']]') 
+                return text
             
             upper_wdid = self.get_upper_location_wdid(geoobject_wd)
             if upper_wdid is None: 

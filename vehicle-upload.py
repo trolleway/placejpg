@@ -21,6 +21,7 @@ parser.add_argument('-c','--city', type=str, required=False, help='wikidata id o
 parser.add_argument('-m','--model', type=str, required='station' not in sys.argv, help='wikidata id or wikidata name of vehicle model')
 parser.add_argument('-st','--street', type=str, default=None, required=False, help='wikidata id or wikidata name of streer or highway')
 parser.add_argument('-n','--number', type=str, required='station' not in sys.argv, help='vehicle number. Use BEFORE_UNDERSCORE to extract 3213 from 3213_20060702_162.jpg ')
+parser.add_argument('--digital_number', type=str, required=False, help='optional digit vehicle number for Wikimedia Commons category. Example: 1468 from 2TE10M-1468 ')
 parser.add_argument('-ro','--route', type=str, required=False, help='vehicle route text')
 parser.add_argument('--line', type=str, required=False, help='railway line wikidata object for trains')
 parser.add_argument("--country", type=str,required=True, default='Russia', help='Country for {{Taken on}} template')
@@ -45,6 +46,7 @@ desc_dict['city']=args.city
 desc_dict['model']=args.model
 desc_dict['street']=args.street
 desc_dict['number']=args.number
+desc_dict['digital_number']=args.digital_number
 desc_dict['route']=args.route
 desc_dict['line']=args.line
 desc_dict['country']=args.country

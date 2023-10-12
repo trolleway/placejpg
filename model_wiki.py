@@ -840,23 +840,28 @@ LIMIT 100
             location=location, yyyymmdd=yyyymmdd)
 
         pagename = 'Category:'+categoryname
-        if not self.is_category_exists(pagename):
 
-            self.logger.info('create page '+pagename)
-            if location == 'Moscow':
-                content = '{{Moscow photographs taken on navbox}}'
-            else:
-                content = '{{'+location+' photographs taken on navbox|' + \
-                    yyyymmdd[0:4]+'|'+yyyymmdd[5:7]+'|'+yyyymmdd[8:10]+'}}'
-            self.create_page(pagename, content, 'create category')
-
+        if location == 'Moscow':
+            content = '{{Moscow photographs taken on navbox}}'
         else:
-            self.logger.info('page already exists '+pagename)
+            content = '{{'+location+' photographs taken on navbox|' + \
+                yyyymmdd[0:4]+'|'+yyyymmdd[5:7]+'|'+yyyymmdd[8:10]+'}}'
+        #self.create_page(pagename, content, 'create category')
+        self.create_category(pagename, content)
+
 
         if location in('Moscow', 'Saint Petersburg'):
             self.create_category_taken_on_day('Russia', yyyymmdd)
+            
+    def create_category(self,pagename:str,content:str):
+        if not pagename.startswith('Category:'):
+            pagename = 'Category:'+pagename
+        if not self.is_category_exists(pagename):
+            self.create_page(pagename, content, 'create category')
+        else:
+             self.logger.info('page already exists '+pagename)
 
-    def is_category_exists(self, categoryname):
+    def is_category_exists(self,categoryname):
 
         site = pywikibot.Site("commons", "commons")
         site.login()

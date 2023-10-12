@@ -479,9 +479,10 @@ class Fileprocessor:
             self.photographer+'/'+country+'/'+transports[vehicle].lower()+"]]" + "\n"
         
         if 'line_wd' in locals() and line_wd is not None:
-            text = text + \
-                "[[Category:" + \
-                line_wd["claims"]["P373"][0]["value"]+"]]" + "\n"
+            if "P373" in line_wd["claims"]:
+                text = text +"[[Category:" + line_wd["claims"]["P373"][0]["value"]+"]]" + "\n"
+            wikidata_4_structured_data.append(line_wd['id'])
+
 
         # locale.setlocale(locale.LC_ALL, 'en_GB')
         if vehicle in ('train','locomotive'):
@@ -523,12 +524,17 @@ class Fileprocessor:
             colors = self.get_colorlist_from_string(os.path.basename(filename))
         if colors is not None:        
             colorname = ''
-            colors.sort()
-            colorname = ' and '.join(colors)
-            colorname = colorname.lower().capitalize()
-            text += "[[Category:{colorname} {transports}]]\n".format(
-            transports = transports_color[vehicle].lower(),
-            colorname = colorname)
+            if colors[0].upper()=='RZDGREEN':
+                text += "[[Category:Trains in Russian railways green livery]]\n".format(
+                transports = transports_color[vehicle].lower(),
+                colorname = colorname)
+            else:
+                colors.sort()
+                colorname = ' and '.join(colors)
+                colorname = colorname.lower().capitalize()
+                text += "[[Category:{colorname} {transports}]]\n".format(
+                transports = transports_color[vehicle].lower(),
+                colorname = colorname)
             
         
         #vehicle to wikidata
@@ -542,7 +548,12 @@ class Fileprocessor:
             if digital_number is None:
                 digital_number = number_filtered
         if number is not None and vehicle in ('locomotive','train'):
-            text += "[[Category:Number "+digital_number+" on rail vehicles]]\n"
+            catname="Number "+digital_number+" on rail vehicles"
+            category_page_content = '{{NumbercategoryTrain|'+digital_number+'}}'
+
+            modelwiki.create_category(catname,category_page_content)
+            text += "[[Category:"+catname+"]]\n"
+            
         elif number is not None and vehicle == 'bus':
             text += "[[Category:Number "+digital_number+" on buses]]\n"       
         elif number is not None and vehicle != 'tram':

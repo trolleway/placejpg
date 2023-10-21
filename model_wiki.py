@@ -2,7 +2,6 @@ import pywikibot
 import json
 
 from exif import Image
-import exiftool
 import locale
 
 from datetime import datetime
@@ -833,6 +832,7 @@ LIMIT 100
         return text
 
     def create_category_taken_on_day(self, location, yyyymmdd):
+        location = location.title()
         if len(yyyymmdd) != 10:
             return False
 
@@ -850,7 +850,7 @@ LIMIT 100
         self.create_category(pagename, content)
 
 
-        if location in('Moscow', 'Saint Petersburg'):
+        if location in('Moscow', 'Moscow Oblast', 'Saint Petersburg'):
             self.create_category_taken_on_day('Russia', yyyymmdd)
             
     def create_category(self,pagename:str,content:str):

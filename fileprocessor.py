@@ -34,6 +34,7 @@ class Fileprocessor:
     chunk_size = 102400
     chunk_size = 0
     photographer = 'Artem Svetlov'
+    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY=['Q660770']
 
 
     def input2filelist(self,filepath):
@@ -86,6 +87,7 @@ class Fileprocessor:
         except Exception as e:
             # Handle API errors
             print(f"API error: {e.code}: {e.info}")
+
 
 
 
@@ -179,16 +181,23 @@ class Fileprocessor:
         
         if model is not None:
             model_wdid = modelwiki.wikidata_input2id(model)
-            model_wd = modelwiki.get_wikidata(model_wdid)
+            model_wd = modelwiki.get_wikidata_simplified(model_wdid)
+            
             model_names = model_wd["labels"]
+            
             wikidata_4_structured_data.append(model_wd['id'])
 
         # STREET
         # if street - vector file path: get street wikidata code by point in polygon
         if street is not None:
             # take street from ogr vector file
-            if os.path.isfile(street):
+            if 'placeQ' in os.path.basename(filename):
+                street_wdid = self.get_placewikidatalist_from_string(os.path.basename(filename))[0]
+
+            elif os.path.isfile(street):
+                
                 if geo_dict is None: 
+
                     self.logger.error(filename + ' not set street, must have coordinates for search in geodata')
                     return None
                 regions_filepath = street
@@ -196,9 +205,8 @@ class Fileprocessor:
                 modelgeo = Model_geo_ask()
                 street_wdid = modelgeo.identify_deodata(geo_dict.get("lat"),geo_dict.get("lon"),regions_filepath,'wikidata')
                 if street_wdid is None: 
-                    msg=str(geo_dict.get("lat"))+' '+str(geo_dict.get("lon"))
-                    msg += ' file:'+regions_filepath
-                    self.logger.error(filename + ' not found street in geodata, please set. '+msg+' Continue to next file')
+                    msg = 'file: '+regions_filepath
+                    self.logger.error(filename.ljust(100) + ' not found location in '+msg+'')
                     return None
                 street_wd = modelwiki.get_wikidata(street_wdid)
             else:
@@ -322,7 +330,16 @@ class Fileprocessor:
             model = model_names['en'],
             extension=filename_extension)
             
-            
+            # filename for Moscow Trolleybus
+            if system_wdid == 'Q4304313':
+                commons_filename = '{city} {transport} {model} {number} {dt} {place}{extension}'.format(
+                city=city_name_en,
+                transport=vehicle,
+                number=number,
+                dt=dt_obj.strftime("%Y-%m %s"),
+                place=' '.join(placenames['en']),
+                model = model_names['en'],
+                extension=filename_extension)
 
             #commons_filename = objectname_en + " " +dt_obj.strftime("%Y-%m %s") + model_names['en'] + ' '+ ' '.join(placenames['en'])+ ' ' + filename_extension
         elif vehicle in train_synonims:
@@ -365,6 +382,7 @@ class Fileprocessor:
 {{Information
 |description="""
         captions=dict()
+        assert 'en' in street_names,  'https://www.wikidata.org/wiki/'+street_wdid + ' must have english name'
         captions['en']=objectname_en + ' at ' + street_names['en']
         if route is not None:
             captions['en'] += ' Line '+route
@@ -471,8 +489,9 @@ class Fileprocessor:
                 route=route,
                 city=city_name_en) + "\n"
         if 'system_wd' in locals():
-            text = text + \
-                "[[Category:" + system_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
+            if system_wd['id'] not in self.NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY:
+                text = text + \
+                    "[[Category:" + system_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
         try:
             text = text + \
                 "[[Category:" + street_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
@@ -604,7 +623,7 @@ class Fileprocessor:
             text = text + cat + "\n"
         else:
             text = text + \
-                "[[Category:" + model_wd["claims"]["P373"][0]["value"] + '|'+ digital_number +"]]" + "\n"
+                "[[Category:" + model_wd["commons"] + '|'+ digital_number +"]]" + "\n"
             
         # categories for secondary_wikidata_ids
         # search for geography categories using street like (ZIU-9 in Russia)
@@ -650,7 +669,7 @@ class Fileprocessor:
         return lst
        
     def get_wikidatalist_from_string(self,test_str:str)->list:
-        #from string 2002_20031123__r32_colorgray_colorblue_wikidataQ12345_wikidataAntonovka.jpg  returns [Q12345,Antonovka]
+        #from string 2002_20031123__r32_colorgray_colorblue_wikidataQ12345_wikidataAntonovka.jpg  returns [Q12345]
         # 2002_20031123__r32_colorgray_colorblue.jpg
         
         import re
@@ -658,11 +677,27 @@ class Fileprocessor:
         test_str = test_str[0:test_str.index('.')]
         
         lst = re.findall(r'(Q\d+)', test_str)
+
+        return lst       
         
-
-        if len(lst)>0:
-            self.logger.debug('from filename obtained wikidata:'+' '.join(lst))
-
+    def get_placewikidatalist_from_string(self,test_str:str)->list:
+        #from string 2002_20031123__r32_colorgray_colorblue_locationQ12345_wikidataAntonovka.jpg  returns [Q12345]
+        # 2002_20031123__r32_colorgray_colorblue.jpg
+        
+        import re
+        #cut to . symbol if extsts
+        test_str = test_str[0:test_str.index('.')]
+        
+        lst = re.findall(r'(placeQ\d+)', test_str)
+        
+        lst2=list()
+        for line in lst:
+            lst2.append(line[5:])
+        lst = lst2
+        del lst2
+        if 'placeQ' in test_str:
+            assert lst[0].startswith('Q'), lst[0] + ' get instead of wikidata id' 
+        
         return lst
        
     
@@ -930,11 +965,11 @@ class Fileprocessor:
                     assert 'commons' in wd_record, 'https://www.wikidata.org/wiki/'+wdid + ' must have commons'
                     assert wd_record["commons"] is not None, 'https://www.wikidata.org/wiki/'+wdid + ' must have commons'
                     text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
-        commons_filename = self.commons_filename(filename,objectnames,wikidata,dt_obj)
+        commons_filename = self.commons_filename(filename,objectnames,wikidata,dt_obj,add_administrative_name=False)
         
         return {"name": commons_filename, "text": text, "dt_obj": dt_obj}
 
-    def commons_filename(self,filename,objectnames,wikidata,dt_obj)->str:
+    def commons_filename(self,filename,objectnames,wikidata,dt_obj,add_administrative_name=True)->str:
         # file name on commons
         
         from model_wiki import Model_wiki  as Model_wiki_ask
@@ -961,11 +996,13 @@ class Fileprocessor:
         commons_filename = commons_filename.replace("/", " drob ")
         
         # add district name to file name
-        try:
-            administrative_name = modelwiki.get_wd_by_wdid(modelwiki.get_upper_location_wdid(modelwiki.get_wd_by_wdid(wikidata)))['labels']['en']
-            commons_filename = administrative_name + '_'+commons_filename
-        except:
-            pass
+        if add_administrative_name:
+            try:
+                administrative_name = modelwiki.get_wd_by_wdid(modelwiki.get_upper_location_wdid(modelwiki.get_wd_by_wdid(wikidata)))['labels']['en']
+                commons_filename = administrative_name + '_'+commons_filename
+            except:
+                pass
+            
         return commons_filename
 
     def take_user_wikidata_id(self, wdid) -> str:

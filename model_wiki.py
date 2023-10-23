@@ -51,6 +51,21 @@ class Model_wiki:
         
         self.wikidata_cache = self.wikidata_cache_load(wikidata_cache_filename=self.wikidata_cache_filename)
         
+    def replace_file_commons(self,pagename, filepath):
+        assert pagename
+        # Login to your account
+        site = pywikibot.Site('commons', 'commons')
+        site.login()
+        site.get_tokens("csrf")  # preload csrf token
+
+        # Replace the file
+        file_page = pywikibot.FilePage(site, pagename)
+
+        file_page.upload(file=filepath, comment='Replacing file')
+        
+        return
+        
+
     def wikidata_cache_load(self,wikidata_cache_filename):
         if os.path.isfile(wikidata_cache_filename) == False:
             cache = {'entities_simplified':{},'entities_non_simplified':{},'best_claims':{},'commonscat_by_2_wikidata':{}}
@@ -361,26 +376,18 @@ class Model_wiki:
             self.logger.error(' '.join(cmd))
             self.logger.error(response.stdout.decode())
             quit()
-        object_record = {'names': {}}
+        object_record = {'labels': {}}
+        object_record['labels'] = object_wd["labels"]
+        object_record['id'] = object_wd["id"]
         
-        if "ru" in object_wd["labels"] and "en" in object_wd["labels"]:
-            object_record['names'] = {
-                "en": object_wd["labels"]["en"],
-                "ru": object_wd["labels"]["ru"],
-            }
-        elif "en" in object_wd["labels"] and "ru" not in object_wd["labels"]:
-            object_record['names'] = {
-                "en": object_wd["labels"]["en"],
-                "ru": object_wd["labels"]["en"],
-            }
-        else:
+        if "en"  not in object_wd["labels"]:
             self.logger.error('object https://www.wikidata.org/wiki/' +
                               wikidata+' must have english label')
             return None
+        
 
-        for lang in self.optional_langs:
-            if lang in object_wd["labels"]:
-                object_record['names'][lang] = object_wd["labels"][lang]
+
+
         if "P373" in object_wd["claims"]:
             object_record['commons'] = object_wd["claims"]["P373"][0]["value"]
         elif 'commonswiki' in object_wd["sitelinks"]:
@@ -390,6 +397,7 @@ class Model_wiki:
                               
         if "P31" in object_wd["claims"]:
             object_record['instance_of_list'] = object_wd["claims"]["P31"]
+        object_record['claims'] = object_wd["claims"]
             
         self.wikidata_cache['entities_simplified'][wikidata] = object_record
         self.wikidata_cache_save(self.wikidata_cache,self.wikidata_cache_filename)

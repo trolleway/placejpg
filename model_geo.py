@@ -30,7 +30,6 @@ class Model_Geo:
         minx, miny, maxx, maxy = self.make_search_rect(point_geom)
         srclayer.ResetReading()
         srclayer.SetSpatialFilterRect(minx, miny, maxx, maxy)
-        print(minx, miny, maxx, maxy)
         srclayer.ResetReading()
         
         if srclayer.GetFeatureCount() < 1:

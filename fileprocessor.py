@@ -170,7 +170,7 @@ class Fileprocessor:
 
         vehicle_names = {'ru': {'tram': 'трамвай', 'trolleybus': 'троллейбус',
                            'bus': 'автобус', 'train': 'поезд', 'locomotive':'локомотив', 'auto': 'автомобиль', 'plane': 'самолёт'}}
-        wikidata_4_structured_data = list()
+        wikidata_4_structured_data = set()
         train_synonims = ['train','locomotive','emu','dmu']
         
         #assert facing in ('Left','Right',None)
@@ -185,7 +185,7 @@ class Fileprocessor:
             
             model_names = model_wd["labels"]
             
-            wikidata_4_structured_data.append(model_wd['id'])
+            wikidata_4_structured_data.add(model_wd['id'])
 
         # STREET
         # if street - vector file path: get street wikidata code by point in polygon
@@ -216,11 +216,11 @@ class Fileprocessor:
 
             street_wd = modelwiki.get_wikidata(street_wdid)
             street_names = street_wd["labels"]
-            wikidata_4_structured_data.append(street_wd['id'])
+            wikidata_4_structured_data.add(street_wd['id'])
             #add city/district to structured data
             city_wd = modelwiki.get_territorial_entity(street_wd)
             assert city_wd is not None, 'https://www.wikidata.org/wiki/'+str(street_wdid) + ' must have territorial entity'
-            wikidata_4_structured_data.append(city_wd['id'])
+            wikidata_4_structured_data.add(city_wd['id'])
             
         # ROUTE
         if route is None:
@@ -256,7 +256,7 @@ class Fileprocessor:
                 for abbr_record in system_wd['claims']['P1813']:
                     system_names[abbr_record['value']['language']] = abbr_record['value']['text']
                     
-            wikidata_4_structured_data.append(system_wd['id'])
+            wikidata_4_structured_data.add(system_wd['id'])
             system_territorial_entity = modelwiki.get_territorial_entity(system_wd)
             if system_territorial_entity is not None:
                 city_name_en = system_territorial_entity['labels']['en'] or ''
@@ -275,23 +275,28 @@ class Fileprocessor:
                 raise ValueError( 'object https://www.wikidata.org/wiki/' +
                               city_wd['id']+' must has name ru and name en')
             if city_wd['id'] not in wikidata_4_structured_data:
-                wikidata_4_structured_data.append(city_wd['id'])
+                wikidata_4_structured_data.add(city_wd['id'])
             
 
         # LINE
         line_wdid = None
+        line_wd = None
         line_names = dict()
         if line is not None:
             line_wdid = self.take_user_wikidata_id(line)
-            line_wd = modelwiki.get_wikidata(line_wdid)
+            line_wd = modelwiki.get_wikidata_simplified(line_wdid)
 
             line_names = line_wd["labels"]
 
-            wikidata_4_structured_data.append(line_wdid)
+            wikidata_4_structured_data.add(line_wdid)
         elif line is None and vehicle in train_synonims:
             # GET RAILWAY LINE FROM WIKIDATA
             if 'P81' in street_wd['claims'] and len(street_wd['claims']['P81'])==1:
-                line_wd=modelwiki.get_wikidata(street_wd['claims']['P81'][0]['value'])
+                line_wd=modelwiki.get_wikidata_simplified(street_wd['claims']['P81'][0]['value'])
+                line_wdid=line_wd['id']
+        
+
+            
 
         # trollybus garage numbers. extract 3213 from 3213_20060702_162.jpg
         if number == 'BEFORE_UNDERSCORE':
@@ -500,11 +505,19 @@ class Fileprocessor:
         text = text + "[[Category:Photographs by " + \
             self.photographer+'/'+country+'/'+transports[vehicle].lower().capitalize()+"]]" + "\n"
         
-        if 'line_wd' in locals() and line_wd is not None:
-            if "P373" in line_wd["claims"]:
-                text = text +"[[Category:" + line_wd["claims"]["P373"][0]["value"]+"]]" + "\n"
-            wikidata_4_structured_data.append(line_wd['id'])
-
+        # TRAINS ON LINE
+        if vehicle in train_synonims and line_wdid is not None and modelwiki.search_commonscat_by_2_wikidata('Q870',line_wdid) is not None:
+            cat = modelwiki.search_commonscat_by_2_wikidata('Q870',line_wdid)
+            
+            text = text +"[[Category:" + cat+"]]" + "\n"
+            wikidata_4_structured_data.add(line_wd['id'])
+        # GET RAILWAY LINE FROM STATION
+        elif line_wd is not None:
+            if line_wd['commons'] is not None:
+                text = text +"[[Category:" + line_wd["commons"]+"]]" + "\n"
+            wikidata_4_structured_data.add(line_wd['id'])
+            
+        
 
         # locale.setlocale(locale.LC_ALL, 'en_GB')
         if vehicle in train_synonims:
@@ -542,9 +555,9 @@ class Fileprocessor:
             if facing == 'Rear three-quarter'.capitalize(): text += "[[Category:Rear three-quarter views of "+transports[vehicle].lower()+"]]\n"
             if facing == 'Three-quarter'.capitalize(): text += "[[Category:Three-quarter views of "+transports[vehicle].lower()+"]]\n"
             
-            if facing == 'Left': wikidata_4_structured_data.append('Q119570753')
-            if facing == 'Right': wikidata_4_structured_data.append('Q119570670')
-            if facing == 'Front': wikidata_4_structured_data.append('Q1972238')
+            if facing == 'Left': wikidata_4_structured_data.add('Q119570753')
+            if facing == 'Right': wikidata_4_structured_data.add('Q119570670')
+            if facing == 'Front': wikidata_4_structured_data.add('Q1972238')
         
         if colors is None and 'color' in  os.path.basename(filename):
             colors = self.get_colorlist_from_string(os.path.basename(filename))
@@ -569,7 +582,8 @@ class Fileprocessor:
         
         #vehicle to wikidata
             vehicles_wikidata={"trolleybus":"Q5639","bus":"Q5638","tram":"Q3407658","auto":"Q1420","locomotive":"Q93301","train":"Q870"}
-            if vehicle in vehicles_wikidata: wikidata_4_structured_data.append(vehicles_wikidata[vehicle])
+            if vehicle in vehicles_wikidata: wikidata_4_structured_data.add(vehicles_wikidata[vehicle])
+            if vehicle in train_synonims: wikidata_4_structured_data.add(vehicles_wikidata['train'])
         
         #number
         if number is not None:
@@ -646,7 +660,7 @@ class Fileprocessor:
                         text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
         
         return {"name": commons_filename, "text": text, 
-        "structured_data_on_commons": wikidata_4_structured_data, 
+        "structured_data_on_commons": list(wikidata_4_structured_data), 
         'captions':captions,
         "dt_obj": dt_obj}
     def get_colorlist_from_string(self,test_str:str)->list:
@@ -778,17 +792,17 @@ class Fileprocessor:
             
             
         objectnames = {}
-
-        objectnames['en'] = wd_record['names']["en"]
-        objectnames['ru'] = wd_record['names']["ru"]
+        assert 'en' in wd_record['labels'], 'object https://www.wikidata.org/wiki/' +wd_record['id']+' must has name en'
+        objectnames['en'] = wd_record['labels']["en"]
+        objectnames['ru'] = wd_record['labels']["ru"]
         
         objectname_long_ru = ''
         objectname_long_en = ''
         if len(instance_of_data) > 0:
             objectname_long_ru = ', '.join(
-                d['names']['ru'] for d in instance_of_data) + ' '+wd_record['names']["ru"]
+                d['labels']['ru'] for d in instance_of_data) + ' '+wd_record['labels']["ru"]
             objectname_long_en = ', '.join(
-                d['names']['en'] for d in instance_of_data) + ' '+wd_record['names']["en"]
+                d['labels']['en'] for d in instance_of_data) + ' '+wd_record['labels']["en"]
         
         commons_filename = self.commons_filename(filename,objectnames,wikidata,dt_obj = self.image2datetime(filename))
         
@@ -860,11 +874,11 @@ class Fileprocessor:
         text = ""
         objectnames = {}
 
-        objectnames['en'] = wd_record['names']["en"]
-        objectnames['ru'] = wd_record['names']["ru"]
+        objectnames['en'] = wd_record['labels']["en"]
+        objectnames['ru'] = wd_record['labels']["ru"]
         for lang in self.optional_langs:
-            if lang in wd_record['names']:
-                objectnames[lang] = wd_record['names'][lang]
+            if lang in wd_record['labels']:
+                objectnames[lang] = wd_record['labels'][lang]
 
 
         objectname_long_ru = objectnames['ru']
@@ -873,13 +887,13 @@ class Fileprocessor:
         objectnames_long = {}
         if len(instance_of_data) > 0:
             objectname_long_ru = ', '.join(
-                d['names']['ru'] for d in instance_of_data) + ' '+objectnames['ru']
+                d['labels']['ru'] for d in instance_of_data) + ' '+objectnames['ru']
             objectname_long_en = ', '.join(
-                d['names']['en'] for d in instance_of_data) + ' '+objectnames['en']
+                d['labels']['en'] for d in instance_of_data) + ' '+objectnames['en']
             for lang in self.optional_langs:
                 try:
                     objectnames_long[lang] = ', '.join(
-                        d['names'][lang] for d in instance_of_data) + ' '+objectnames[lang]
+                        d['labels'][lang] for d in instance_of_data) + ' '+objectnames[lang]
                 except:
                     pass
 

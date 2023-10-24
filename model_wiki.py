@@ -1277,6 +1277,7 @@ LIMIT 100
                 commonscat = item.getSitelink('commonswiki')
             except:
                 claim_list = item_dict["claims"].get('P373',())
+                assert claim_list is not none, 'https://www.wikidata.org/wiki/'+abstract_wdid + ' must have P373commons'
                 for claim in claim_list:
                     commonscat = claim.getTarget()
             commonscat = commonscat.replace('Category:','')

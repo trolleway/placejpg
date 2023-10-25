@@ -335,7 +335,7 @@ class Model_wiki:
             building_dict_wd = json.loads(response.stdout.decode())
             return building_dict_wd["entity"]["id"]
 
-    def get_wikidata(self, wikidata) -> dict:
+    def _deprecated_get_wikidata(self, wikidata) -> dict:
 
         cmd = ['wb', 'gt', '--json', '--no-minimize', wikidata]
         response = subprocess.run(cmd, capture_output=True)

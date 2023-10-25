@@ -18,6 +18,7 @@ import warnings
 import shutil
 from tqdm import tqdm
 
+
 class Fileprocessor:
     logging.basicConfig(
         level=logging.ERROR,
@@ -30,30 +31,29 @@ class Fileprocessor:
     exiftool_path = "exiftool"
 
     wikidata_cache = dict()
-    optional_langs = ('de', 'fr', 'it', 'es', 'pt', 'uk', 'be','ja')
+    optional_langs = ('de', 'fr', 'it', 'es', 'pt', 'uk', 'be', 'ja')
     chunk_size = 102400
     chunk_size = 0
     photographer = 'Artem Svetlov'
-    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY=['Q660770']
+    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY = ['Q660770']
 
-
-    def input2filelist(self,filepath):
+    def input2filelist(self, filepath):
         if os.path.isfile(filepath):
             files = [filepath]
             assert os.path.isfile(filepath)
-            uploaded_folder_path = os.path.join(os.path.dirname(filepath),'commons_uploaded')
+            uploaded_folder_path = os.path.join(
+                os.path.dirname(filepath), 'commons_uploaded')
         elif os.path.isdir(filepath):
             files = os.listdir(filepath)
             files = [os.path.join(filepath, x) for x in files]
-            files = list(filter(lambda name: 'commons_uploaded' not in name , files))
+            files = list(
+                filter(lambda name: 'commons_uploaded' not in name, files))
 
-            
-            uploaded_folder_path = os.path.join(filepath,'commons_uploaded')
+            uploaded_folder_path = os.path.join(filepath, 'commons_uploaded')
         else:
             raise Exception("filepath should be file or directory")
         return files, uploaded_folder_path
-    
-    
+
     def prepare_wikidata_url(self, wikidata) -> str:
         # convert string https://www.wikidata.org/wiki/Q4412648 to Q4412648
 
@@ -70,17 +70,18 @@ class Fileprocessor:
         bot = UploadRobot(
             [filepath],  # A list of files to upload
             description=description,  # The description of the file
-            use_filename=commons_name,  # keep original names of urls and files, otherwise it will ask to enter a name for each file
+            # keep original names of urls and files, otherwise it will ask to enter a name for each file
+            use_filename=commons_name,
             keep_filename=True,  # Keep the filename as is
             # Ask for verification of the description
             verify_description=verify_description,
             targetSite=site,  # The site object for Wikimedia Commons
-            aborts=True, #List of the warning types to abort upload on
+            aborts=True,  # List of the warning types to abort upload on
             chunk_size=self.chunk_size,
         )
         print()
         print('=======================================================')
-        print(commons_name.center(60,'*'))
+        print(commons_name.center(60, '*'))
         # Try to run the upload robot
         try:
             bot.run()
@@ -88,12 +89,6 @@ class Fileprocessor:
             # Handle API errors
             print(f"API error: {e.code}: {e.info}")
 
-
-
-
-
-    
-    
     def deprecated_get_wikidata_simplified(self, wikidata) -> dict:
         warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)
         # get all claims of this wikidata objects
@@ -112,8 +107,7 @@ class Fileprocessor:
             }
         except:
             raise ValueError('object https://www.wikidata.org/wiki/' +
-                              wikidata+' must has name ru and name en')
-            
+                             wikidata+' must has name ru and name en')
 
         for lang in self.optional_langs:
             if lang in object_wd["labels"]:
@@ -121,10 +115,11 @@ class Fileprocessor:
         if "P373" in object_wd["claims"]:
             object_record['commons'] = object_wd["claims"]["P373"][0]["value"]
         elif 'commonswiki' in object_wd["sitelinks"]:
-            object_record['commons'] = object_wd["sitelinks"]["commonswiki"]["title"].replace('Category:','')
+            object_record['commons'] = object_wd["sitelinks"]["commonswiki"]["title"].replace(
+                'Category:', '')
         else:
             object_record['commons'] = None
-                              
+
         if "P31" in object_wd["claims"]:
             object_record['instance_of_list'] = object_wd["claims"]["P31"]
         self.wikidata_cache[wikidata] = object_record
@@ -158,33 +153,29 @@ class Fileprocessor:
         object_wd = json.loads(response.stdout.decode())
         return object_wd['labels']
 
-
-
-
-
     def make_image_texts_vehicle(self, filename, vehicle, model, number, street=None, system=None,  route=None, country=None, line=None, facing=None, colors=None, secondary_wikidata_ids=None, digital_number=None) -> dict:
         assert os.path.isfile(filename)
-        
-        from model_wiki import Model_wiki  as Model_wiki_ask
+
+        from model_wiki import Model_wiki as Model_wiki_ask
         modelwiki = Model_wiki_ask()
 
         vehicle_names = {'ru': {'tram': 'трамвай', 'trolleybus': 'троллейбус',
-                           'bus': 'автобус', 'train': 'поезд', 'locomotive':'локомотив', 'auto': 'автомобиль', 'plane': 'самолёт'}}
+                                'bus': 'автобус', 'train': 'поезд', 'locomotive': 'локомотив', 'auto': 'автомобиль', 'plane': 'самолёт'}}
         wikidata_4_structured_data = set()
-        train_synonims = ['train','locomotive','emu','dmu']
-        
-        #assert facing in ('Left','Right',None)
+        train_synonims = ['train', 'locomotive', 'emu', 'dmu']
+
+        # assert facing in ('Left','Right',None)
 
         # obtain exif
         dt_obj = self.image2datetime(filename)
         geo_dict = self.image2coords(filename)
-        
+
         if model is not None:
             model_wdid = modelwiki.wikidata_input2id(model)
             model_wd = modelwiki.get_wikidata_simplified(model_wdid)
-            
+
             model_names = model_wd["labels"]
-            
+
             wikidata_4_structured_data.add(model_wd['id'])
 
         # STREET
@@ -192,72 +183,81 @@ class Fileprocessor:
         if street is not None:
             # take street from ogr vector file
             if 'placeQ' in os.path.basename(filename):
-                street_wdid = self.get_placewikidatalist_from_string(os.path.basename(filename))[0]
+                street_wdid = self.get_placewikidatalist_from_string(
+                    os.path.basename(filename))[0]
 
             elif os.path.isfile(street):
-                
-                if geo_dict is None: 
 
-                    self.logger.error(filename + ' not set street, must have coordinates for search in geodata')
+                if geo_dict is None:
+
+                    self.logger.error(
+                        filename + ' not set street, must have coordinates for search in geodata')
                     return None
                 regions_filepath = street
-                from model_geo import Model_Geo  as Model_geo_ask
+                from model_geo import Model_Geo as Model_geo_ask
                 modelgeo = Model_geo_ask()
-                street_wdid = modelgeo.identify_deodata(geo_dict.get("lat"),geo_dict.get("lon"),regions_filepath,'wikidata')
-                if street_wdid is None: 
+                street_wdid = modelgeo.identify_deodata(geo_dict.get(
+                    "lat"), geo_dict.get("lon"), regions_filepath, 'wikidata')
+                if street_wdid is None:
                     msg = 'file: '+regions_filepath
-                    self.logger.error(filename.ljust(100) + ' not found location in '+msg+'')
+                    self.logger.error(filename.ljust(
+                        100) + ' not found location in '+msg+'')
                     return None
-                street_wd = modelwiki.get_wikidata(street_wdid)
+                street_wd = modelwiki.get_wikidata_simplified(street_wdid)
             else:
                 # take street from user input
                 street_wdid = modelwiki.wikidata_input2id(street)
-                if street is not None: assert street_wdid is not None
+                if street is not None:
+                    assert street_wdid is not None
 
-            street_wd = modelwiki.get_wikidata(street_wdid)
+            street_wd = modelwiki.get_wikidata_simplified(street_wdid)
             street_names = street_wd["labels"]
             wikidata_4_structured_data.add(street_wd['id'])
-            #add city/district to structured data
+            # add city/district to structured data
             city_wd = modelwiki.get_territorial_entity(street_wd)
-            assert city_wd is not None, 'https://www.wikidata.org/wiki/'+str(street_wdid) + ' must have territorial entity'
+            assert city_wd is not None, 'https://www.wikidata.org/wiki/' + \
+                str(street_wdid) + ' must have territorial entity'
             wikidata_4_structured_data.add(city_wd['id'])
-            
+
         # ROUTE
         if route is None:
             # extract route "34" from 3216_20070112_052_r34.jpg
             import re
             regex = "_r(.*?)[_.\b]"
-            test_str=os.path.basename(filename)
-            
+            test_str = os.path.basename(filename)
+
             matches = re.finditer(regex, test_str, re.MULTILINE)
             for match in matches:
                 route = match.group()[2:-1]
-            if route=='z': route=None
-                        
+            if route == 'z':
+                route = None
+
         # DIGITAL_NUMBER
         if digital_number is None:
             # extract number "1456" from 2TE10M-1456_20230122_444_dn1456.jpg
             import re
             regex = "_n(.*?)[_.\b]"
-            test_str=os.path.basename(filename)
-            
+            test_str = os.path.basename(filename)
+
             matches = re.finditer(regex, test_str, re.MULTILINE)
             for match in matches:
                 digital_number = match.group()[2:-1]
-            
+
         # SYSTEM
         if system is not None:
             system_wdid = modelwiki.wikidata_input2id(system)
-            system_wd = modelwiki.get_wikidata(system_wdid)
+            system_wd = modelwiki.get_wikidata_simplified(system_wdid)
 
             system_names = system_wd["labels"]
-            #GET "RZD" from "Russian Railways" 
+            # GET "RZD" from "Russian Railways"
             if 'P1813' in system_wd['claims']:
                 for abbr_record in system_wd['claims']['P1813']:
-                    system_names[abbr_record['value']['language']] = abbr_record['value']['text']
-                    
+                    system_names[abbr_record['value']['language']
+                                 ] = abbr_record['value']['text']
+
             wikidata_4_structured_data.add(system_wd['id'])
-            system_territorial_entity = modelwiki.get_territorial_entity(system_wd)
+            system_territorial_entity = modelwiki.get_territorial_entity(
+                system_wd)
             if system_territorial_entity is not None:
                 city_name_en = system_territorial_entity['labels']['en'] or ''
                 city_name_ru = system_territorial_entity['labels']['ru'] or ''
@@ -272,11 +272,10 @@ class Fileprocessor:
                 city_name_en = city_wd['labels']['en']
                 city_name_ru = city_wd['labels']['ru']
             except:
-                raise ValueError( 'object https://www.wikidata.org/wiki/' +
-                              city_wd['id']+' must has name ru and name en')
+                raise ValueError('object https://www.wikidata.org/wiki/' +
+                                 city_wd['id']+' must has name ru and name en')
             if city_wd['id'] not in wikidata_4_structured_data:
                 wikidata_4_structured_data.add(city_wd['id'])
-            
 
         # LINE
         line_wdid = None
@@ -291,27 +290,28 @@ class Fileprocessor:
             wikidata_4_structured_data.add(line_wdid)
         elif line is None and vehicle in train_synonims:
             # GET RAILWAY LINE FROM WIKIDATA
-            if 'P81' in street_wd['claims'] and len(street_wd['claims']['P81'])==1:
-                line_wd=modelwiki.get_wikidata_simplified(street_wd['claims']['P81'][0]['value'])
-                line_wdid=line_wd['id']
-        
-
-            
+            if 'P81' in street_wd['claims'] and len(street_wd['claims']['P81']) == 1:
+                line_wd = modelwiki.get_wikidata_simplified(
+                    street_wd['claims']['P81'][0]['value'])
+                line_wdid = line_wd['id']
 
         # trollybus garage numbers. extract 3213 from 3213_20060702_162.jpg
         if number == 'BEFORE_UNDERSCORE':
-            number=os.path.basename(filename)[0:os.path.basename(filename).find('_')]
-        
+            number = os.path.basename(
+                filename)[0:os.path.basename(filename).find('_')]
+
         filename_base = os.path.splitext(os.path.basename(filename))[0]
         filename_extension = os.path.splitext(os.path.basename(filename))[1]
-        
-        placenames={'ru':list(),'en':list()}
-        
-        if 'en' in line_names: 
-            if len(line_names['en'])>0: placenames['en'].append(line_names['en'])
+
+        placenames = {'ru': list(), 'en': list()}
+
+        if 'en' in line_names:
+            if len(line_names['en']) > 0:
+                placenames['en'].append(line_names['en'])
         if 'en' in street_names:
-            if street_names['en'] != '': placenames['en'].append(street_names['en'])
-                
+            if street_names['en'] != '':
+                placenames['en'].append(street_names['en'])
+
         if vehicle not in train_synonims:
             objectname_en = '{city} {transport} {number}'.format(
                 transport=vehicle,
@@ -327,33 +327,34 @@ class Fileprocessor:
                 number=number
             )
             commons_filename = '{city} {transport} {number} {dt} {place} {model}{extension}'.format(
-            city=city_name_en,
-            transport=vehicle,
-            number=number,
-            dt=dt_obj.strftime("%Y-%m %s"),
-            place=' '.join(placenames['en']),
-            model = model_names['en'],
-            extension=filename_extension)
-            
-            # filename for Moscow Trolleybus
-            if system_wdid == 'Q4304313':
-                commons_filename = '{city} {transport} {model} {number} {dt} {place}{extension}'.format(
                 city=city_name_en,
                 transport=vehicle,
                 number=number,
                 dt=dt_obj.strftime("%Y-%m %s"),
                 place=' '.join(placenames['en']),
-                model = model_names['en'],
+                model=model_names['en'],
                 extension=filename_extension)
 
-            #commons_filename = objectname_en + " " +dt_obj.strftime("%Y-%m %s") + model_names['en'] + ' '+ ' '.join(placenames['en'])+ ' ' + filename_extension
+            # filename for Moscow Trolleybus
+            if system_wdid == 'Q4304313':
+                commons_filename = '{city} {transport} {model} {number} {dt} {place}{extension}'.format(
+                    city=city_name_en,
+                    transport=vehicle,
+                    number=number,
+                    dt=dt_obj.strftime("%Y-%m %s"),
+                    place=' '.join(placenames['en']),
+                    model=model_names['en'],
+                    extension=filename_extension)
+
+            # commons_filename = objectname_en + " " +dt_obj.strftime("%Y-%m %s") + model_names['en'] + ' '+ ' '.join(placenames['en'])+ ' ' + filename_extension
         elif vehicle in train_synonims:
             assert street_names is not None or line_names is not None
-            if system_names['en']=='':system_names['en']=''
-            if system_names['ru']=='':system_names['ru']=''
-            
-            #{model} removed
+            if system_names['en'] == '':
+                system_names['en'] = ''
+            if system_names['ru'] == '':
+                system_names['ru'] = ''
 
+            # {model} removed
 
             objectname_en = '{system}{number}'.format(
                 system=system_names['en']+' ',
@@ -363,51 +364,54 @@ class Fileprocessor:
                 place=' '.join(placenames['en'])
             )
             commons_filename = '{system}{number} {dt} {place} {timestamp}{extension}'.format(
-            system=system_names['en']+' ',
-            number=translit(number, "ru", reversed=True),
-            dt=dt_obj.strftime("%Y-%m"),
-            place=' '.join(placenames['en']),
-            timestamp=dt_obj.strftime("%s"),
-            extension=filename_extension
+                system=system_names['en']+' ',
+                number=translit(number, "ru", reversed=True),
+                dt=dt_obj.strftime("%Y-%m"),
+                place=' '.join(placenames['en']),
+                timestamp=dt_obj.strftime("%s"),
+                extension=filename_extension
             )
-            
+
             objectname_ru = '{system}{number}'.format(
                 system=system_names['ru']+' ',
                 transport=vehicle_names['ru'][vehicle],
                 model=model_names.get('ru', model_names['en']),
                 number=number
-            )       
+            )
 
         commons_filename = commons_filename.replace("/", " drob ")
-        
 
         text = ''
 
         st = """== {{int:filedesc}} ==
 {{Information
 |description="""
-        captions=dict()
-        assert 'en' in street_names,  'https://www.wikidata.org/wiki/'+street_wdid + ' must have english name'
-        captions['en']=objectname_en + ' at ' + street_names['en']
+        captions = dict()
+        assert 'en' in street_names,  'https://www.wikidata.org/wiki/' + \
+            street_wdid + ' must have english name'
+        captions['en'] = objectname_en + ' at ' + street_names['en']
         if route is not None:
             captions['en'] += ' Line '+route
         if line_wdid is not None:
-            captions['en'] += ' '+modelwiki.get_wikidata(line_wdid)['labels']['en']
-        st += "{{en|1=" +captions['en'] + '}}'
-        
-        captions['ru']=objectname_ru + ' на ' +  \
+            captions['en'] += ' ' + \
+                modelwiki.get_wikidata_simplified(line_wdid)['labels']['en']
+        st += "{{en|1=" + captions['en'] + '}}'
+
+        captions['ru'] = objectname_ru + ' на ' +  \
             street_names['ru'].replace(
                 'Улица', 'улица').replace('Проспект', 'проспект')
         if route is not None:
             captions['ru'] += ' Маршрут '+route
         if line_wdid is not None:
-            captions['ru'] += ' '+modelwiki.get_wikidata(line_wdid)['labels']['ru']
-        st += "{{ru|1=" +captions['ru'] + '}}'
-        
-        if model is not None: st += " {{on Wikidata|" + model_wdid.split('#')[0] + "}}\n"
+            captions['ru'] += ' ' + \
+                modelwiki.get_wikidata_simplified(line_wdid)['labels']['ru']
+        st += "{{ru|1=" + captions['ru'] + '}}'
+
+        if model is not None:
+            st += " {{on Wikidata|" + model_wdid.split('#')[0] + "}}\n"
         st += " {{on Wikidata|" + street_wdid + "}}\n"
-        
-        if type(secondary_wikidata_ids) == list and len(secondary_wikidata_ids)>0:
+
+        if type(secondary_wikidata_ids) == list and len(secondary_wikidata_ids) > 0:
             for wdid in secondary_wikidata_ids:
                 st += " {{on Wikidata|" + wdid + "}}\n"
                 heritage_id = None
@@ -417,7 +421,7 @@ class Fileprocessor:
                     today = datetime.today()
                     if today.strftime('%Y-%m') == '2023-09':
                         st += "{{Wiki Loves Monuments 2023|1=ru}}"
-        
+
         st += "\n"
         st += (
             """|source={{own}}
@@ -472,22 +476,22 @@ class Fileprocessor:
 """
         )
         transports = {
-        'tram': 'Trams', 
-        'trolleybus': 'Trolleybuses',
-        'bus': 'Buses',
-        'train': 'Rail vehicles',
-        'locomotive': 'Locomotives',
-        'auto':'Automobiles'
-                      }
+            'tram': 'Trams',
+            'trolleybus': 'Trolleybuses',
+            'bus': 'Buses',
+            'train': 'Rail vehicles',
+            'locomotive': 'Locomotives',
+            'auto': 'Automobiles'
+        }
         transports_color = {
-        'tram': 'Trams', 
-        'trolleybus': 'Trolleybuses',
-        'bus': 'Buses',
-        'train': 'Rail vehicles',
-        'locomotive': 'Rail vehicles',
-        'auto':'Automobiles'
-                      }
-        
+            'tram': 'Trams',
+            'trolleybus': 'Trolleybuses',
+            'bus': 'Buses',
+            'train': 'Rail vehicles',
+            'locomotive': 'Rail vehicles',
+            'auto': 'Automobiles'
+        }
+
         if route is not None:
             text = text + "[[Category:{transports} on route {route} in {city}]]".format(
                 transports=transports[vehicle],
@@ -497,40 +501,125 @@ class Fileprocessor:
             if system_wd['id'] not in self.NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY:
                 text = text + \
                     "[[Category:" + system_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
-        try:
-            text = text + \
-                "[[Category:" + street_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
-        except:
-            pass
+
         text = text + "[[Category:Photographs by " + \
-            self.photographer+'/'+country+'/'+transports[vehicle].lower().capitalize()+"]]" + "\n"
+            self.photographer+'/'+country+'/' + \
+            transports[vehicle].lower().capitalize()+"]]" + "\n"
+
+        categories = set()
+        trains_on_line_cat = None
+        trains_on_station_cat = None
+
+        if vehicle in train_synonims:
+            trains_on_station_cat = None
+            trains_on_station_cat = modelwiki.search_commonscat_by_2_wikidata(
+                street_wdid, 'Q870')
+            if trains_on_station_cat is None:
+                cat = 'Category:Trains at '+street_wd['commons']
+                if modelwiki.is_category_exists(cat):
+                    trains_on_station_cat = cat
+                    del cat
+
+            if line_wd is not None:
+                trains_on_line_cat = modelwiki.search_commonscat_by_2_wikidata(
+                    line_wdid, 'Q870')
+                if trains_on_line_cat is None:
+                    cat = 'Category:Trains on '+line_wd['commons']
+                    if modelwiki.is_category_exists(cat):
+                        trains_on_line_cat = cat
+                        del cat
+
+            # TRAINS AT STATION
+            if trains_on_station_cat is not None:
+                categories.add(trains_on_station_cat)
+                if line_wdid is not None:
+                    wikidata_4_structured_data.add(line_wdid)
+                wikidata_4_structured_data.add(street_wdid)
+            # TRAINS ON LINE
+            elif trains_on_line_cat is not None:
+                categories.add(trains_on_line_cat)
+                if line_wdid is not None:
+                    wikidata_4_structured_data.add(line_wdid)
+                wikidata_4_structured_data.add(street_wdid)
+            else:
+                # STATION
+                categories.add(street_wd['commons'])
+                wikidata_4_structured_data.add(street_wdid)
+                # LINE
+                if line_wd is not None:
+                    wikidata_4_structured_data.add(line_wd['id'])
+                    if line_wd['commons'] is not None:
+                        categories.add(line_wd['commons'])
+
+        else:
+            if line_wd is not None:
+                if line_wd['commons'] is not None:
+                    categories.add(line_wd['commons'])
+            if street_wd is not None and 'commons' in street_wd:
+                categories.add(street_wd['commons'])
+
+        for catname in categories:
+            catname = catname.replace('Category:','')
+            text += "[[Category:"+catname+"]]" + "\n"
+        assert None not in wikidata_4_structured_data, 'empty value added to structured data set:' + \
+            str(' '.join(list(wikidata_4_structured_data)))
+
+        '''prev 
+        do_add_station_category=True
+        # TRAINS AT STATION
+        # Search category using wikidata
+        if vehicle in train_synonims and street is not None and line_wdid is not None and modelwiki.search_commonscat_by_2_wikidata(line_wdid,'Q870') is not None:
+            cat = modelwiki.search_commonscat_by_2_wikidata(street_wdid,'Q870')
+            text = text +"[[Category:" + cat+"]]" + "\n"
+            wikidata_4_structured_data.add(line_wd['id'])
+            wikidata_4_structured_data.add(street_wdid)
+            do_add_station_category=False
+        
+        # TRAINS AT STATION v2
+        # Search category using name generation
+        elif vehicle in train_synonims and street is not None:
+            cat='Category:Trains at '+street_wd['commons']
+            print('check if category exists '+cat)
+            if modelwiki.is_category_exists(cat):
+                text = text +"[["+cat+"]]" + "\n"
+                wikidata_4_structured_data.add(street_wdid)
+                
+            
         
         # TRAINS ON LINE
-        if vehicle in train_synonims and line_wdid is not None and modelwiki.search_commonscat_by_2_wikidata('Q870',line_wdid) is not None:
-            cat = modelwiki.search_commonscat_by_2_wikidata('Q870',line_wdid)
+        elif vehicle in train_synonims and line_wdid is not None and modelwiki.search_commonscat_by_2_wikidata(line_wdid,'Q870') is not None:
+            cat = modelwiki.search_commonscat_by_2_wikidata(line_wdid,'Q870')
             
             text = text +"[[Category:" + cat+"]]" + "\n"
             wikidata_4_structured_data.add(line_wd['id'])
+            do_add_station_category=True
         # GET RAILWAY LINE FROM STATION
         elif line_wd is not None:
             if line_wd['commons'] is not None:
                 text = text +"[[Category:" + line_wd["commons"]+"]]" + "\n"
             wikidata_4_structured_data.add(line_wd['id'])
-            
+            do_add_station_category=True
         
+        # ADD STATION CATEGORY / STREET CATEGORY
+        if do_add_station_category and street_wd is not None and 'commons' in street_wd:
+            text = text + \
+                "[[Category:" + street_wd["commons"] + "]]" + "\n"
+        '''
 
         # locale.setlocale(locale.LC_ALL, 'en_GB')
         if vehicle in train_synonims:
-            catname="Railway photographs taken on " + \
+            catname = "Railway photographs taken on " + \
                 dt_obj.strftime("%Y-%m-%d")
             text += "[[Category:"+catname+"]]" + "\n"
-            modelwiki.create_category(catname,'{{Railway photographs taken on navbox}}')    
+            modelwiki.create_category(
+                catname, '{{Railway photographs taken on navbox}}')
             if isinstance(country, str) and len(country) > 3:
                 catname = dt_obj.strftime("%B %Y") + \
                     " in rail transport in "+country
                 text += "[[Category:"+catname+"]]" + "\n"
-                category_content = '{{GeoGroup|level=2}}{{railtransportmonth-country|'+dt_obj.strftime("%Y")[0:3]+'|'+dt_obj.strftime("%Y")[-1:]+'|'+dt_obj.strftime("%m")+'|'+country+'}}'
-                modelwiki.create_category(catname,category_content)       
+                category_content = '{{GeoGroup|level=2}}{{railtransportmonth-country|'+dt_obj.strftime(
+                    "%Y")[0:3]+'|'+dt_obj.strftime("%Y")[-1:]+'|'+dt_obj.strftime("%m")+'|'+country+'}}'
+                modelwiki.create_category(catname, category_content)
 
         if vehicle == 'tram':
             text += "[[Category:Railway photographs taken on " + \
@@ -539,113 +628,136 @@ class Fileprocessor:
                 text += "[[Category:" + \
                     dt_obj.strftime("%B %Y") + \
                     " in tram transport in "+country+"]]" + "\n"
-                    
-        #do not add facing category if this is interior
-        if 'Q60998096' in secondary_wikidata_ids: facing=None
+
+        # do not add facing category if this is interior
+        if 'Q60998096' in secondary_wikidata_ids:
+            facing = None
         if facing is not None:
             facing = facing.strip().capitalize()
-            #assert facing.strip().upper() in ('LEFT','RIGHT')
-            
+            # assert facing.strip().upper() in ('LEFT','RIGHT')
 
-            if facing == 'Left': text += "[[Category:"+transports[vehicle]+" facing " +  facing.lower() + "]]\n"
-            if facing == 'Right': text += "[[Category:"+transports[vehicle]+" facing " +  facing.lower() + "]]\n"
-            if facing == 'Side': text += "[[Category:Side views of "+transports[vehicle].lower()+"]]\n"
-            if facing == 'Rear': text += "[[Category:Rear views of "+transports[vehicle].lower()+"]]\n"
-            if facing == 'Front': text += "[[Category:Front views of "+transports[vehicle].lower()+"]]\n"
-            if facing == 'Rear three-quarter'.capitalize(): text += "[[Category:Rear three-quarter views of "+transports[vehicle].lower()+"]]\n"
-            if facing == 'Three-quarter'.capitalize(): text += "[[Category:Three-quarter views of "+transports[vehicle].lower()+"]]\n"
-            
-            if facing == 'Left': wikidata_4_structured_data.add('Q119570753')
-            if facing == 'Right': wikidata_4_structured_data.add('Q119570670')
-            if facing == 'Front': wikidata_4_structured_data.add('Q1972238')
-        
-        if colors is None and 'color' in  os.path.basename(filename):
+            if facing == 'Left':
+                text += "[[Category:"+transports[vehicle] + \
+                    " facing " + facing.lower() + "]]\n"
+            if facing == 'Right':
+                text += "[[Category:"+transports[vehicle] + \
+                    " facing " + facing.lower() + "]]\n"
+            if facing == 'Side':
+                text += "[[Category:Side views of " + \
+                    transports[vehicle].lower()+"]]\n"
+            if facing == 'Rear':
+                text += "[[Category:Rear views of " + \
+                    transports[vehicle].lower()+"]]\n"
+            if facing == 'Front':
+                text += "[[Category:Front views of " + \
+                    transports[vehicle].lower()+"]]\n"
+            if facing == 'Rear three-quarter'.capitalize():
+                text += "[[Category:Rear three-quarter views of " + \
+                    transports[vehicle].lower()+"]]\n"
+            if facing == 'Three-quarter'.capitalize():
+                text += "[[Category:Three-quarter views of " + \
+                    transports[vehicle].lower()+"]]\n"
+
+            if facing == 'Left':
+                wikidata_4_structured_data.add('Q119570753')
+            if facing == 'Right':
+                wikidata_4_structured_data.add('Q119570670')
+            if facing == 'Front':
+                wikidata_4_structured_data.add('Q1972238')
+
+        if colors is None and 'color' in os.path.basename(filename):
             colors = self.get_colorlist_from_string(os.path.basename(filename))
-        if colors is not None:        
+        if colors is not None:
             colorname = ''
-            if colors[0].upper()=='RZDGREEN':
+            if colors[0].upper() == 'RZDGREEN':
                 text += "[[Category:Trains in Russian railways green livery]]\n".format(
-                transports = transports_color[vehicle].lower(),
-                colorname = colorname)
-            elif colors[0].upper()=='RZD':
+                    transports=transports_color[vehicle].lower(),
+                    colorname=colorname)
+            elif colors[0].upper() == 'RZD':
                 text += "[[Category:Trains in Russian Railways livery]]\n".format(
-                transports = transports_color[vehicle].lower(),
-                colorname = colorname)
+                    transports=transports_color[vehicle].lower(),
+                    colorname=colorname)
             else:
                 colors.sort()
                 colorname = ' and '.join(colors)
                 colorname = colorname.lower().capitalize()
                 text += "[[Category:{colorname} {transports}]]\n".format(
-                transports = transports_color[vehicle].lower(),
-                colorname = colorname)
-            
-        
-        #vehicle to wikidata
-            vehicles_wikidata={"trolleybus":"Q5639","bus":"Q5638","tram":"Q3407658","auto":"Q1420","locomotive":"Q93301","train":"Q870"}
-            if vehicle in vehicles_wikidata: wikidata_4_structured_data.add(vehicles_wikidata[vehicle])
-            if vehicle in train_synonims: wikidata_4_structured_data.add(vehicles_wikidata['train'])
-        
-        #number
+                    transports=transports_color[vehicle].lower(),
+                    colorname=colorname)
+
+        # vehicle to wikidata
+            vehicles_wikidata = {"trolleybus": "Q5639", "bus": "Q5638",
+                                 "tram": "Q3407658", "auto": "Q1420", "locomotive": "Q93301", "train": "Q870"}
+            if vehicle in vehicles_wikidata:
+                wikidata_4_structured_data.add(vehicles_wikidata[vehicle])
+            if vehicle in train_synonims:
+                wikidata_4_structured_data.add(vehicles_wikidata['train'])
+
+        # number
         if number is not None:
             number_filtered = number
-            if '-' in number_filtered: number_filtered=number_filtered[number_filtered.index('-')+1:]
+            if '-' in number_filtered:
+                number_filtered = number_filtered[number_filtered.index(
+                    '-')+1:]
             if digital_number is None:
                 digital_number = number_filtered
         if number is not None and vehicle in train_synonims:
-            catname="Number "+digital_number+" on rail vehicles"
+            catname = "Number "+digital_number+" on rail vehicles"
             category_page_content = '{{NumbercategoryTrain|'+digital_number+'}}'
 
-            modelwiki.create_category(catname,category_page_content)
+            modelwiki.create_category(catname, category_page_content)
             text += "[[Category:"+catname+"]]\n"
-            
+
         elif number is not None and vehicle == 'bus':
-            text += "[[Category:Number "+digital_number+" on buses]]\n"                   
+            text += "[[Category:Number "+digital_number+" on buses]]\n"
         elif number is not None and vehicle == 'trolleybus':
-            catname="Number "+digital_number+" on trolleybuses"
+            catname = "Number "+digital_number+" on trolleybuses"
             category_page_content = '{{numbercategory-trolleybuses|'+digital_number+'}}'
-            modelwiki.create_category(catname,category_page_content)  
-            text += "[[Category:"+catname+"]]\n"            
-            
-            catname="Number "+digital_number+" on buses"
+            modelwiki.create_category(catname, category_page_content)
+            text += "[[Category:"+catname+"]]\n"
+
+            catname = "Number "+digital_number+" on buses"
             category_page_content = '{{numbercategory-buses|'+digital_number+'}}'
-            modelwiki.create_category(catname,category_page_content)     
+            modelwiki.create_category(catname, category_page_content)
         elif number is not None and vehicle != 'tram':
-            text += "[[Category:Number "+digital_number+" on vehicles]]\n"            
+            text += "[[Category:Number "+digital_number+" on vehicles]]\n"
         if number is not None and vehicle == 'tram':
             text += "[[Category:Trams with fleet number "+digital_number+"]]\n"
         if dt_obj is not None and vehicle not in train_synonims:
-            catname="{transports} in {country} photographed in {year}".format(
-            transports = transports[vehicle],
-            country = country,
-            year = dt_obj.strftime("%Y"),
+            catname = "{transports} in {country} photographed in {year}".format(
+                transports=transports[vehicle],
+                country=country,
+                year=dt_obj.strftime("%Y"),
             )
             text += "[[Category:"+catname+"]]\n"
-            if vehicle=='trolleybus':
+            if vehicle == 'trolleybus':
                 category_page_content = "[[Category:{transports} photographed in {year}]]\n[[Category:{transports} photographed in {year}]]".format(
-            transports = transports[vehicle],
-            country = country,
-            year = dt_obj.strftime("%Y"),
-            )
+                    transports=transports[vehicle],
+                    country=country,
+                    year=dt_obj.strftime("%Y"),
+                )
 
-                modelwiki.create_category(catname,category_page_content) 
-            
-        
-        #if dt_obj is not None and vehicle == 'trolleybus':    
+                modelwiki.create_category(catname, category_page_content)
+
+        # if dt_obj is not None and vehicle == 'trolleybus':
         # category for model. search for category like "ZIU-9 in Moscow"
-        cat = modelwiki.get_category_object_in_location(model_wd['id'],street_wd['id'],order=digital_number,verbose=True)
-        if cat is not None: 
+        cat = modelwiki.get_category_object_in_location(
+            model_wd['id'], street_wd['id'], order=digital_number, verbose=True)
+        if cat is not None:
             text = text + cat + "\n"
         else:
             text = text + \
-                "[[Category:" + model_wd["commons"] + '|'+ digital_number +"]]" + "\n"
-            
+                "[[Category:" + model_wd["commons"] + \
+                '|' + digital_number + "]]" + "\n"
+
         # categories for secondary_wikidata_ids
         # search for geography categories using street like (ZIU-9 in Russia)
 
-        if type(secondary_wikidata_ids) == list and len(secondary_wikidata_ids)>0:
+        if type(secondary_wikidata_ids) == list and len(secondary_wikidata_ids) > 0:
             for wdid in secondary_wikidata_ids:
-                cat = modelwiki.get_category_object_in_location(wdid,street_wdid,verbose=True)
-                if cat is not None: 
+                cat = modelwiki.get_category_object_in_location(
+                    wdid, street_wdid, verbose=True)
+                if cat is not None:
                     text = text + cat + "\n"
                 else:
                     wd_record = modelwiki.get_wikidata_simplified(wdid)
@@ -653,68 +765,73 @@ class Fileprocessor:
                         return None
                     secondary_objects_should_have_commonscat = False
                     if secondary_objects_should_have_commonscat:
-                        assert 'commons' in wd_record, 'https://www.wikidata.org/wiki/'+wdid + ' must have commons'
-                        assert wd_record["commons"] is not None, 'https://www.wikidata.org/wiki/'+wdid + ' must have commons'
-                    
+                        assert 'commons' in wd_record, 'https://www.wikidata.org/wiki/' + \
+                            wdid + ' must have commons'
+                        assert wd_record["commons"] is not None, 'https://www.wikidata.org/wiki/' + \
+                            wdid + ' must have commons'
+
                     if 'commons' in wd_record and wd_record["commons"] is not None:
-                        text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
-        
-        return {"name": commons_filename, "text": text, 
-        "structured_data_on_commons": list(wikidata_4_structured_data), 
-        'captions':captions,
-        "dt_obj": dt_obj}
-    def get_colorlist_from_string(self,test_str:str)->list:
-        #from string 2002_20031123__r32_colorgray_colorblue.jpg  returns [Gray,Blue]
+                        text = text + \
+                            "[[Category:" + wd_record["commons"] + "]]" + "\n"
+        assert None not in wikidata_4_structured_data, 'empty value added to structured data set:' + \
+            str(' '.join(list(wikidata_4_structured_data)))
+        return {"name": commons_filename, "text": text,
+                "structured_data_on_commons": list(wikidata_4_structured_data),
+                'captions': captions,
+                "dt_obj": dt_obj}
+
+    def get_colorlist_from_string(self, test_str: str) -> list:
+        # from string 2002_20031123__r32_colorgray_colorblue.jpg  returns [Gray,Blue]
         # 2002_20031123__r32_colorgray_colorblue.jpg
-        
+
         import re
-        #cut to . symbol if extsts
+        # cut to . symbol if extsts
         test_str = test_str[0:test_str.index('.')]
-        
-        #split string by _
+
+        # split string by _
         parts = re.split('_+', test_str)
-        
+
         lst = list()
         for part in parts:
             if part.startswith('color'):
                 lst.append(part[5:].title())
-        
+
         print(lst)
         return lst
-       
-    def get_wikidatalist_from_string(self,test_str:str)->list:
-        #from string 2002_20031123__r32_colorgray_colorblue_wikidataQ12345_wikidataAntonovka.jpg  returns [Q12345]
+
+    def get_wikidatalist_from_string(self, test_str: str) -> list:
+        # from string 2002_20031123__r32_colorgray_colorblue_wikidataQ12345_wikidataAntonovka.jpg  returns [Q12345]
         # 2002_20031123__r32_colorgray_colorblue.jpg
-        
+
         import re
-        #cut to . symbol if extsts
+        # cut to . symbol if extsts
         test_str = test_str[0:test_str.index('.')]
-        
+
         lst = re.findall(r'(Q\d+)', test_str)
 
-        return lst       
-        
-    def get_placewikidatalist_from_string(self,test_str:str)->list:
-        #from string 2002_20031123__r32_colorgray_colorblue_locationQ12345_wikidataAntonovka.jpg  returns [Q12345]
+        return lst
+
+    def get_placewikidatalist_from_string(self, test_str: str) -> list:
+        # from string 2002_20031123__r32_colorgray_colorblue_locationQ12345_wikidataAntonovka.jpg  returns [Q12345]
         # 2002_20031123__r32_colorgray_colorblue.jpg
-        
+
         import re
-        #cut to . symbol if extsts
+        # cut to . symbol if extsts
         test_str = test_str[0:test_str.index('.')]
-        
+
         lst = re.findall(r'(placeQ\d+)', test_str)
-        
-        lst2=list()
+
+        lst2 = list()
         for line in lst:
             lst2.append(line[5:])
         lst = lst2
         del lst2
         if 'placeQ' in test_str:
-            assert lst[0].startswith('Q'), lst[0] + ' get instead of wikidata id' 
-        
+            assert lst[0].startswith('Q'), lst[0] + \
+                ' get instead of wikidata id'
+
         return lst
-       
-    
+
     def get_date_information_part(self, dt_obj, taken_on_location):
         st = ''
         st += (
@@ -776,12 +893,10 @@ class Fileprocessor:
 
         return text
 
-    
-
-    def make_image_texts_standalone(self,filename,wikidata,secondary_wikidata_ids)->dict:
-        from model_wiki import Model_wiki  as Model_wiki_ask
+    def make_image_texts_standalone(self, filename, wikidata, secondary_wikidata_ids) -> dict:
+        from model_wiki import Model_wiki as Model_wiki_ask
         modelwiki = Model_wiki_ask()
-        
+
         wd_record = modelwiki.get_wikidata_simplified(wikidata)
 
         instance_of_data = list()
@@ -789,13 +904,13 @@ class Fileprocessor:
             for i in wd_record['instance_of_list']:
                 instance_of_data.append(
                     modelwiki.get_wikidata_simplified(i['value']))
-            
-            
+
         objectnames = {}
-        assert 'en' in wd_record['labels'], 'object https://www.wikidata.org/wiki/' +wd_record['id']+' must has name en'
+        assert 'en' in wd_record['labels'], 'object https://www.wikidata.org/wiki/' + \
+            wd_record['id']+' must has name en'
         objectnames['en'] = wd_record['labels']["en"]
         objectnames['ru'] = wd_record['labels']["ru"]
-        
+
         objectname_long_ru = ''
         objectname_long_en = ''
         if len(instance_of_data) > 0:
@@ -803,56 +918,59 @@ class Fileprocessor:
                 d['labels']['ru'] for d in instance_of_data) + ' '+wd_record['labels']["ru"]
             objectname_long_en = ', '.join(
                 d['labels']['en'] for d in instance_of_data) + ' '+wd_record['labels']["en"]
-        
-        commons_filename = self.commons_filename(filename,objectnames,wikidata,dt_obj = self.image2datetime(filename))
-        
+
+        commons_filename = self.commons_filename(
+            filename, objectnames, wikidata, dt_obj=self.image2datetime(filename))
+
         objects_wikidata = list()
         for obj_wdid in secondary_wikidata_ids:
             obj_wdid = self.take_user_wikidata_id(obj_wdid)
-            obj_wd = modelwiki.get_wikidata(obj_wdid)
+            obj_wd = modelwiki.get_wikidata_simplified(obj_wdid)
             objects_wikidata.append(obj_wd)
         for obj_wd in objects_wikidata:
             try:
-                objectname_long_ru = objectname_long_ru + ', '+ obj_wd['labels']['ru']
-                objectname_long_en = objectname_long_en + ', '+ obj_wd['labels']['en']
+                objectname_long_ru = objectname_long_ru + \
+                    ', ' + obj_wd['labels']['ru']
+                objectname_long_en = objectname_long_en + \
+                    ', ' + obj_wd['labels']['en']
             except:
                 raise ValueError('object https://www.wikidata.org/wiki/' +
-                              obj_wd['id']+' must has name ru and name en')
+                                 obj_wd['id']+' must has name ru and name en')
 
-
-        j = {'new_filename':commons_filename,'ru':objectname_long_ru,'en':objectname_long_en}
+        j = {'new_filename': commons_filename,
+             'ru': objectname_long_ru, 'en': objectname_long_en}
         return j
-    
-    def copy_image4standalone(self,filename,new_filename):
+
+    def copy_image4standalone(self, filename, new_filename):
         images_dir = '2standalone'
         if not os.path.isdir(images_dir):
             os.makedirs(images_dir)
-        new_filename = os.path.join(images_dir,new_filename)
-        shutil.copy2(filename,new_filename)
-        
-    def create_json4standalone(self,filename,commons_filename, text_ru, text_en):
+        new_filename = os.path.join(images_dir, new_filename)
+        shutil.copy2(filename, new_filename)
+
+    def create_json4standalone(self, filename, commons_filename, text_ru, text_en):
         images_dir = '2standalone'
         if not os.path.isdir(images_dir):
             os.makedirs(images_dir)
-        new_filename = os.path.join(images_dir,commons_filename)
+        new_filename = os.path.join(images_dir, commons_filename)
         j = dict()
-        j['caption']=text_ru
-        j['caption_en']=text_en
-        j['hotlink_commons'] = 'https://commons.wikimedia.org/wiki/File:'+commons_filename
+        j['caption'] = text_ru
+        j['caption_en'] = text_en
+        j['hotlink_commons'] = 'https://commons.wikimedia.org/wiki/File:' + \
+            commons_filename
         json_filename = os.path.splitext(new_filename)[0]+'.json'
         with open(json_filename, 'w') as fp:
             json.dump(j, fp)
-            
-        
+
     def make_image_texts_simple(
-        self, filename, wikidata, country='', rail='', secondary_wikidata_ids=list(),quick=False
+        self, filename, wikidata, country='', rail='', secondary_wikidata_ids=list(), quick=False
     ) -> dict:
         # return file description texts
         # there is no excact 'city' in wikidata, use manual input cityname
 
-        from model_wiki import Model_wiki  as Model_wiki_ask
+        from model_wiki import Model_wiki as Model_wiki_ask
         modelwiki = Model_wiki_ask()
-    
+
         assert os.path.isfile(filename), 'not found '+filename
 
         # obtain exif
@@ -860,7 +978,8 @@ class Fileprocessor:
             dt_obj = self.image2datetime(filename)
             geo_dict = self.image2coords(filename)
         else:
-            dt_obj = datetime.strptime('1970:01:01 00:00:00', "%Y:%m:%d %H:%M:%S")
+            dt_obj = datetime.strptime(
+                '1970:01:01 00:00:00', "%Y:%m:%d %H:%M:%S")
             geo_dict = None
 
         wd_record = modelwiki.get_wikidata_simplified(wikidata)
@@ -880,7 +999,6 @@ class Fileprocessor:
             if lang in wd_record['labels']:
                 objectnames[lang] = wd_record['labels'][lang]
 
-
         objectname_long_ru = objectnames['ru']
         objectname_long_en = objectnames['en']
         # TODO change objectname_long_en to objectnames_long[en]
@@ -896,7 +1014,6 @@ class Fileprocessor:
                         d['labels'][lang] for d in instance_of_data) + ' '+objectnames[lang]
                 except:
                     pass
-
 
         prototype = """== {{int:filedesc}} ==
 {{Information
@@ -962,61 +1079,67 @@ class Fileprocessor:
                     dt_obj.strftime("%B %Y") + \
                     " in rail transport in "+country+"]]" + "\n"
 
-
-        assert 'commons' in wd_record, 'https://www.wikidata.org/wiki/'+wikidata + ' must have commons'
-        assert wd_record["commons"] is not None, 'https://www.wikidata.org/wiki/'+wikidata + ' must have commons'
-        if len(secondary_wikidata_ids)<1:
+        assert 'commons' in wd_record, 'https://www.wikidata.org/wiki/' + \
+            wikidata + ' must have commons'
+        assert wd_record["commons"] is not None, 'https://www.wikidata.org/wiki/' + \
+            wikidata + ' must have commons'
+        if len(secondary_wikidata_ids) < 1:
             text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
         else:
             text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
             for wdid in secondary_wikidata_ids:
-                cat = modelwiki.get_category_object_in_location(wdid,wikidata,verbose=True)
-                if cat is not None: 
+                cat = modelwiki.get_category_object_in_location(
+                    wdid, wikidata, verbose=True)
+                if cat is not None:
                     text = text + cat + "\n"
                 else:
                     wd_record = modelwiki.get_wikidata_simplified(wdid)
-                    
-                    assert 'commons' in wd_record, 'https://www.wikidata.org/wiki/'+wdid + ' must have commons'
-                    assert wd_record["commons"] is not None, 'https://www.wikidata.org/wiki/'+wdid + ' must have commons'
-                    text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
-        commons_filename = self.commons_filename(filename,objectnames,wikidata,dt_obj,add_administrative_name=False)
-        
+
+                    assert 'commons' in wd_record, 'https://www.wikidata.org/wiki/' + \
+                        wdid + ' must have commons'
+                    assert wd_record["commons"] is not None, 'https://www.wikidata.org/wiki/' + \
+                        wdid + ' must have commons'
+                    text = text + \
+                        "[[Category:" + wd_record["commons"] + "]]" + "\n"
+        commons_filename = self.commons_filename(
+            filename, objectnames, wikidata, dt_obj, add_administrative_name=False)
+
         return {"name": commons_filename, "text": text, "dt_obj": dt_obj}
 
-    def commons_filename(self,filename,objectnames,wikidata,dt_obj,add_administrative_name=True)->str:
+    def commons_filename(self, filename, objectnames, wikidata, dt_obj, add_administrative_name=True) -> str:
         # file name on commons
-        
-        from model_wiki import Model_wiki  as Model_wiki_ask
+
+        from model_wiki import Model_wiki as Model_wiki_ask
         modelwiki = Model_wiki_ask()
-        
+
         filename_base = os.path.splitext(os.path.basename(filename))[0]
         filename_extension = os.path.splitext(os.path.basename(filename))[1]
-        #if this is building: try get machine-reading address from https://www.wikidata.org/wiki/Property:P669
-        building_info = modelwiki.get_building_record_wikidata(wikidata,stop_on_error=False)
+        # if this is building: try get machine-reading address from https://www.wikidata.org/wiki/Property:P669
+        building_info = modelwiki.get_building_record_wikidata(
+            wikidata, stop_on_error=False)
         if building_info is not None:
 
             objectnames['en'] = (
-            building_info["addr:street:en"]
-            + " "
-            + building_info["addr:housenumber:en"]
+                building_info["addr:street:en"]
+                + " "
+                + building_info["addr:housenumber:en"]
             )
-        
 
-        
         commons_filename = (
             objectnames['en'] + " " +
             dt_obj.strftime("%Y-%m %s") + filename_extension
         )
         commons_filename = commons_filename.replace("/", " drob ")
-        
+
         # add district name to file name
         if add_administrative_name:
             try:
-                administrative_name = modelwiki.get_wd_by_wdid(modelwiki.get_upper_location_wdid(modelwiki.get_wd_by_wdid(wikidata)))['labels']['en']
+                administrative_name = modelwiki.get_wd_by_wdid(modelwiki.get_upper_location_wdid(
+                    modelwiki.get_wd_by_wdid(wikidata)))['labels']['en']
                 commons_filename = administrative_name + '_'+commons_filename
             except:
                 pass
-            
+
         return commons_filename
 
     def take_user_wikidata_id(self, wdid) -> str:
@@ -1053,10 +1176,10 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
 
         '''
-        
+
         from model_wiki import Model_wiki
         modelwiki = Model_wiki()
-        
+
         desc = {
             'Filename': filename,
             'Description': '',
@@ -1069,7 +1192,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
         objects_wikidata = list()
         for obj_wdid in wikidata_list:
             obj_wdid = modelwiki.wikidata_input2id(obj_wdid)
-            obj_wd = modelwiki.get_wikidata(obj_wdid)
+            obj_wd = modelwiki.get_wikidata_simplified(obj_wdid)
             objects_wikidata.append(obj_wd)
 
         if self.is_wikidata_id(city):
@@ -1077,21 +1200,22 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
         else:
             city_wdid = self.search_wikidata_by_string(
                 city, stop_on_error=True)
-        city_wd = modelwiki.get_wikidata(city_wdid)
+        city_wd = modelwiki.get_wikidata_simplified(city_wdid)
 
         # get country, only actual values. key --all returns historical values
         cmd = ['wd', 'claims', city_wdid, 'P17', '--json']
         response = subprocess.run(cmd, capture_output=True)
         country_json = json.loads(response.stdout.decode())
         country_wdid = country_json[0]
-        country_wd = modelwiki.get_wikidata(country_wdid)
+        country_wd = modelwiki.get_wikidata_simplified(country_wdid)
 
         try:
             dt_obj = self.image2datetime(filename)
         except:
-            assert date is not None,'in image '+filename+'date can not be read from exif, need set date in --date yyyy-mm-dd'
+            assert date is not None, 'in image '+filename + \
+                'date can not be read from exif, need set date in --date yyyy-mm-dd'
             dt_obj = datetime.strptime(date, "%Y-%m-%d")
-            
+
         object_captions = list()
         for obj_wd in objects_wikidata:
             object_captions.append(obj_wd['labels']['en'])
@@ -1105,9 +1229,9 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
         for obj_wd in objects_wikidata:
             keywords.append(obj_wd['labels']['en'])
-            aliases = obj_wd['aliases'].get('en',None)
-            if type(aliases) == list and len(aliases)>0:
-                keywords+=aliases
+            aliases = obj_wd['aliases'].get('en', None)
+            if type(aliases) == list and len(aliases) > 0:
+                keywords += aliases
 
         keywords.append(city_wd['labels']['en'])
         keywords.append(city_wd['labels']['ru'])
@@ -1125,8 +1249,6 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                 make = make.capitalize()
                 st = "{{Taken with|" + make + " " + model + "|sf=1|own=1}}" + "\n"
 
-
-                
                 st += '{{Photo Information|Model = ' + make + " " + model
                 if image_exif.get("lensmodel", '') != "" and image_exif.get("lensmodel", '') != "":
                     st += '|Lens = ' + image_exif.get("lensmodel")
@@ -1150,8 +1272,8 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                 }
                 lensmodel_dict = {
                     'OLYMPUS M.12-40mm F2.8': 'Olympus M.Zuiko Digital ED 12-40mm f/2.8 PRO',
-                    'smc PENTAX-DA 35mm F2.4 AL':'SMC Pentax-DA 35mm F2.4',
-                    'smc PENTAX-DA 14mm F2.8 EDIF':'SMC PENTAX DA 14 mm f/2.8 ED IF',
+                    'smc PENTAX-DA 35mm F2.4 AL': 'SMC Pentax-DA 35mm F2.4',
+                    'smc PENTAX-DA 14mm F2.8 EDIF': 'SMC PENTAX DA 14 mm f/2.8 ED IF',
                 }
                 for camerastring in cameramodels_dict.keys():
                     if camerastring in st:
@@ -1160,23 +1282,20 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
                 # lens quess
                 lens_detected = ''
-                if image_exif.get("lensmodel", '') != "" and image_exif.get("lensmodel", '') != "": lens_detected = image_exif.get("lensmodel")
-                
+                if image_exif.get("lensmodel", '') != "" and image_exif.get("lensmodel", '') != "":
+                    lens_detected = image_exif.get("lensmodel")
+
                 self.logger.info('detected lens'+lens_detected)
 
-                
-                
                 if image_exif.get("lensmodel", '') != "" and image_exif.get("lensmodel", '') != "":
                     st += "{{Taken with|" + image_exif.get("lensmodel").replace(
                         '[', '').replace(']', '').replace('f/ ', 'f/') + "|sf=1|own=1}}" + "\n"
 
-                    
-
                 for lensstring in lensmodel_dict.keys():
                     if lensstring in st:
                         st = st.replace(lensstring, lensmodel_dict[lensstring])
-                
-                st = st.replace('Canon Canon','Canon')
+
+                st = st.replace('Canon Canon', 'Canon')
 
                 return st
         else:
@@ -1218,10 +1337,11 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
             return metadata
 
     def check_exif_valid(self, path):
-        if path.lower().endswith('.stl'): return True
-        
+        if path.lower().endswith('.stl'):
+            return True
+
         cmd = [self.exiftool_path, path, "-datetimeoriginal", "-csv"]
-        process = subprocess.run(cmd,stdout = subprocess.DEVNULL)
+        process = subprocess.run(cmd, stdout=subprocess.DEVNULL)
 
         if process.returncode == 0:
             return True
@@ -1239,7 +1359,8 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                     dt_obj = datetime.strptime(dt_str, "%Y:%m:%d %H:%M:%S")
                 except:
                     dt_obj = None
-                    cmd = [self.exiftool_path, path, "-datetimeoriginal", "-csv"]
+                    cmd = [self.exiftool_path, path,
+                           "-datetimeoriginal", "-csv"]
                     exiftool_text_result = subprocess.check_output(cmd)
                     tmp = exiftool_text_result.splitlines()[1].split(b",")
                     if len(tmp) > 1:
@@ -1342,29 +1463,29 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
     def write_iptc(self, path, caption, keywords):
         # path can be both filename or directory
         assert os.path.exists(path)
-        
+
         '''
         To prevent duplication when adding new items, specific items can be deleted then added back again in the same command. For example, the following command adds the keywords "one" and "two", ensuring that they are not duplicated if they already existed in the keywords of an image:
 
 exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         '''
-        
-        #workaround for write utf-8 keywords: write them to file
+
+        # workaround for write utf-8 keywords: write them to file
         argfiletext = ''
         if isinstance(keywords, list) and len(keywords) > 0:
             for keyword in keywords:
                 argfiletext += '-keywords-='+keyword+''+" \n"+'-keywords+='+keyword+' '+"\n"
-                
+
         argfile = tempfile.NamedTemporaryFile()
         argfilename = 't.txt'
         with open(argfilename, 'w') as f:
             f.write(argfiletext)
-        
+
         cmd = [self.exiftool_path, '-preserve', '-overwrite_original', '-charset iptc=UTF8', '-charset', 'utf8', '-codedcharacterset=utf8',
-        '-@', argfilename, path]
+               '-@', argfilename, path]
         print(' '.join(cmd))
         response = subprocess.run(cmd, capture_output=True)
-        
+
         if isinstance(caption, str):
             cmd = [self.exiftool_path, '-preserve', '-overwrite_original',
                    '-Caption-Abstract='+caption+'', path]
@@ -1391,8 +1512,6 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 else:
                     print(prop, statement.target)
 
-
-
     def append_structured_data0(self, commonsfilename):
         commonsfilename = self.prepare_commonsfilename(commonsfilename)
         commons_site = pywikibot.Site("commons", "commons")
@@ -1405,7 +1524,6 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         # Retrieve Wikibase data
         item = page.data_item()
         item.get()
-
 
         stringclaim = pywikibot.Claim(repo, "P180")  # Adding IMDb ID (P345)
         stringclaim.setTarget(4212644)  # Using a string
@@ -1493,38 +1611,41 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 print("Got an error from the API, the following request were made:")
                 print(request)
                 print("Error: {}".format(e))
-                
-    def commons2stock_dev(self,url,city_wdid,images_dir = 'stocks', dry_run=False, date=None):
-        
+
+    def commons2stock_dev(self, url, city_wdid, images_dir='stocks', dry_run=False, date=None):
+
         site = pywikibot.Site('commons', 'commons')
-        file_page = pywikibot.FilePage(site,url.replace('https://commons.wikimedia.org/wiki/',''))
-        
+        file_page = pywikibot.FilePage(site, url.replace(
+            'https://commons.wikimedia.org/wiki/', ''))
+
         data_item = file_page.data_item()
         data_item.get()
-        
+
         wd_ids = list()
 
         for prop in data_item.claims:
-            if prop != 'P180': continue
+            if prop != 'P180':
+                continue
             for statement in data_item.claims[prop]:
                 if isinstance(statement.target, pywikibot.page._wikibase.ItemPage):
                     print(prop, statement.target.id)
                     wd_ids.append(statement.target.id)
-        
+
         if not os.path.isdir(images_dir):
             os.makedirs(images_dir)
-        filename = os.path.join(images_dir,url.replace('https://commons.wikimedia.org/wiki/File:',''))
+        filename = os.path.join(images_dir, url.replace(
+            'https://commons.wikimedia.org/wiki/File:', ''))
         if not os.path.exists(filename):
             self.logger.debug('download: '+filename)
             file_page.download(filename)
-        
+
         caption, keywords = self.get_shutterstock_desc(
-        filename=filename,
-        wikidata_list=wd_ids,
-        city=city_wdid,
-        date = date,
+            filename=filename,
+            wikidata_list=wd_ids,
+            city=city_wdid,
+            date=date,
         )
-        
+
         if dry_run:
             print()
             print(filename)
@@ -1533,182 +1654,201 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             return
 
         self.write_iptc(filename, caption, keywords)
-        #processed_files.append(filename)
+        # processed_files.append(filename)
 
-
-    
-    def process_and_upload_file(self,filepath,desc_dict):
+    def process_and_upload_file(self, filepath, desc_dict):
         from model_wiki import Model_wiki
         modelwiki = Model_wiki()
         if not os.path.exists(filepath):
             print(filepath.ljust(50)+' '+' not exist')
             quit()
         assert os.path.exists(filepath)
-        assert desc_dict['mode'] in ['object','vehicle','building']
+        assert desc_dict['mode'] in ['object', 'vehicle', 'building']
 
         assert 'country' in desc_dict
-        
-        if not 'secondary_objects' in desc_dict: desc_dict['secondary_objects']=list() #for simple call next function
-        if not 'dry_run' in desc_dict: desc_dict['dry_run']=False #for simple call next function
-        if not 'later' in desc_dict: desc_dict['later']=False #for simple call next function
-        if not 'verify' in desc_dict: desc_dict['verify']=False #for simple call next function
+
+        if not 'secondary_objects' in desc_dict:
+            # for simple call next function
+            desc_dict['secondary_objects'] = list()
+        if not 'dry_run' in desc_dict:
+            desc_dict['dry_run'] = False  # for simple call next function
+        if not 'later' in desc_dict:
+            desc_dict['later'] = False  # for simple call next function
+        if not 'verify' in desc_dict:
+            desc_dict['verify'] = False  # for simple call next function
         if 'country' in desc_dict:
             desc_dict['country'] = desc_dict['country'].title()
         else:
             desc_dict['country'] = None
-        
+
         files, uploaded_folder_path = self.input2filelist(filepath)
 
-        if len(files)==0:
+        if len(files) == 0:
             print(filepath+' all files already uploaded')
             quit()
 
-        
         dry_run = desc_dict['dry_run']
-        if desc_dict['later']==True: dry_run = True
+        if desc_dict['later'] == True:
+            dry_run = True
 
         uploaded_paths = list()
 
-        #count for progressbar
-        total_files=0
+        # count for progressbar
+        total_files = 0
         for filename in files:
             print(filename)
-            if 'commons_uploaded' in filename: 
+            if 'commons_uploaded' in filename:
                 continue
-            if self.check_exif_valid(filename) :
+            if self.check_exif_valid(filename):
                 total_files = total_files + 1
-                    
+
         progressbar_on = False
-        if total_files>1 and 'progress' in desc_dict:
+        if total_files > 1 and 'progress' in desc_dict:
             progressbar_on = True
             pbar = tqdm(total=total_files)
-        
+
         for filename in files:
-            if 'commons_uploaded' in filename: continue
-            if self.check_exif_valid(filename) :
+            if 'commons_uploaded' in filename:
+                continue
+            if self.check_exif_valid(filename):
 
-                secondary_wikidata_ids = modelwiki.input2list_wikidata(desc_dict['secondary_objects'])
-                
+                secondary_wikidata_ids = modelwiki.input2list_wikidata(
+                    desc_dict['secondary_objects'])
 
-                #get wikidata from filepath
+                # get wikidata from filepath
 
                 if secondary_wikidata_ids == [] and 'Q' in filename:
-                    secondary_wikidata_ids = self.get_wikidatalist_from_string(filename)
+                    secondary_wikidata_ids = self.get_wikidatalist_from_string(
+                        filename)
 
                 if desc_dict['mode'] == 'object':
                     if desc_dict['wikidata'] == 'FROMFILENAME':
-                        wikidata = self.get_wikidatalist_from_string(filename)[0]
+                        wikidata = self.get_wikidatalist_from_string(filename)[
+                            0]
                         del secondary_wikidata_ids[0]
                     else:
-                        wikidata = modelwiki.wikidata_input2id(desc_dict['wikidata'])
-                    
+                        wikidata = modelwiki.wikidata_input2id(
+                            desc_dict['wikidata'])
+
                     texts = self.make_image_texts_simple(
                         filename=filename,
                         wikidata=wikidata,
                         country=desc_dict['country'],
                         rail=desc_dict['rail'],
-                        secondary_wikidata_ids = secondary_wikidata_ids,
+                        secondary_wikidata_ids=secondary_wikidata_ids,
                         quick=desc_dict['later']
-                    )    
+                    )
                     wikidata_list = list()
                     wikidata_list.append(wikidata)
                     wikidata_list += secondary_wikidata_ids
-                    standalone_captions_dict = self.make_image_texts_standalone(filename,wikidata,secondary_wikidata_ids)
-                    
+                    standalone_captions_dict = self.make_image_texts_standalone(
+                        filename, wikidata, secondary_wikidata_ids)
+
                 elif desc_dict['mode'] == 'vehicle':
-                    desc_dict['model'] = modelwiki.wikidata_input2id(desc_dict.get('model',None))
-                    #transfer street user input deeper, it can be vector file name
-                    desc_dict['street'] = desc_dict.get('street',None)
-                    desc_dict['system'] = modelwiki.wikidata_input2id(desc_dict.get('system',None))
-                    desc_dict['city'] = modelwiki.wikidata_input2id(desc_dict.get('city',None))
-                    desc_dict['line'] = modelwiki.wikidata_input2id(desc_dict.get('line',None))
-                    desc_dict['line'] = modelwiki.wikidata_input2id(desc_dict.get('line',None))
-                                    
+                    desc_dict['model'] = modelwiki.wikidata_input2id(
+                        desc_dict.get('model', None))
+                    # transfer street user input deeper, it can be vector file name
+                    desc_dict['street'] = desc_dict.get('street', None)
+                    desc_dict['system'] = modelwiki.wikidata_input2id(
+                        desc_dict.get('system', None))
+                    desc_dict['city'] = modelwiki.wikidata_input2id(
+                        desc_dict.get('city', None))
+                    desc_dict['line'] = modelwiki.wikidata_input2id(
+                        desc_dict.get('line', None))
+                    desc_dict['line'] = modelwiki.wikidata_input2id(
+                        desc_dict.get('line', None))
+
                     texts = self.make_image_texts_vehicle(
                         filename=filename,
-                        vehicle = desc_dict['vehicle'],
-                        model = desc_dict.get('model',None),
-                        street = desc_dict.get('street',None),
-                        number = desc_dict.get('number',None),
-                        digital_number = desc_dict.get('digital_number',None),
-                        system = desc_dict.get('system',None),
-                        route = desc_dict.get('route',None),
-                        country = desc_dict.get('country',None),
-                        line = desc_dict.get('line',None),
-                        facing = desc_dict.get('facing',None),
-                        colors = desc_dict.get('colors',None),
-                        secondary_wikidata_ids = secondary_wikidata_ids
-                    )  
+                        vehicle=desc_dict['vehicle'],
+                        model=desc_dict.get('model', None),
+                        street=desc_dict.get('street', None),
+                        number=desc_dict.get('number', None),
+                        digital_number=desc_dict.get('digital_number', None),
+                        system=desc_dict.get('system', None),
+                        route=desc_dict.get('route', None),
+                        country=desc_dict.get('country', None),
+                        line=desc_dict.get('line', None),
+                        facing=desc_dict.get('facing', None),
+                        colors=desc_dict.get('colors', None),
+                        secondary_wikidata_ids=secondary_wikidata_ids
+                    )
                     if texts is None:
-                        #invalid metadata for this file, continue to next file
+                        # invalid metadata for this file, continue to next file
                         continue
                     wikidata_list = list()
                     wikidata_list += texts['structured_data_on_commons']
                     wikidata_list += secondary_wikidata_ids
-                    standalone_captions_dict = {'new_filename':texts['name'],'ru':texts['captions']['ru'],'en':texts['captions']['en']}
+                    standalone_captions_dict = {
+                        'new_filename': texts['name'], 'ru': texts['captions']['ru'], 'en': texts['captions']['en']}
 
                     '''
                      'new_filename':commons_filename,'ru':objectname_long_ru,'en':objectname_long_en
                     '''
 
-
                 if dry_run:
                     print()
                     print(texts["name"])
                     print(texts["text"])
-                
-                
+
                 if not dry_run:
                     self.upload_file(
                         filename, texts["name"], texts["text"], verify_description=desc_dict['verify']
                     )
-                    
-                    #copy uploaded file to standalone-sources dir
-                    
-                    #self.copy_image4standalone(filename,standalone_captions_dict['new_filename'])
-                    self.create_json4standalone(filename,standalone_captions_dict['new_filename'],standalone_captions_dict['ru'],standalone_captions_dict['en'])
-                    
+
+                    # copy uploaded file to standalone-sources dir
+
+                    # self.copy_image4standalone(filename,standalone_captions_dict['new_filename'])
+                    self.create_json4standalone(
+                        filename, standalone_captions_dict['new_filename'], standalone_captions_dict['ru'], standalone_captions_dict['en'])
+
                 self.logger.info('append claims')
-                claims_append_result = modelwiki.append_image_descripts_claim(texts["name"], wikidata_list, dry_run)
+                claims_append_result = modelwiki.append_image_descripts_claim(
+                    texts["name"], wikidata_list, dry_run)
                 if not dry_run:
-                    modelwiki.create_category_taken_on_day(desc_dict['country'].capitalize(),texts['dt_obj'].strftime("%Y-%m-%d"))
+                    modelwiki.create_category_taken_on_day(
+                        desc_dict['country'].capitalize(), texts['dt_obj'].strftime("%Y-%m-%d"))
                 else:
                     print('will append '+' '.join(wikidata_list))
-                    
-                uploaded_paths.append('https://commons.wikimedia.org/wiki/File:'+texts["name"].replace(' ', '_'))
-                
+
+                uploaded_paths.append(
+                    'https://commons.wikimedia.org/wiki/File:'+texts["name"].replace(' ', '_'))
+
                 if claims_append_result is None:
                     continue
-                #move uploaded file to subfolder
+                # move uploaded file to subfolder
                 if not dry_run:
                     if not os.path.exists(uploaded_folder_path):
                         os.makedirs(uploaded_folder_path)
-                    shutil.move(filename, os.path.join(uploaded_folder_path, os.path.basename(filename)))
-           
-                if progressbar_on: pbar.update(1)    
+                    shutil.move(filename, os.path.join(
+                        uploaded_folder_path, os.path.basename(filename)))
+
+                if progressbar_on:
+                    pbar.update(1)
             else:
                 print('can not open file '+filename+', skipped')
                 continue
-        if progressbar_on: pbar.close() 
+        if progressbar_on:
+            pbar.close()
         if not dry_run:
             print('uploaded: ')
         else:
             print('emulating upload. URL will be: ')
 
         print("\n".join(uploaded_paths))
-        
-        #add to job queue if not uploading now
+
+        # add to job queue if not uploading now
         if dry_run:
             if not desc_dict['later']:
                 add_queue = input("Add to queue? Y/N    ")
             else:
-                add_queue='Y'
-            
-            #make call string
-            if add_queue.upper()!='Y':
+                add_queue = 'Y'
+
+            # make call string
+            if add_queue.upper() != 'Y':
                 print('not adding to queue')
                 return
-            
+
             if desc_dict['mode'] == 'object':
                 cmd = 'python3 upload.py '
                 cmd += wikidata + ' '
@@ -1717,21 +1857,31 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             if desc_dict['mode'] == 'vehicle':
                 cmd = 'python3 vehicle-upload.py '
                 cmd += '"'+filepath + '" '
-                cmd += '--vehicle "'+ desc_dict['vehicle'] + '" '
-                if desc_dict['system']: cmd += '--system "'+ desc_dict['system'] + '" '
-                if desc_dict['city']: cmd += '--city "'+ desc_dict['city'] + '" '
-                if desc_dict['model']: cmd += '--model "'+ desc_dict['model'] + '" '
-                if desc_dict['street']: cmd += '--street "'+ desc_dict['street'] + '" '
-                if desc_dict['number']: cmd += '--number "'+ desc_dict['number'] + '" '
-                if desc_dict['route']: cmd += '--route "'+ desc_dict['route'] + '" '
-                if desc_dict['line']: cmd += '--line "'+ desc_dict['line'] + '" '
-                if desc_dict['facing']: cmd += '--facing "'+ desc_dict['facing'] + '" '
-                if desc_dict['colors']: cmd += '--colors '+ ' '.join(desc_dict['colors']) + ' '
-                
-            if desc_dict['country']: cmd += '--country "'+ desc_dict['country'] + '" '
-            if len(secondary_wikidata_ids)>0: cmd += '-s ' + ' '.join(secondary_wikidata_ids)
-                
-           
+                cmd += '--vehicle "' + desc_dict['vehicle'] + '" '
+                if desc_dict['system']:
+                    cmd += '--system "' + desc_dict['system'] + '" '
+                if desc_dict['city']:
+                    cmd += '--city "' + desc_dict['city'] + '" '
+                if desc_dict['model']:
+                    cmd += '--model "' + desc_dict['model'] + '" '
+                if desc_dict['street']:
+                    cmd += '--street "' + desc_dict['street'] + '" '
+                if desc_dict['number']:
+                    cmd += '--number "' + desc_dict['number'] + '" '
+                if desc_dict['route']:
+                    cmd += '--route "' + desc_dict['route'] + '" '
+                if desc_dict['line']:
+                    cmd += '--line "' + desc_dict['line'] + '" '
+                if desc_dict['facing']:
+                    cmd += '--facing "' + desc_dict['facing'] + '" '
+                if desc_dict['colors']:
+                    cmd += '--colors ' + ' '.join(desc_dict['colors']) + ' '
+
+            if desc_dict['country']:
+                cmd += '--country "' + desc_dict['country'] + '" '
+            if len(secondary_wikidata_ids) > 0:
+                cmd += '-s ' + ' '.join(secondary_wikidata_ids)
+
             print('adding to queue')
             print(cmd)
             with open("queue.sh", "a") as file_object:

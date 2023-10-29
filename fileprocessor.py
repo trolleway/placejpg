@@ -33,7 +33,7 @@ class Fileprocessor:
     wikidata_cache = dict()
     optional_langs = ('de', 'fr', 'it', 'es', 'pt', 'uk', 'be', 'ja')
     chunk_size = 102400
-    chunk_size = 0
+    #chunk_size = 0
     photographer = 'Artem Svetlov'
     NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY = ['Q660770']
 
@@ -515,19 +515,21 @@ class Fileprocessor:
             trains_on_station_cat = modelwiki.search_commonscat_by_2_wikidata(
                 street_wdid, 'Q870')
             if trains_on_station_cat is None:
-                cat = 'Category:Trains at '+street_wd['commons']
-                if modelwiki.is_category_exists(cat):
-                    trains_on_station_cat = cat
-                    del cat
+                if street_wd['commons'] is not None: 
+                    cat = 'Category:Trains at '+street_wd['commons']
+                    if modelwiki.is_category_exists(cat):
+                        trains_on_station_cat = cat
+                        del cat
 
             if line_wd is not None:
                 trains_on_line_cat = modelwiki.search_commonscat_by_2_wikidata(
                     line_wdid, 'Q870')
                 if trains_on_line_cat is None:
-                    cat = 'Category:Trains on '+line_wd['commons']
-                    if modelwiki.is_category_exists(cat):
-                        trains_on_line_cat = cat
-                        del cat
+                    if line_wd['commons'] is not None:
+                        cat = 'Category:Trains on '+line_wd['commons']
+                        if modelwiki.is_category_exists(cat):
+                            trains_on_line_cat = cat
+                            del cat
 
             # TRAINS AT STATION
             if trains_on_station_cat is not None:
@@ -543,6 +545,8 @@ class Fileprocessor:
                 wikidata_4_structured_data.add(street_wdid)
             else:
                 # STATION
+                assert street_wd['commons'] is not None, 'https://www.wikidata.org/wiki/' + \
+            street_wd['id'] + ' must have commons category'
                 categories.add(street_wd['commons'])
                 wikidata_4_structured_data.add(street_wdid)
                 # LINE
@@ -723,6 +727,8 @@ class Fileprocessor:
             text += "[[Category:Number "+digital_number+" on vehicles]]\n"
         if number is not None and vehicle == 'tram':
             text += "[[Category:Trams with fleet number "+digital_number+"]]\n"
+            category_page_content='{{'+f'Numbercategory-vehicle-fleet number|{digital_number}|Trams|Number {digital_number} on trams'+'}}'
+            modelwiki.create_category(catname, category_page_content)
         if dt_obj is not None and vehicle not in train_synonims:
             catname = "{transports} in {country} photographed in {year}".format(
                 transports=transports[vehicle],

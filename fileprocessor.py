@@ -5,6 +5,8 @@ from exif import Image
 import exiftool
 import locale
 
+from PIL import Image as PILImage
+
 from datetime import datetime
 from dateutil import parser
 import os
@@ -35,8 +37,26 @@ class Fileprocessor:
     chunk_size = 102400
     #chunk_size = 0
     photographer = 'Artem Svetlov'
-    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY = ['Q660770']
+    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY = list()
+    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY.append('Q660770') # RZD
+    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY.append('Q5499') # MOSCOW METRO
 
+    def convert_to_webp(self,filepath:str)->str:
+        """Convert image to webp.
+
+        Args:
+            source (pathlib.Path): Path to source image
+
+        Returns:
+            pathlib.Path: path to new image
+        """
+        destination = os.path.splitext(filepath)[0]+'.webp'
+
+        image = PILImage.open(filepath)  # Open image
+        image.save(destination, format="webp",lossless=True)  # Convert image to webp
+
+        return destination
+    
     def input2filelist(self, filepath):
         if os.path.isfile(filepath):
             files = [filepath]
@@ -1791,6 +1811,20 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     '''
                      'new_filename':commons_filename,'ru':objectname_long_ru,'en':objectname_long_en
                     '''
+                # HACK
+                # UPLOAD WEBP instead of TIFF if tiff is big
+                # if exists file with webp extension:
+                filename_webp = filename.replace('.tif','.webp')
+                src_filesize_mb = os.path.getsize(filename) / (1024 * 1024)
+                if filename.endswith('.tif') and src_filesize_mb > 15:
+                    print('file is big, convert to webp to bypass upload errors')
+                    self.convert_to_webp(filename)
+                
+                if filename.endswith('.tif') and os.path.isfile(filename_webp):
+                    print('found tif and webp file with same name. upload webp with fileinfo from tif')
+                    if not dry_run: self.move_file_to_uploaded_dir(filename,uploaded_folder_path)
+                    filename=filename_webp
+                    texts["name"]=texts["name"].replace('.tif','.webp')
 
                 if dry_run:
                     print()
@@ -1823,11 +1857,8 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 if claims_append_result is None:
                     continue
                 # move uploaded file to subfolder
-                if not dry_run:
-                    if not os.path.exists(uploaded_folder_path):
-                        os.makedirs(uploaded_folder_path)
-                    shutil.move(filename, os.path.join(
-                        uploaded_folder_path, os.path.basename(filename)))
+                if not dry_run: self.move_file_to_uploaded_dir(filename,uploaded_folder_path)
+
 
                 if progressbar_on:
                     pbar.update(1)
@@ -1892,3 +1923,10 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             print(cmd)
             with open("queue.sh", "a") as file_object:
                 file_object.write(cmd+"\n")
+
+    def move_file_to_uploaded_dir(self,filename,uploaded_folder_path):
+        # move uploaded file to subfolder
+        if not os.path.exists(uploaded_folder_path):
+            os.makedirs(uploaded_folder_path)
+        shutil.move(filename, os.path.join(
+            uploaded_folder_path, os.path.basename(filename)))

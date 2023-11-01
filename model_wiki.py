@@ -66,7 +66,7 @@ class Model_wiki:
     def wikidata_cache_load(self, wikidata_cache_filename):
         if os.path.isfile(wikidata_cache_filename) == False:
             cache = {'entities_simplified': {}, 'entities_non_simplified': {
-            }, 'best_claims': {}, 'commonscat_by_2_wikidata': {}}
+            }, 'best_claims': {}, 'commonscat_by_2_wikidata': {}, 'commonscat_exists_set': set()}
             return cache
         else:
             file = open(wikidata_cache_filename, 'rb')
@@ -152,12 +152,22 @@ class Model_wiki:
         regex = '(?i)date.*=.*\d\d\d\d-\d\d-\d\d.*\}\}'
         regex = '(?i)Information[\S\s]*date[\S\s]*=[\S\s]*\d\d\d\d-\d\d-\d\d.*\}\}'
         gen1 = pagegenerators.CategorizedPageGenerator(
-            category, recurse=True, start=None, total=None, content=True, namespaces=None)
+            category, recurse=False, start=None, total=None, content=True, namespaces=None)
         gen2 = pagegenerators.RegexBodyFilterPageGenerator(gen1, regex)
         regex
         gen2 = pagegenerators.RegexBodyFilterPageGenerator(gen1, regex)
+        for page in gen2:
+            print(page)
 
-        logging.getLogger().setLevel(logging.ERROR)
+        del gen1
+        del gen2
+        gen1 = pagegenerators.CategorizedPageGenerator(
+            category, recurse=False, start=None, total=None, content=True, namespaces=None)
+        gen2 = pagegenerators.RegexBodyFilterPageGenerator(gen1, regex)
+
+        gen2 = pagegenerators.RegexBodyFilterPageGenerator(gen1, regex)
+
+        logging.getLogger().setLevel(logging.DEBUG)
         logging.getLogger('foo').debug('bah')
 
         location = location.title()
@@ -352,6 +362,12 @@ class Model_wiki:
         return object_wd
 
     def get_territorial_entity(self, wd_record) -> dict:
+        object_wd = self.get_wikidata_simplified(
+            wd_record['claims']['P131'][0]['value'])
+        return object_wd
+
+    def deprecated_get_territorial_entity(self, wd_record) -> dict:
+
         try:
             cmd = ['wb', 'gt', '--json', '--no-minimize',
                    wd_record['claims']['P131'][0]['value']]
@@ -410,11 +426,10 @@ class Model_wiki:
     def page_template_taken_on(self, page, location, dry_run=True, interactive=False, verbose=True):
         assert page
         texts = dict()
+        page_not_need_change = False
         texts[0] = page.text
 
         if '.svg'.upper() in page.full_url().upper():
-            return False
-        if '.tif'.upper() in page.full_url().upper():
             return False
         if '.png'.upper() in page.full_url().upper():
             return False
@@ -427,12 +442,14 @@ class Model_wiki:
             return False
         if '|location='.upper()+location.upper() in texts[0].upper():
             self.logger.debug('|location='+location+' already in page')
-            return False
-        try:
-            texts[1] = self._text_add_template_taken_on(texts[0])
-        except:
-            raise ValueError('invalid page text in ' + page.full_url())
-        assert 'Taken on'.upper() in texts[1].upper() or 'According to Exif data'.upper(
+            page_not_need_change = True
+            texts[1] = texts[0]
+        else:
+            try:
+                texts[1] = self._text_add_template_taken_on(texts[0])
+            except:
+                raise ValueError('invalid page text in ' + page.full_url())
+        assert 'Taken on'.upper() in texts[1].upper() or 'Taken in'.upper() in texts[1].upper() or 'According to Exif data'.upper(
         ) in texts[1].upper(), 'wrong text in '+page.title()
 
         datestr = self.get_date_from_pagetext(texts[1])
@@ -444,7 +461,6 @@ class Model_wiki:
         if len(datestr) < len('yyyy-mm-dd'):
             return False
         assert datestr, 'invalid date parce in '+page.full_url()
-        print('will create category '+location+' on '+datestr)
 
         location_value_has_already = self._text_get_template_taken_on_location(
             texts[1])
@@ -469,7 +485,8 @@ class Model_wiki:
             print(texts[2])
         if not dry_run and not interactive:
             page.text = texts[2]
-            page.save('add {{Taken on location}} template')
+            if page_not_need_change == False:
+                page.save('add {{Taken on location}} template')
             self.create_category_taken_on_day(location, datestr)
 
         if interactive:
@@ -871,10 +888,20 @@ LIMIT 100
 
     def is_category_exists(self, categoryname):
 
+        # check in cache
+        if categoryname in self.wikidata_cache['commonscat_exists_set']:
+            return True
+
         site = pywikibot.Site("commons", "commons")
         site.login()
         site.get_tokens("csrf")  # preload csrf token
         page = pywikibot.Page(site, title=categoryname)
+
+        if page.exists():
+            self.wikidata_cache['commonscat_exists_set'].add(categoryname)
+            self.wikidata_cache_save(
+                self.wikidata_cache, self.wikidata_cache_filename)
+
         return page.exists()
 
     def create_page(self, title, content, savemessage):

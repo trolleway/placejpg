@@ -20,6 +20,9 @@ import warnings
 import shutil
 from tqdm import tqdm
 
+import contextlib
+import io
+
 
 class Fileprocessor:
     logging.basicConfig(
@@ -35,13 +38,17 @@ class Fileprocessor:
     wikidata_cache = dict()
     optional_langs = ('de', 'fr', 'it', 'es', 'pt', 'uk', 'be', 'ja')
     chunk_size = 102400
-    #chunk_size = 0
+    # chunk_size = 0
     photographer = 'Artem Svetlov'
-    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY = list()
-    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY.append('Q660770') # RZD
-    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY.append('Q5499') # MOSCOW METRO
 
-    def convert_to_webp(self,filepath:str)->str:
+    folder_keywords = ['commons_uploaded', 'commons_duplicates']
+
+    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY = list()
+    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY.append('Q660770')  # RZD
+    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY.append('Q5499')  # MOSCOW METRO
+    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY.append('Q76987')  # BCH
+
+    def convert_to_webp(self, filepath: str) -> str:
         """Convert image to webp.
 
         Args:
@@ -53,10 +60,14 @@ class Fileprocessor:
         destination = os.path.splitext(filepath)[0]+'.webp'
 
         image = PILImage.open(filepath)  # Open image
-        image.save(destination, format="webp",lossless=True)  # Convert image to webp
+        image.save(destination, format="webp", lossless=False,
+                   quality=98)  # Convert image to webp
 
+        cmd = ['exiftool', '-charset', 'utf8', '-tagsfromfile',
+               filepath, '-overwrite_original',  destination]  # '-all:all' ,
+        subprocess.run(cmd)
         return destination
-    
+
     def input2filelist(self, filepath):
         if os.path.isfile(filepath):
             files = [filepath]
@@ -67,7 +78,7 @@ class Fileprocessor:
             files = os.listdir(filepath)
             files = [os.path.join(filepath, x) for x in files]
             files = list(
-                filter(lambda name: 'commons_uploaded' not in name, files))
+                filter(lambda name: not any(keyword in name for keyword in self.folder_keywords), files))
 
             uploaded_folder_path = os.path.join(filepath, 'commons_uploaded')
         else:
@@ -104,10 +115,19 @@ class Fileprocessor:
         print(commons_name.center(60, '*'))
         # Try to run the upload robot
         try:
-            bot.run()
+            # bot.run()
+            # SAVE pywikibot screen output to move photos to subdirs by errors
+            f = io.StringIO()
+            with contextlib.redirect_stderr(f):
+                bot.run()
+            pywikibot_output = f.getvalue()
+            # print('>>>'+pywikibot_output+'<<<')
+            return pywikibot_output
         except Exception as e:
             # Handle API errors
             print(f"API error: {e.code}: {e.info}")
+            return False
+        return None
 
     def deprecated_get_wikidata_simplified(self, wikidata) -> dict:
         warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)
@@ -193,9 +213,7 @@ class Fileprocessor:
         if model is not None:
             model_wdid = modelwiki.wikidata_input2id(model)
             model_wd = modelwiki.get_wikidata_simplified(model_wdid)
-
             model_names = model_wd["labels"]
-
             wikidata_4_structured_data.add(model_wd['id'])
 
         # STREET
@@ -413,6 +431,8 @@ class Fileprocessor:
         if route is not None:
             captions['en'] += ' Line '+route
         if line_wdid is not None:
+            assert 'en' in modelwiki.get_wikidata_simplified(line_wdid)[
+                'labels'], 'object https://www.wikidata.org/wiki/' + line_wdid + ' must has name en'
             captions['en'] += ' ' + \
                 modelwiki.get_wikidata_simplified(line_wdid)['labels']['en']
         st += "{{en|1=" + captions['en'] + '}}'
@@ -535,7 +555,7 @@ class Fileprocessor:
             trains_on_station_cat = modelwiki.search_commonscat_by_2_wikidata(
                 street_wdid, 'Q870')
             if trains_on_station_cat is None:
-                if street_wd['commons'] is not None: 
+                if street_wd['commons'] is not None:
                     cat = 'Category:Trains at '+street_wd['commons']
                     if modelwiki.is_category_exists(cat):
                         trains_on_station_cat = cat
@@ -566,7 +586,7 @@ class Fileprocessor:
             else:
                 # STATION
                 assert street_wd['commons'] is not None, 'https://www.wikidata.org/wiki/' + \
-            street_wd['id'] + ' must have commons category'
+                    street_wd['id'] + ' must have commons category'
                 categories.add(street_wd['commons'])
                 wikidata_4_structured_data.add(street_wdid)
                 # LINE
@@ -583,7 +603,7 @@ class Fileprocessor:
                 categories.add(street_wd['commons'])
 
         for catname in categories:
-            catname = catname.replace('Category:','')
+            catname = catname.replace('Category:', '')
             text += "[[Category:"+catname+"]]" + "\n"
         assert None not in wikidata_4_structured_data, 'empty value added to structured data set:' + \
             str(' '.join(list(wikidata_4_structured_data)))
@@ -728,9 +748,19 @@ class Fileprocessor:
         if number is not None and vehicle in train_synonims:
             catname = "Number "+digital_number+" on rail vehicles"
             category_page_content = '{{NumbercategoryTrain|'+digital_number+'}}'
-
             modelwiki.create_category(catname, category_page_content)
             text += "[[Category:"+catname+"]]\n"
+
+            # upper category
+            catname = 'Number '+digital_number+' on vehicles'
+            category_page_content = '{{Numbercategory-vehicle|'+digital_number + \
+                '|vehicle|Number '+digital_number+' on objects|Vehicle}}'
+            modelwiki.create_category(catname, category_page_content)
+
+            # upper category
+            catname = 'Number '+digital_number+' on objects'
+            category_page_content = '{{Number on object|n='+digital_number+'}}'
+            modelwiki.create_category(catname, category_page_content)
 
         elif number is not None and vehicle == 'bus':
             text += "[[Category:Number "+digital_number+" on buses]]\n"
@@ -747,7 +777,8 @@ class Fileprocessor:
             text += "[[Category:Number "+digital_number+" on vehicles]]\n"
         if number is not None and vehicle == 'tram':
             text += "[[Category:Trams with fleet number "+digital_number+"]]\n"
-            category_page_content='{{'+f'Numbercategory-vehicle-fleet number|{digital_number}|Trams|Number {digital_number} on trams'+'}}'
+            category_page_content = '{{' + \
+                f'Numbercategory-vehicle-fleet number|{digital_number}|Trams|Number {digital_number} on trams'+'}}'
             modelwiki.create_category(catname, category_page_content)
         if dt_obj is not None and vehicle not in train_synonims:
             catname = "{transports} in {country} photographed in {year}".format(
@@ -1749,6 +1780,10 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
 
                 if desc_dict['mode'] == 'object':
                     if desc_dict['wikidata'] == 'FROMFILENAME':
+                        if not self.get_wikidatalist_from_string(filename):
+                            self.logger.error(filename.ljust(
+                                80)+': no wikidata in filename, skip upload')
+                            continue  # continue to next file
                         wikidata = self.get_wikidatalist_from_string(filename)[
                             0]
                         del secondary_wikidata_ids[0]
@@ -1814,27 +1849,31 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 # HACK
                 # UPLOAD WEBP instead of TIFF if tiff is big
                 # if exists file with webp extension:
-                filename_webp = filename.replace('.tif','.webp')
+                filename_webp = filename.replace('.tif', '.webp')
                 src_filesize_mb = os.path.getsize(filename) / (1024 * 1024)
                 if filename.endswith('.tif') and src_filesize_mb > 15:
                     print('file is big, convert to webp to bypass upload errors')
                     self.convert_to_webp(filename)
-                
-                if filename.endswith('.tif') and os.path.isfile(filename_webp):
-                    print('found tif and webp file with same name. upload webp with fileinfo from tif')
-                    if not dry_run: self.move_file_to_uploaded_dir(filename,uploaded_folder_path)
-                    filename=filename_webp
-                    texts["name"]=texts["name"].replace('.tif','.webp')
 
-                if dry_run:
-                    print()
-                    print(texts["name"])
-                    print(texts["text"])
+                if filename.endswith('.tif') and os.path.isfile(filename_webp):
+                    print(
+                        'found tif and webp file with same name. upload webp with fileinfo from tif')
+                    if not dry_run:
+                        self.move_file_to_uploaded_dir(
+                            filename, uploaded_folder_path)
+                    filename = filename_webp
+                    texts["name"] = texts["name"].replace('.tif', '.webp')
+
+                print(texts["name"])
+                print(texts["text"])
 
                 if not dry_run:
-                    self.upload_file(
+
+                    upload_messages = self.upload_file(
                         filename, texts["name"], texts["text"], verify_description=desc_dict['verify']
                     )
+
+                    print(upload_messages)
 
                     # copy uploaded file to standalone-sources dir
 
@@ -1855,10 +1894,18 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     'https://commons.wikimedia.org/wiki/File:'+texts["name"].replace(' ', '_'))
 
                 if claims_append_result is None:
+                    # UPLOAD FAILED
+                    if 'Uploaded file is a duplicate of' in upload_messages:
+                        uploaded_folder_path_dublicate = uploaded_folder_path.replace(
+                            'commons_uploaded', 'commons_duplicates')
+                        self.move_file_to_uploaded_dir(
+                            filename, uploaded_folder_path_dublicate)
+                    # Continue to next file
                     continue
                 # move uploaded file to subfolder
-                if not dry_run: self.move_file_to_uploaded_dir(filename,uploaded_folder_path)
-
+                if not dry_run:
+                    self.move_file_to_uploaded_dir(
+                        filename, uploaded_folder_path)
 
                 if progressbar_on:
                     pbar.update(1)
@@ -1924,7 +1971,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             with open("queue.sh", "a") as file_object:
                 file_object.write(cmd+"\n")
 
-    def move_file_to_uploaded_dir(self,filename,uploaded_folder_path):
+    def move_file_to_uploaded_dir(self, filename, uploaded_folder_path):
         # move uploaded file to subfolder
         if not os.path.exists(uploaded_folder_path):
             os.makedirs(uploaded_folder_path)

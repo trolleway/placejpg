@@ -21,6 +21,7 @@ from simple_term_menu import TerminalMenu
 import pickle
 import re
 import traceback
+from tqdm import tqdm
 
 
 from fileprocessor import Fileprocessor
@@ -145,6 +146,7 @@ class Model_wiki:
 
     def category_add_template_taken_on(self, categoryname, location, dry_run=True, interactive=False):
         assert categoryname
+        total_files = 0
         site = pywikibot.Site("commons", "commons")
         site.login()
         site.get_tokens("csrf")  # preload csrf token
@@ -158,6 +160,7 @@ class Model_wiki:
         gen2 = pagegenerators.RegexBodyFilterPageGenerator(gen1, regex)
         for page in gen2:
             print(page)
+            total_files = total_files+1
 
         del gen1
         del gen2
@@ -171,11 +174,13 @@ class Model_wiki:
         logging.getLogger('foo').debug('bah')
 
         location = location.title()
-
+        pbar = tqdm(total=total_files)
         for page in gen2:
 
             self.page_template_taken_on(
                 page, location, dry_run, interactive, verbose=False)
+            pbar.update(1)
+        pbar.close()
 
     def location_string_parse(self, text) -> tuple:
         if text is None:
@@ -362,6 +367,8 @@ class Model_wiki:
         return object_wd
 
     def get_territorial_entity(self, wd_record) -> dict:
+        if 'P131' not in wd_record['claims']:
+            return None
         object_wd = self.get_wikidata_simplified(
             wd_record['claims']['P131'][0]['value'])
         return object_wd
@@ -381,7 +388,74 @@ class Model_wiki:
             quit()
         return object_wd
 
-    def get_wikidata_simplified(self, wikidata) -> dict:
+    def get_wikidata_simplified(self, entity_id) -> dict:
+        # get all claims of this wikidata objects
+        if entity_id in self.wikidata_cache['entities_simplified']:
+            return self.wikidata_cache['entities_simplified'][entity_id]
+
+        site = pywikibot.Site("wikidata", "wikidata")
+        entity = pywikibot.ItemPage(site, entity_id)
+        entity.get()
+
+        object_record = {'labels': {}}
+
+        labels_pywikibot = entity.labels.toJSON()
+        for lang in labels_pywikibot:
+            object_record['labels'][lang] = labels_pywikibot[lang]['value']
+
+        object_record['id'] = entity.getID()
+        claims = dict()
+        wb_claims = entity.toJSON()['claims']
+
+        for prop_id in wb_claims:
+            claims[prop_id] = list()
+            for claim in wb_claims[prop_id]:
+
+                if 'datatype' not in claim['mainsnak']:
+                    pass
+                    # this is 'somevalue' claim, skip, because it not simply
+                elif claim['mainsnak']['datatype'] == 'wikibase-item':
+                    claims[prop_id].append(
+                        {'value': 'Q'+str(claim['mainsnak']['datavalue']['value']['numeric-id'])})
+                elif claim['mainsnak']['datatype'] == 'time':
+                    claims[prop_id].append(
+                        {'value': {'time': claim['mainsnak']['datavalue']['value']['time'][8:]}})
+                elif claim['mainsnak']['datatype'] == 'external-id':
+                    claims[prop_id].append(
+                        {'value': str(claim['mainsnak']['datavalue']['value'])})
+                elif claim['mainsnak']['datatype'] == 'string':
+                    claims[prop_id].append(
+                        {'value': str(claim['mainsnak']['datavalue']['value'])})
+                elif claim['mainsnak']['datatype'] == 'monolingualtext':
+                    claims[prop_id].append(
+                        {'text': str(claim['mainsnak']['datavalue']['value']['text']), 'language': str(claim['mainsnak']['datavalue']['value']['language'])})
+        object_record['claims'] = claims
+
+        wb_sitelinks = entity.toJSON().get('sitelinks', dict())
+        commons_sitelink = ''
+        if 'commonswiki' in wb_sitelinks:
+            commons_sitelink = wb_sitelinks['commonswiki']['title']
+
+        if "P373" in object_record['claims']:
+            object_record['commons'] = object_record["claims"]["P373"][0]["value"]
+        elif 'commonswiki' in wb_sitelinks:
+            object_record['commons'] = wb_sitelinks['commonswiki']['title'].replace(
+                'Category:', '')
+        else:
+            object_record['commons'] = None
+
+        '''if "en" not in object_wd["labels"]:
+            self.logger.error('object https://www.wikidata.org/wiki/' +
+                              wikidata+' must have english label')
+            return None
+        '''
+
+        self.wikidata_cache['entities_simplified'][entity_id] = object_record
+        self.wikidata_cache_save(
+            self.wikidata_cache, self.wikidata_cache_filename)
+        return object_record
+
+    def prev_get_wikidata_simplified(self, wikidata) -> dict:
 
         # get all claims of this wikidata objects
         if wikidata in self.wikidata_cache['entities_simplified']:
@@ -887,7 +961,8 @@ LIMIT 100
             self.logger.info('page already exists '+pagename)
 
     def is_category_exists(self, categoryname):
-
+        if not categoryname.startswith('Category:'):
+            categoryname = 'Category:'+categoryname
         # check in cache
         if categoryname in self.wikidata_cache['commonscat_exists_set']:
             return True
@@ -1010,9 +1085,9 @@ LIMIT 100
         object_wdid = self.normalize_wdid(object_wdid)
         cache_key = str(object_wdid)+'/'+location_wdid
         if cache_key in self.cache_category_object_in_location:
-            text = '[[Category:'+self.cache_category_object_in_location[cache_key]+']]'
+            text = ''+self.cache_category_object_in_location[cache_key]+''
             if order:
-                text = text.replace(']]', '|'+order+']]')
+                text = text+'|'+order
             return text
         stop_hieraechy_walk = False
         cnt = 0
@@ -1035,9 +1110,9 @@ LIMIT 100
             if union_category_name is not None:
                 print('found ' + '[[Category:'+union_category_name+']]')
                 self.cache_category_object_in_location[cache_key] = union_category_name
-                text = '[[Category:'+union_category_name+']]'
+                text = ''+union_category_name+''
                 if order:
-                    text = text.replace(']]', '|'+order+']]')
+                    text = text+'|'+order
                 return text
 
             upper_wdid = self.get_upper_location_wdid(geoobject_wd)

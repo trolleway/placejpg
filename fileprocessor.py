@@ -63,9 +63,11 @@ class Fileprocessor:
         image.save(destination, format="webp", lossless=False,
                    quality=98)  # Convert image to webp
 
-        cmd = ['exiftool', '-charset', 'utf8', '-tagsfromfile',
-               filepath, '-overwrite_original',  destination]  # '-all:all' ,
-        subprocess.run(cmd)
+        # copy metadata to webp require recent exiftool
+        # cmd = ['exiftool', '-charset', 'utf8', '-tagsfromfile',
+        #       filepath, '-overwrite_original',  destination]  # '-all:all' ,
+        # subprocess.run(cmd)
+
         return destination
 
     def input2filelist(self, filepath):
@@ -198,6 +200,7 @@ class Fileprocessor:
 
         from model_wiki import Model_wiki as Model_wiki_ask
         modelwiki = Model_wiki_ask()
+        categories = set()
 
         vehicle_names = {'ru': {'tram': 'трамвай', 'trolleybus': 'троллейбус',
                                 'bus': 'автобус', 'train': 'поезд', 'locomotive': 'локомотив', 'auto': 'автомобиль', 'plane': 'самолёт'}}
@@ -253,8 +256,12 @@ class Fileprocessor:
             wikidata_4_structured_data.add(street_wd['id'])
             # add city/district to structured data
             city_wd = modelwiki.get_territorial_entity(street_wd)
-            assert city_wd is not None, 'https://www.wikidata.org/wiki/' + \
-                str(street_wdid) + ' must have territorial entity'
+            if city_wd is None:
+                msg = 'https://www.wikidata.org/wiki/' + \
+                    str(street_wdid) + ' must have territorial entity'
+                self.logger.error(msg)
+                return None
+
             wikidata_4_structured_data.add(city_wd['id'])
 
         # ROUTE
@@ -290,8 +297,8 @@ class Fileprocessor:
             # GET "RZD" from "Russian Railways"
             if 'P1813' in system_wd['claims']:
                 for abbr_record in system_wd['claims']['P1813']:
-                    system_names[abbr_record['value']['language']
-                                 ] = abbr_record['value']['text']
+                    system_names[abbr_record['language']
+                                 ] = abbr_record['text']
 
             wikidata_4_structured_data.add(system_wd['id'])
             system_territorial_entity = modelwiki.get_territorial_entity(
@@ -393,17 +400,18 @@ class Fileprocessor:
                 system_names['ru'] = ''
 
             # {model} removed
+            number_lat = translit(number, "ru", reversed=True)
 
-            objectname_en = '{system}{number}'.format(
+            objectname_en = '{system}{number_lat}'.format(
                 system=system_names['en']+' ',
                 city=city_name_en,
                 model=model_names['en'],
-                number=translit(number, "ru", reversed=True),
+                number_lat=number_lat,
                 place=' '.join(placenames['en'])
             )
-            commons_filename = '{system}{number} {dt} {place} {timestamp}{extension}'.format(
+            commons_filename = '{system}{number_lat} {dt} {place} {timestamp}{extension}'.format(
                 system=system_names['en']+' ',
-                number=translit(number, "ru", reversed=True),
+                number_lat=number_lat,
                 dt=dt_obj.strftime("%Y-%m"),
                 place=' '.join(placenames['en']),
                 timestamp=dt_obj.strftime("%s"),
@@ -416,6 +424,9 @@ class Fileprocessor:
                 model=model_names.get('ru', model_names['en']),
                 number=number
             )
+
+            locomotive_inscription = number_lat
+            locomotive_railway_code = system_names['en']
 
         commons_filename = commons_filename.replace("/", " drob ")
 
@@ -500,7 +511,8 @@ class Fileprocessor:
                     + "\n"
                 )
                 text += st
-        text += self.get_camera_text(filename)
+        camera_text, camera_categories = self.get_camera_text(filename)
+        text += camera_text
         """
         make
         model
@@ -546,7 +558,6 @@ class Fileprocessor:
             self.photographer+'/'+country+'/' + \
             transports[vehicle].lower().capitalize()+"]]" + "\n"
 
-        categories = set()
         trains_on_line_cat = None
         trains_on_station_cat = None
 
@@ -583,16 +594,18 @@ class Fileprocessor:
                 if line_wdid is not None:
                     wikidata_4_structured_data.add(line_wdid)
                 wikidata_4_structured_data.add(street_wdid)
-            else:
+            if trains_on_station_cat is None:
                 # STATION
-                assert street_wd['commons'] is not None, 'https://www.wikidata.org/wiki/' + \
-                    street_wd['id'] + ' must have commons category'
+                if street_wd['commons'] is None:
+                    self.logger.error('https://www.wikidata.org/wiki/' +
+                                      street_wd['id'] + ' must have commons category')
+                    return None
                 categories.add(street_wd['commons'])
                 wikidata_4_structured_data.add(street_wdid)
                 # LINE
                 if line_wd is not None:
                     wikidata_4_structured_data.add(line_wd['id'])
-                    if line_wd['commons'] is not None:
+                    if trains_on_line_cat is None and line_wd['commons'] is not None:
                         categories.add(line_wd['commons'])
 
         else:
@@ -602,65 +615,20 @@ class Fileprocessor:
             if street_wd is not None and 'commons' in street_wd:
                 categories.add(street_wd['commons'])
 
-        for catname in categories:
-            catname = catname.replace('Category:', '')
-            text += "[[Category:"+catname+"]]" + "\n"
         assert None not in wikidata_4_structured_data, 'empty value added to structured data set:' + \
             str(' '.join(list(wikidata_4_structured_data)))
-
-        '''prev 
-        do_add_station_category=True
-        # TRAINS AT STATION
-        # Search category using wikidata
-        if vehicle in train_synonims and street is not None and line_wdid is not None and modelwiki.search_commonscat_by_2_wikidata(line_wdid,'Q870') is not None:
-            cat = modelwiki.search_commonscat_by_2_wikidata(street_wdid,'Q870')
-            text = text +"[[Category:" + cat+"]]" + "\n"
-            wikidata_4_structured_data.add(line_wd['id'])
-            wikidata_4_structured_data.add(street_wdid)
-            do_add_station_category=False
-        
-        # TRAINS AT STATION v2
-        # Search category using name generation
-        elif vehicle in train_synonims and street is not None:
-            cat='Category:Trains at '+street_wd['commons']
-            print('check if category exists '+cat)
-            if modelwiki.is_category_exists(cat):
-                text = text +"[["+cat+"]]" + "\n"
-                wikidata_4_structured_data.add(street_wdid)
-                
-            
-        
-        # TRAINS ON LINE
-        elif vehicle in train_synonims and line_wdid is not None and modelwiki.search_commonscat_by_2_wikidata(line_wdid,'Q870') is not None:
-            cat = modelwiki.search_commonscat_by_2_wikidata(line_wdid,'Q870')
-            
-            text = text +"[[Category:" + cat+"]]" + "\n"
-            wikidata_4_structured_data.add(line_wd['id'])
-            do_add_station_category=True
-        # GET RAILWAY LINE FROM STATION
-        elif line_wd is not None:
-            if line_wd['commons'] is not None:
-                text = text +"[[Category:" + line_wd["commons"]+"]]" + "\n"
-            wikidata_4_structured_data.add(line_wd['id'])
-            do_add_station_category=True
-        
-        # ADD STATION CATEGORY / STREET CATEGORY
-        if do_add_station_category and street_wd is not None and 'commons' in street_wd:
-            text = text + \
-                "[[Category:" + street_wd["commons"] + "]]" + "\n"
-        '''
 
         # locale.setlocale(locale.LC_ALL, 'en_GB')
         if vehicle in train_synonims:
             catname = "Railway photographs taken on " + \
                 dt_obj.strftime("%Y-%m-%d")
-            text += "[[Category:"+catname+"]]" + "\n"
+            categories.add(catname)
             modelwiki.create_category(
                 catname, '{{Railway photographs taken on navbox}}')
             if isinstance(country, str) and len(country) > 3:
                 catname = dt_obj.strftime("%B %Y") + \
                     " in rail transport in "+country
-                text += "[[Category:"+catname+"]]" + "\n"
+                categories.add(catname)
                 category_content = '{{GeoGroup|level=2}}{{railtransportmonth-country|'+dt_obj.strftime(
                     "%Y")[0:3]+'|'+dt_obj.strftime("%Y")[-1:]+'|'+dt_obj.strftime("%m")+'|'+country+'}}'
                 modelwiki.create_category(catname, category_content)
@@ -746,21 +714,28 @@ class Fileprocessor:
             if digital_number is None:
                 digital_number = number_filtered
         if number is not None and vehicle in train_synonims:
-            catname = "Number "+digital_number+" on rail vehicles"
-            category_page_content = '{{NumbercategoryTrain|'+digital_number+'}}'
-            modelwiki.create_category(catname, category_page_content)
-            text += "[[Category:"+catname+"]]\n"
+            # search for category for this railway locomotive
+            has_category_for_this_vehicle = False
+            cat = f'{locomotive_railway_code} {locomotive_inscription}'
+            if modelwiki.is_category_exists(cat):
+                has_category_for_this_vehicle = True
+                categories.add(cat)
+            else:
+                catname = "Number "+digital_number+" on rail vehicles"
+                category_page_content = '{{NumbercategoryTrain|'+digital_number+'}}'
+                modelwiki.create_category(catname, category_page_content)
+                categories.add(catname)
 
-            # upper category
-            catname = 'Number '+digital_number+' on vehicles'
-            category_page_content = '{{Numbercategory-vehicle|'+digital_number + \
-                '|vehicle|Number '+digital_number+' on objects|Vehicle}}'
-            modelwiki.create_category(catname, category_page_content)
+                # upper category
+                catname = 'Number '+digital_number+' on vehicles'
+                category_page_content = '{{Numbercategory-vehicle|'+digital_number + \
+                    '|vehicle|Number '+digital_number+' on objects|Vehicle}}'
+                modelwiki.create_category(catname, category_page_content)
 
-            # upper category
-            catname = 'Number '+digital_number+' on objects'
-            category_page_content = '{{Number on object|n='+digital_number+'}}'
-            modelwiki.create_category(catname, category_page_content)
+                # upper category
+                catname = 'Number '+digital_number+' on objects'
+                category_page_content = '{{Number on object|n='+digital_number+'}}'
+                modelwiki.create_category(catname, category_page_content)
 
         elif number is not None and vehicle == 'bus':
             text += "[[Category:Number "+digital_number+" on buses]]\n"
@@ -795,17 +770,17 @@ class Fileprocessor:
                 )
 
                 modelwiki.create_category(catname, category_page_content)
-
+        # MODEL
         # if dt_obj is not None and vehicle == 'trolleybus':
         # category for model. search for category like "ZIU-9 in Moscow"
-        cat = modelwiki.get_category_object_in_location(
-            model_wd['id'], street_wd['id'], order=digital_number, verbose=True)
-        if cat is not None:
-            text = text + cat + "\n"
-        else:
-            text = text + \
-                "[[Category:" + model_wd["commons"] + \
-                '|' + digital_number + "]]" + "\n"
+        if not has_category_for_this_vehicle:
+            cat = modelwiki.get_category_object_in_location(
+                model_wd['id'], street_wd['id'], order=digital_number, verbose=True)
+            if cat is not None:
+                categories.add(cat)
+            else:
+                categories.add(model_wd["commons"] +
+                               '|' + digital_number)
 
         # categories for secondary_wikidata_ids
         # search for geography categories using street like (ZIU-9 in Russia)
@@ -830,6 +805,12 @@ class Fileprocessor:
                     if 'commons' in wd_record and wd_record["commons"] is not None:
                         text = text + \
                             "[[Category:" + wd_record["commons"] + "]]" + "\n"
+
+        categories.update(camera_categories)
+        for catname in categories:
+            catname = catname.replace('Category:', '')
+            text += "[[Category:"+catname+"]]" + "\n"
+
         assert None not in wikidata_4_structured_data, 'empty value added to structured data set:' + \
             str(' '.join(list(wikidata_4_structured_data)))
         return {"name": commons_filename, "text": text,
@@ -931,7 +912,8 @@ class Fileprocessor:
                     + "\n"
                 )
                 text += st
-        text += self.get_camera_text(filename)
+        camera_text, camera_categories = self.get_camera_text(filename)
+        text += camera_text
 
         text = (
             text
@@ -939,6 +921,11 @@ class Fileprocessor:
 {{self|cc-by-sa-4.0|author=""" + self.photographer+"""}}
 """
         )
+        categories = set()
+        categories.update(camera_categories)
+        for catname in categories:
+            catname = catname.replace('Category:', '')
+            text += "[[Category:"+catname+"]]" + "\n"
 
         text = text + "[[Category:Photographs by " + \
             self.photographer+'/'+country+"]]" + "\n"
@@ -957,10 +944,9 @@ class Fileprocessor:
         wd_record = modelwiki.get_wikidata_simplified(wikidata)
 
         instance_of_data = list()
-        if 'instance_of_list' in wd_record:
-            for i in wd_record['instance_of_list']:
-                instance_of_data.append(
-                    modelwiki.get_wikidata_simplified(i['value']))
+        for i in wd_record['claims']['P31']:
+            instance_of_data.append(
+                modelwiki.get_wikidata_simplified(i['value']))
 
         objectnames = {}
         assert 'en' in wd_record['labels'], 'object https://www.wikidata.org/wiki/' + \
@@ -1042,10 +1028,9 @@ class Fileprocessor:
         wd_record = modelwiki.get_wikidata_simplified(wikidata)
 
         instance_of_data = list()
-        if 'instance_of_list' in wd_record:
-            for i in wd_record['instance_of_list']:
-                instance_of_data.append(
-                    modelwiki.get_wikidata_simplified(i['value']))
+        for i in wd_record['claims']['P31']:
+            instance_of_data.append(
+                modelwiki.get_wikidata_simplified(i['value']))
 
         text = ""
         objectnames = {}
@@ -1072,7 +1057,7 @@ class Fileprocessor:
                 except:
                     pass
 
-        prototype = """== {{int:filedesc}} ==
+        """== {{int:filedesc}} ==
 {{Information
 |description={{en|1=2nd Baumanskaya Street 1 k1}}{{ru|1=Вторая Бауманская улица дом 1 К1}} {{ on Wikidata|Q86663303}}  {{Building address|Country=RU|Street name=2-я Бауманская улица|House number=1 К1}}  
 |source={{own}}
@@ -1109,6 +1094,9 @@ class Fileprocessor:
         for lang in self.optional_langs:
             if lang in objectnames_long:
                 st += "{{"+lang+"|1=" + objectnames_long[lang] + "}} \n"
+
+        # CULTURAL HERITAGE
+        # if main object is cultural heritage: insert special templates
         heritage_id = None
         heritage_id = modelwiki.get_heritage_id(wikidata)
         if heritage_id is not None:
@@ -1148,7 +1136,7 @@ class Fileprocessor:
                 cat = modelwiki.get_category_object_in_location(
                     wdid, wikidata, verbose=True)
                 if cat is not None:
-                    text = text + cat + "\n"
+                    text = text + "[[Category:" + cat + "]]" + "\n"
                 else:
                     wd_record = modelwiki.get_wikidata_simplified(wdid)
 
@@ -1296,8 +1284,9 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
         return d, keywords
 
-    def get_camera_text(self, filename) -> str:
+    def get_camera_text(self, filename) -> list:
         st = ''
+        categories = set()
         image_exif = self.image2camera_params(filename)
         if image_exif.get("make") is not None and image_exif.get("model") is not None:
             if image_exif.get("make") != "" and image_exif.get("model") != "":
@@ -1312,10 +1301,20 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
                 if image_exif.get("fnumber", '') != "" and image_exif.get("fnumber", '') != "":
                     st += '|Aperture = f/' + str(image_exif.get("fnumber"))
+                    categories.add(
+                        'F-number f/'+str(image_exif.get("fnumber"))[0:5])
                 if image_exif.get("'focallengthin35mmformat'", '') != "" and image_exif.get("'focallengthin35mmformat'", '') != "":
                     st += '|Focal length 35mm = f/' + \
                         str(image_exif.get("'focallengthin35mmformat'"))
                 st += '}}' + "\n"
+
+                if image_exif.get("focallength", '') != "" and image_exif.get("focallength", '') != "":
+                    categories.add(
+                        'Lens focal length '+str(image_exif.get("focallength"))[0:5]+' mm')
+
+                if image_exif.get("iso", '') != "" and image_exif.get("iso", '') != "":
+                    categories.add(
+                        'ISO speed rating '+str(image_exif.get("iso"))[0:5]+'')
 
                 cameramodels_dict = {
                     'Pentax corporation PENTAX K10D': 'Pentax K10D',
@@ -1354,9 +1353,9 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
                 st = st.replace('Canon Canon', 'Canon')
 
-                return st
+                return st, categories
         else:
-            return ''
+            return '', categories
 
     def image2camera_params_0(self, path):
         with open(path, "rb") as image_file:
@@ -1404,6 +1403,14 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
             return True
         else:
             return False
+
+    def check_extension_valid(self, filepath) -> bool:
+        ext = os.path.splitext(filepath)[1].lower()[1:]
+        allowed = ['tiff', 'tif', 'png', 'gif', 'jpg', 'jpeg', 'webp', 'xcf', 'mid', 'ogg', 'ogv',
+                   'svg', 'djvu', 'stl', 'oga', 'flac', 'opus', 'wav', 'webm', 'mp3', 'midi', 'mpg', 'mpeg']
+        if ext in allowed:
+            return True
+        return False
 
     def image2datetime(self, path):
 
@@ -1713,7 +1720,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         self.write_iptc(filename, caption, keywords)
         # processed_files.append(filename)
 
-    def process_and_upload_file(self, filepath, desc_dict):
+    def process_and_upload_files(self, filepath, desc_dict):
         from model_wiki import Model_wiki
         modelwiki = Model_wiki()
         if not os.path.exists(filepath):
@@ -1749,14 +1756,15 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             dry_run = True
 
         uploaded_paths = list()
-
+        files_filtered = list()
         # count for progressbar
         total_files = 0
         for filename in files:
             print(filename)
             if 'commons_uploaded' in filename:
                 continue
-            if self.check_exif_valid(filename):
+            if self.check_exif_valid(filename) and self.check_extension_valid(filename):
+                files_filtered.append(filename)
                 total_files = total_files + 1
 
         progressbar_on = False
@@ -1764,154 +1772,153 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             progressbar_on = True
             pbar = tqdm(total=total_files)
 
+        files = files_filtered
+        del files_filtered
         for filename in files:
             if 'commons_uploaded' in filename:
                 continue
-            if self.check_exif_valid(filename):
 
-                secondary_wikidata_ids = modelwiki.input2list_wikidata(
-                    desc_dict['secondary_objects'])
+            secondary_wikidata_ids = modelwiki.input2list_wikidata(
+                desc_dict['secondary_objects'])
 
-                # get wikidata from filepath
+            # get wikidata from filepath
 
-                if secondary_wikidata_ids == [] and 'Q' in filename:
-                    secondary_wikidata_ids = self.get_wikidatalist_from_string(
-                        filename)
+            if secondary_wikidata_ids == [] and 'Q' in filename:
+                secondary_wikidata_ids = self.get_wikidatalist_from_string(
+                    filename)
 
-                if desc_dict['mode'] == 'object':
-                    if desc_dict['wikidata'] == 'FROMFILENAME':
-                        if not self.get_wikidatalist_from_string(filename):
-                            self.logger.error(filename.ljust(
-                                80)+': no wikidata in filename, skip upload')
-                            continue  # continue to next file
-                        wikidata = self.get_wikidatalist_from_string(filename)[
-                            0]
-                        del secondary_wikidata_ids[0]
-                    else:
-                        wikidata = modelwiki.wikidata_input2id(
-                            desc_dict['wikidata'])
-
-                    texts = self.make_image_texts_simple(
-                        filename=filename,
-                        wikidata=wikidata,
-                        country=desc_dict['country'],
-                        rail=desc_dict['rail'],
-                        secondary_wikidata_ids=secondary_wikidata_ids,
-                        quick=desc_dict['later']
-                    )
-                    wikidata_list = list()
-                    wikidata_list.append(wikidata)
-                    wikidata_list += secondary_wikidata_ids
-                    standalone_captions_dict = self.make_image_texts_standalone(
-                        filename, wikidata, secondary_wikidata_ids)
-
-                elif desc_dict['mode'] == 'vehicle':
-                    desc_dict['model'] = modelwiki.wikidata_input2id(
-                        desc_dict.get('model', None))
-                    # transfer street user input deeper, it can be vector file name
-                    desc_dict['street'] = desc_dict.get('street', None)
-                    desc_dict['system'] = modelwiki.wikidata_input2id(
-                        desc_dict.get('system', None))
-                    desc_dict['city'] = modelwiki.wikidata_input2id(
-                        desc_dict.get('city', None))
-                    desc_dict['line'] = modelwiki.wikidata_input2id(
-                        desc_dict.get('line', None))
-                    desc_dict['line'] = modelwiki.wikidata_input2id(
-                        desc_dict.get('line', None))
-
-                    texts = self.make_image_texts_vehicle(
-                        filename=filename,
-                        vehicle=desc_dict['vehicle'],
-                        model=desc_dict.get('model', None),
-                        street=desc_dict.get('street', None),
-                        number=desc_dict.get('number', None),
-                        digital_number=desc_dict.get('digital_number', None),
-                        system=desc_dict.get('system', None),
-                        route=desc_dict.get('route', None),
-                        country=desc_dict.get('country', None),
-                        line=desc_dict.get('line', None),
-                        facing=desc_dict.get('facing', None),
-                        colors=desc_dict.get('colors', None),
-                        secondary_wikidata_ids=secondary_wikidata_ids
-                    )
-                    if texts is None:
-                        # invalid metadata for this file, continue to next file
-                        continue
-                    wikidata_list = list()
-                    wikidata_list += texts['structured_data_on_commons']
-                    wikidata_list += secondary_wikidata_ids
-                    standalone_captions_dict = {
-                        'new_filename': texts['name'], 'ru': texts['captions']['ru'], 'en': texts['captions']['en']}
-
-                    '''
-                     'new_filename':commons_filename,'ru':objectname_long_ru,'en':objectname_long_en
-                    '''
-                # HACK
-                # UPLOAD WEBP instead of TIFF if tiff is big
-                # if exists file with webp extension:
-                filename_webp = filename.replace('.tif', '.webp')
-                src_filesize_mb = os.path.getsize(filename) / (1024 * 1024)
-                if filename.endswith('.tif') and src_filesize_mb > 15:
-                    print('file is big, convert to webp to bypass upload errors')
-                    self.convert_to_webp(filename)
-
-                if filename.endswith('.tif') and os.path.isfile(filename_webp):
-                    print(
-                        'found tif and webp file with same name. upload webp with fileinfo from tif')
-                    if not dry_run:
-                        self.move_file_to_uploaded_dir(
-                            filename, uploaded_folder_path)
-                    filename = filename_webp
-                    texts["name"] = texts["name"].replace('.tif', '.webp')
-
-                print(texts["name"])
-                print(texts["text"])
-
-                if not dry_run:
-
-                    upload_messages = self.upload_file(
-                        filename, texts["name"], texts["text"], verify_description=desc_dict['verify']
-                    )
-
-                    print(upload_messages)
-
-                    # copy uploaded file to standalone-sources dir
-
-                    # self.copy_image4standalone(filename,standalone_captions_dict['new_filename'])
-                    self.create_json4standalone(
-                        filename, standalone_captions_dict['new_filename'], standalone_captions_dict['ru'], standalone_captions_dict['en'])
-
-                self.logger.info('append claims')
-                claims_append_result = modelwiki.append_image_descripts_claim(
-                    texts["name"], wikidata_list, dry_run)
-                if not dry_run:
-                    modelwiki.create_category_taken_on_day(
-                        desc_dict['country'].capitalize(), texts['dt_obj'].strftime("%Y-%m-%d"))
+            if desc_dict['mode'] == 'object':
+                if desc_dict['wikidata'] == 'FROMFILENAME':
+                    if not self.get_wikidatalist_from_string(filename):
+                        self.logger.error(filename.ljust(
+                            80)+': no wikidata in filename, skip upload')
+                        continue  # continue to next file
+                    wikidata = self.get_wikidatalist_from_string(filename)[
+                        0]
+                    del secondary_wikidata_ids[0]
                 else:
-                    print('will append '+' '.join(wikidata_list))
+                    wikidata = modelwiki.wikidata_input2id(
+                        desc_dict['wikidata'])
 
-                uploaded_paths.append(
-                    'https://commons.wikimedia.org/wiki/File:'+texts["name"].replace(' ', '_'))
+                texts = self.make_image_texts_simple(
+                    filename=filename,
+                    wikidata=wikidata,
+                    country=desc_dict['country'],
+                    rail=desc_dict['rail'],
+                    secondary_wikidata_ids=secondary_wikidata_ids,
+                    quick=desc_dict['later']
+                )
+                wikidata_list = list()
+                wikidata_list.append(wikidata)
+                wikidata_list += secondary_wikidata_ids
+                standalone_captions_dict = self.make_image_texts_standalone(
+                    filename, wikidata, secondary_wikidata_ids)
 
-                if claims_append_result is None:
-                    # UPLOAD FAILED
-                    if 'Uploaded file is a duplicate of' in upload_messages:
-                        uploaded_folder_path_dublicate = uploaded_folder_path.replace(
-                            'commons_uploaded', 'commons_duplicates')
-                        self.move_file_to_uploaded_dir(
-                            filename, uploaded_folder_path_dublicate)
-                    # Continue to next file
+            elif desc_dict['mode'] == 'vehicle':
+                desc_dict['model'] = modelwiki.wikidata_input2id(
+                    desc_dict.get('model', None))
+                # transfer street user input deeper, it can be vector file name
+                desc_dict['street'] = desc_dict.get('street', None)
+                desc_dict['system'] = modelwiki.wikidata_input2id(
+                    desc_dict.get('system', None))
+                desc_dict['city'] = modelwiki.wikidata_input2id(
+                    desc_dict.get('city', None))
+                desc_dict['line'] = modelwiki.wikidata_input2id(
+                    desc_dict.get('line', None))
+                desc_dict['line'] = modelwiki.wikidata_input2id(
+                    desc_dict.get('line', None))
+
+                texts = self.make_image_texts_vehicle(
+                    filename=filename,
+                    vehicle=desc_dict['vehicle'],
+                    model=desc_dict.get('model', None),
+                    street=desc_dict.get('street', None),
+                    number=desc_dict.get('number', None),
+                    digital_number=desc_dict.get('digital_number', None),
+                    system=desc_dict.get('system', None),
+                    route=desc_dict.get('route', None),
+                    country=desc_dict.get('country', None),
+                    line=desc_dict.get('line', None),
+                    facing=desc_dict.get('facing', None),
+                    colors=desc_dict.get('colors', None),
+                    secondary_wikidata_ids=secondary_wikidata_ids
+                )
+                if texts is None:
+                    # invalid metadata for this file, continue to next file
                     continue
-                # move uploaded file to subfolder
+                wikidata_list = list()
+                wikidata_list += texts['structured_data_on_commons']
+                wikidata_list += secondary_wikidata_ids
+                standalone_captions_dict = {
+                    'new_filename': texts['name'], 'ru': texts['captions']['ru'], 'en': texts['captions']['en']}
+
+                '''
+                    'new_filename':commons_filename,'ru':objectname_long_ru,'en':objectname_long_en
+                '''
+            # HACK
+            # UPLOAD WEBP instead of TIFF if tiff is big
+            # if exists file with webp extension:
+            filename_webp = filename.replace('.tif', '.webp')
+            src_filesize_mb = os.path.getsize(filename) / (1024 * 1024)
+            if filename.endswith('.tif') and src_filesize_mb > 15:
+                print('file is big, convert to webp to bypass upload errors')
+                self.convert_to_webp(filename)
+
+            if filename.endswith('.tif') and os.path.isfile(filename_webp):
+                print(
+                    'found tif and webp file with same name. upload webp with fileinfo from tif')
                 if not dry_run:
                     self.move_file_to_uploaded_dir(
                         filename, uploaded_folder_path)
+                filename = filename_webp
+                texts["name"] = texts["name"].replace('.tif', '.webp')
 
-                if progressbar_on:
-                    pbar.update(1)
+            print(texts["name"])
+            print(texts["text"])
+
+            if not dry_run:
+
+                upload_messages = self.upload_file(
+                    filename, texts["name"], texts["text"], verify_description=desc_dict['verify']
+                )
+
+                print(upload_messages)
+
+                # copy uploaded file to standalone-sources dir
+
+                # self.copy_image4standalone(filename,standalone_captions_dict['new_filename'])
+                self.create_json4standalone(
+                    filename, standalone_captions_dict['new_filename'], standalone_captions_dict['ru'], standalone_captions_dict['en'])
+
+            self.logger.info('append claims')
+            claims_append_result = modelwiki.append_image_descripts_claim(
+                texts["name"], wikidata_list, dry_run)
+            if not dry_run:
+                modelwiki.create_category_taken_on_day(
+                    desc_dict['country'].capitalize(), texts['dt_obj'].strftime("%Y-%m-%d"))
             else:
-                print('can not open file '+filename+', skipped')
+                print('will append '+' '.join(wikidata_list))
+
+            uploaded_paths.append(
+                'https://commons.wikimedia.org/wiki/File:'+texts["name"].replace(' ', '_'))
+
+            if claims_append_result is None:
+                # UPLOAD FAILED
+                if 'Uploaded file is a duplicate of' in upload_messages:
+                    uploaded_folder_path_dublicate = uploaded_folder_path.replace(
+                        'commons_uploaded', 'commons_duplicates')
+                    self.move_file_to_uploaded_dir(
+                        filename, uploaded_folder_path_dublicate)
+                # Continue to next file
                 continue
+            # move uploaded file to subfolder
+            if not dry_run:
+                self.move_file_to_uploaded_dir(
+                    filename, uploaded_folder_path)
+
+            if progressbar_on:
+                pbar.update(1)
+
         if progressbar_on:
             pbar.close()
         if not dry_run:

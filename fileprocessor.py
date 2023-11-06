@@ -64,9 +64,16 @@ class Fileprocessor:
                    quality=98)  # Convert image to webp
 
         # copy metadata to webp require recent exiftool
-        # cmd = ['exiftool', '-charset', 'utf8', '-tagsfromfile',
-        #       filepath, '-overwrite_original',  destination]  # '-all:all' ,
-        # subprocess.run(cmd)
+        try:
+            subprocess.check_output(["exiftool", "-ver"])
+            cmd = ['exiftool', '-charset', 'utf8', '-tagsfromfile',
+               filepath, '-overwrite_original',  destination]  # '-all:all' ,
+            subprocess.run(cmd)
+        except subprocess.CalledProcessError:
+            print("Exiftool is not installed. WEBP file created without exif tags")
+
+
+        
 
         return destination
 
@@ -298,7 +305,7 @@ class Fileprocessor:
             if 'P1813' in system_wd['claims']:
                 for abbr_record in system_wd['claims']['P1813']:
                     system_names[abbr_record['language']
-                                 ] = abbr_record['text']
+                                 ] = abbr_record['value']
 
             wikidata_4_structured_data.add(system_wd['id'])
             system_territorial_entity = modelwiki.get_territorial_entity(
@@ -706,6 +713,7 @@ class Fileprocessor:
                 wikidata_4_structured_data.add(vehicles_wikidata['train'])
 
         # number
+        has_category_for_this_vehicle = False
         if number is not None:
             number_filtered = number
             if '-' in number_filtered:
@@ -751,9 +759,10 @@ class Fileprocessor:
         elif number is not None and vehicle != 'tram':
             text += "[[Category:Number "+digital_number+" on vehicles]]\n"
         if number is not None and vehicle == 'tram':
-            text += "[[Category:Trams with fleet number "+digital_number+"]]\n"
+            catname="Trams with fleet number "+digital_number
+            categories.add(catname)
             category_page_content = '{{' + \
-                f'Numbercategory-vehicle-fleet number|{digital_number}|Trams|Number {digital_number} on trams'+'}}'
+                f'Numbercategory-vehicle-fleet number|{digital_number}|Trams|Number {digital_number} on trams'+'|image=}}'
             modelwiki.create_category(catname, category_page_content)
         if dt_obj is not None and vehicle not in train_synonims:
             catname = "{transports} in {country} photographed in {year}".format(
@@ -1179,8 +1188,8 @@ class Fileprocessor:
         # add district name to file name
         if add_administrative_name:
             try:
-                administrative_name = modelwiki.get_wd_by_wdid(modelwiki.get_upper_location_wdid(
-                    modelwiki.get_wd_by_wdid(wikidata)))['labels']['en']
+                administrative_name = modelwiki.get_wikidata_simplified(modelwiki.get_upper_location_wdid(
+                    modelwiki.get_wikidata_simplified(wikidata)))['labels']['en']
                 commons_filename = administrative_name + '_'+commons_filename
             except:
                 pass
@@ -1860,7 +1869,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             # if exists file with webp extension:
             filename_webp = filename.replace('.tif', '.webp')
             src_filesize_mb = os.path.getsize(filename) / (1024 * 1024)
-            if filename.endswith('.tif') and src_filesize_mb > 15:
+            if filename.endswith('.tif') and src_filesize_mb > 25:
                 print('file is big, convert to webp to bypass upload errors')
                 self.convert_to_webp(filename)
 

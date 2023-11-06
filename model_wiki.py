@@ -66,8 +66,7 @@ class Model_wiki:
 
     def wikidata_cache_load(self, wikidata_cache_filename):
         if os.path.isfile(wikidata_cache_filename) == False:
-            cache = {'entities_simplified': {}, 'entities_non_simplified': {
-            }, 'best_claims': {}, 'commonscat_by_2_wikidata': {}, 'commonscat_exists_set': set()}
+            cache = {'entities_simplified': {},  'commonscat_by_2_wikidata': {}, 'commonscat_exists_set': set()}
             return cache
         else:
             file = open(wikidata_cache_filename, 'rb')
@@ -408,27 +407,31 @@ class Model_wiki:
         wb_claims = entity.toJSON()['claims']
 
         for prop_id in wb_claims:
+            
             claims[prop_id] = list()
             for claim in wb_claims[prop_id]:
 
+                claim_s=dict()
+                claim_s['rank']=claim.get('rank',None)
+                if prop_id=='P1813' and entity_id=='Q660770':                
+                    pass
                 if 'datatype' not in claim['mainsnak']:
                     pass
                     # this is 'somevalue' claim, skip, because it not simply
                 elif claim['mainsnak']['datatype'] == 'wikibase-item':
-                    claims[prop_id].append(
-                        {'value': 'Q'+str(claim['mainsnak']['datavalue']['value']['numeric-id'])})
+                    claim_s['value'] = 'Q'+str(claim['mainsnak']['datavalue']['value']['numeric-id'])
                 elif claim['mainsnak']['datatype'] == 'time':
-                    claims[prop_id].append(
-                        {'value': {'time': claim['mainsnak']['datavalue']['value']['time'][8:]}})
+                    claim_s['value'] = claim['mainsnak']['datavalue']['value']['time'][8:]
                 elif claim['mainsnak']['datatype'] == 'external-id':
-                    claims[prop_id].append(
-                        {'value': str(claim['mainsnak']['datavalue']['value'])})
+                    claim_s['value'] = str(claim['mainsnak']['datavalue']['value'])
                 elif claim['mainsnak']['datatype'] == 'string':
-                    claims[prop_id].append(
-                        {'value': str(claim['mainsnak']['datavalue']['value'])})
+                    claim_s['value'] = str(claim['mainsnak']['datavalue']['value'])
                 elif claim['mainsnak']['datatype'] == 'monolingualtext':
-                    claims[prop_id].append(
-                        {'text': str(claim['mainsnak']['datavalue']['value']['text']), 'language': str(claim['mainsnak']['datavalue']['value']['language'])})
+                    claim_s['value'] =  claim['mainsnak']['datavalue']['value']['text'] 
+                    claim_s['language'] = str(claim['mainsnak']['datavalue']['value']['language'])
+                if 'qualifiers' in claim:  claim_s['qualifiers'] = claim['qualifiers']
+                claims[prop_id].append(claim_s)
+
         object_record['claims'] = claims
 
         wb_sitelinks = entity.toJSON().get('sitelinks', dict())
@@ -997,7 +1000,7 @@ LIMIT 100
         return pages
 
     def get_building_record_wikidata(self, wikidata, stop_on_error=False) -> dict:
-        building_wd = self.get_wd_by_wdid(wikidata)
+        building_wd = self.get_wikidata_simplified(wikidata)
 
         # get street of object
         if "P669" not in building_wd["claims"]:
@@ -1010,7 +1013,7 @@ LIMIT 100
             else:
                 return None
 
-        street_wd = self.get_wd_by_wdid(
+        street_wd = self.get_wikidata_simplified(
             building_wd["claims"]["P669"][0]["value"])
 
         building_record = {
@@ -1019,9 +1022,9 @@ LIMIT 100
             "addr:street:en": street_wd["labels"]["en"],
             "addr:housenumber:local": building_wd["claims"]["P669"][0]["qualifiers"][
                 "P670"
-            ][0]["value"],
+            ][0]['datavalue']["value"],
             "addr:housenumber:en": translit(
-                building_wd["claims"]["P669"][0]["qualifiers"]["P670"][0]["value"],
+                building_wd["claims"]["P669"][0]["qualifiers"]["P670"][0]['datavalue']["value"],
                 "ru",
                 reversed=True,
             ),
@@ -1034,38 +1037,15 @@ LIMIT 100
 
         return building_record
 
-    def get_wd_by_wdid(self, wikidata, require_label=False) -> dict:
-        # if need python-only implementation: replace to pywikibot this
-        if wikidata in self.wikidata_cache['entities_non_simplified']:
-            return self.wikidata_cache['entities_non_simplified'][wikidata]
-
-        cmd = ['wb', 'gt', '--json', '--no-minimize', wikidata]
-        response = subprocess.run(cmd, capture_output=True)
-        object_wd = json.loads(response.stdout.decode())
-
-        self.wikidata_cache['entities_non_simplified'][wikidata] = object_wd
-        self.wikidata_cache_save(
-            self.wikidata_cache, self.wikidata_cache_filename)
-
-        return object_wd
-
     def get_best_claim(self, wdid, prop) -> str:
         assert prop.startswith('P')
-
-        cache_key = 'wdid'+str(wdid)+'prop'+str(prop)
-
-        if cache_key in self.wikidata_cache['best_claims']:
-            return self.wikidata_cache['best_claims'][cache_key]
-
-        cmd = ['wb', 'claims', wdid, prop, '--json']
-        response = subprocess.run(cmd, capture_output=True)
-        object_wd = json.loads(response.stdout.decode())
-
-        self.wikidata_cache['best_claims'][cache_key] = object_wd[0]
-        self.wikidata_cache_save(
-            self.wikidata_cache, self.wikidata_cache_filename)
-
-        return object_wd[0]
+        entity=self.get_wikidata_simplified(wdid)
+        claims=entity['claims'].get(prop)
+        for claim in claims:
+            if claim['rank']=='preferred':
+                return claim['value']
+        for claim in claims:
+            return claim['value']
 
     def get_upper_location_wdid(self, wdobj):
         if 'P131' in wdobj['claims']:

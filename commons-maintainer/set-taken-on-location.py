@@ -16,10 +16,10 @@ from model_wiki import Model_wiki
 fileprocessor = Fileprocessor()
 modelwiki = Model_wiki()
 
-categoryname = 'Shelepikha_(Moscow_Metro)'
+categoryname = 'Eseninskaya_railway_platform'
 
 
-location = 'Moscow'
+location = 'Moscow Oblast'
 
 modelwiki.category_add_template_taken_on(
     categoryname, location, dry_run=False, interactive=False)

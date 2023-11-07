@@ -537,6 +537,8 @@ class Model_wiki:
                 'Slash symbols in date causes side-effects. Normalize date in '+page.full_url())
         if len(datestr) < len('yyyy-mm-dd'):
             return False
+        if len(datestr) > len('yyyy-mm-dd'):
+            return False        
         assert datestr, 'invalid date parce in '+page.full_url()
 
         location_value_has_already = self._text_get_template_taken_on_location(
@@ -553,7 +555,29 @@ class Model_wiki:
             return False
         if '|location='+location+'}}' not in texts[2]:
             return False
+        # Remove category
+        cat='Russia photographs taken on '+datestr
+        texts[2]=texts[2].replace("[[Category:"+cat+"]]",'')
+        texts[2]=texts[2].replace("[[Category:"+cat.replace(' ','_')+"]]",'')
+
+
+        date_obj = datetime.strptime(datestr, '%Y-%m-%d')
+        date_obj.strftime('%B %Y')
+        cat=date_obj.strftime('%B %Y')+' in '+location
+        texts[2]=texts[2].replace("[[Category:"+cat+"]]",'')
+        texts[2]=texts[2].replace("[[Category:"+cat.replace(' ','_')+"]]",'')
+
+        cat=date_obj.strftime('%Y')+' in '+location
+        texts[2]=texts[2].replace("[[Category:"+cat+"]]",'')
+        texts[2]=texts[2].replace("[[Category:"+cat.replace(' ','_')+"]]",'')
+
+        cat=date_obj.strftime('%Y')+' in Russia'
+        texts[2]=texts[2].replace("[[Category:"+cat+"]]",'')
+        texts[2]=texts[2].replace("[[Category:"+cat.replace(' ','_')+"]]",'')
+
+
         self.difftext(texts[0], texts[2])
+        if texts[0]!=texts[2]:page_not_need_change = False
 
         if verbose:
             print('----------- proposed page content ----------- ' +
@@ -565,6 +589,8 @@ class Model_wiki:
             if page_not_need_change == False:
                 page.save('add {{Taken on location}} template')
             self.create_category_taken_on_day(location, datestr)
+        else:
+            print('page not changing')
 
         if interactive:
             answer = input(" do change on  "+page.full_url() + "\n y / n   ? ")
@@ -777,14 +803,17 @@ LIMIT 100
     def difftext(self, text1, text2):
         l = 0
         is_triggered = 0
+        text1_dict = {i: text1.splitlines()[i] for i in range(len(text1.splitlines()))}
+        text2_dict = {i: text2.splitlines()[i] for i in range(len(text2.splitlines()))}
+        
         for l in range(0, len(text1.splitlines())):
-            if text1.splitlines()[l] != text2.splitlines()[l]:
+            if text1_dict.get(l,' - - - - - void string - - - ') != text2_dict.get(l,' - - - - - void string - - - '):
                 is_triggered += 1
                 if is_triggered == 1:
-                    print('text changed:')
-                print(text1.splitlines()[l])
-                print(text2.splitlines()[l])
-                print('^^^^^')
+                    print()
+                print(text1_dict.get(l,' - - - - - void string - - - '))
+                print(text2_dict.get(l,' - - - - - void string - - - '))
+                print('^^^^^text changed^^^^^')
 
     def _text_get_template_replace_on_location(self, test_str, location):
         import re
@@ -952,7 +981,7 @@ LIMIT 100
         # self.create_page(pagename, content, 'create category')
         self.create_category(pagename, content)
 
-        if location in ('Moscow', 'Moscow Oblast', 'Saint Petersburg'):
+        if location in ('Moscow', 'Moscow Oblast', 'Saint Petersburg','Tatarstan','Nizhny Novgorod Oblast','Leningrad Oblast'):
             self.create_category_taken_on_day('Russia', yyyymmdd)
 
     def create_category(self, pagename: str, content: str):

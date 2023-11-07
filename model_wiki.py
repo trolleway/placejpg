@@ -388,6 +388,7 @@ class Model_wiki:
         return object_wd
 
     def get_wikidata_simplified(self, entity_id) -> dict:
+        assert entity_id is not None
         # get all claims of this wikidata objects
         if entity_id in self.wikidata_cache['entities_simplified']:
             return self.wikidata_cache['entities_simplified'][entity_id]

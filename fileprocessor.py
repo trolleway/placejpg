@@ -201,6 +201,52 @@ class Fileprocessor:
         response = subprocess.run(cmd, capture_output=True)
         object_wd = json.loads(response.stdout.decode())
         return object_wd['labels']
+    
+    def get_place_from_input(self,filename:str,street:str,geo_dict:dict)->str:
+            '''
+            return wikidata id of photo place
+            diffirent input variants accepted:
+
+            * upload-vehicle.py --street Q12345678 EP2D-0030.jpg
+                    return Q12345678
+            * upload-vehicle.py --street rail.gpkg EP2D-0030.jpg
+                    read coordinates from EXIF, search by coordinates in rail.gpkg
+                    open 1st layer in vector file, get 'wikidata' field value
+            * upload-vehicle.py --street rail.gpkg EP2D-0030_placeQ12345678.jpg 
+                    return Q12345678
+            
+            '''
+            from model_wiki import Model_wiki as Model_wiki_ask
+            modelwiki = Model_wiki_ask()
+            
+            # take place from filename if present
+            if 'placeQ' in os.path.basename(filename):
+                street_wdid = self.get_placewikidatalist_from_string(
+                    os.path.basename(filename))[0]
+            elif os.path.isfile(street):
+                if geo_dict is None:
+                    self.logger.error(
+                        filename + '  must have coordinates for search in geodata, or set --street')
+                    return None
+                regions_filepath = street
+                from model_geo import Model_Geo as Model_geo_ask
+                modelgeo = Model_geo_ask()
+                street_wdid = modelgeo.identify_deodata(geo_dict.get(
+                    "lat"), geo_dict.get("lon"), regions_filepath, 'wikidata')
+                if street_wdid is None:
+                    msg = 'file: '+regions_filepath
+                    self.logger.error(filename.ljust(
+                        100) + ' not found location in '+msg+'')
+                    return None
+                #street_wd = modelwiki.get_wikidata_simplified(street_wdid)
+            else:
+                # take street from user input
+
+                street_wdid = modelwiki.wikidata_input2id(street)
+                if street is not None:
+                    assert street_wdid is not None
+            return street_wdid
+
 
     def make_image_texts_vehicle(self, filename, vehicle, model, number, street=None, system=None,  route=None, country=None, line=None, facing=None, colors=None, secondary_wikidata_ids=None, digital_number=None) -> dict:
         assert os.path.isfile(filename)
@@ -229,35 +275,9 @@ class Fileprocessor:
         # STREET
         # if street - vector file path: get street wikidata code by point in polygon
         if street is not None:
-            # take street from ogr vector file
-            if 'placeQ' in os.path.basename(filename):
-                street_wdid = self.get_placewikidatalist_from_string(
-                    os.path.basename(filename))[0]
+            street_wdid = self.get_place_from_input(filename,street,geo_dict)
 
-            elif os.path.isfile(street):
-
-                if geo_dict is None:
-
-                    self.logger.error(
-                        filename + ' not set street, must have coordinates for search in geodata')
-                    return None
-                regions_filepath = street
-                from model_geo import Model_Geo as Model_geo_ask
-                modelgeo = Model_geo_ask()
-                street_wdid = modelgeo.identify_deodata(geo_dict.get(
-                    "lat"), geo_dict.get("lon"), regions_filepath, 'wikidata')
-                if street_wdid is None:
-                    msg = 'file: '+regions_filepath
-                    self.logger.error(filename.ljust(
-                        100) + ' not found location in '+msg+'')
-                    return None
-                street_wd = modelwiki.get_wikidata_simplified(street_wdid)
-            else:
-                # take street from user input
-                street_wdid = modelwiki.wikidata_input2id(street)
-                if street is not None:
-                    assert street_wdid is not None
-
+    
             street_wd = modelwiki.get_wikidata_simplified(street_wdid)
             street_names = street_wd["labels"]
             wikidata_4_structured_data.add(street_wd['id'])
@@ -950,6 +970,14 @@ class Fileprocessor:
         from model_wiki import Model_wiki as Model_wiki_ask
         modelwiki = Model_wiki_ask()
 
+        # Optionaly obtain wikidata from gpkg file if wikidata parameter is path to vector file (.gpkg)
+        if os.path.isfile(wikidata):
+            street=wikidata
+            geo_dict = self.image2coords(filename)
+            wikidata = self.get_place_from_input(filename,street,geo_dict)
+            del geo_dict
+            del street
+
         wd_record = modelwiki.get_wikidata_simplified(wikidata)
 
         instance_of_data = list()
@@ -1033,6 +1061,13 @@ class Fileprocessor:
             dt_obj = datetime.strptime(
                 '1970:01:01 00:00:00', "%Y:%m:%d %H:%M:%S")
             geo_dict = None
+
+        # Optionaly obtain wikidata from gpkg file if wikidata parameter is path to vector file (.gpkg)
+        if os.path.isfile(wikidata):
+            street=wikidata
+            wikidata = self.get_place_from_input(filename,street,geo_dict)
+            del street
+
 
         wd_record = modelwiki.get_wikidata_simplified(wikidata)
 
@@ -1158,7 +1193,7 @@ class Fileprocessor:
         commons_filename = self.commons_filename(
             filename, objectnames, wikidata, dt_obj, add_administrative_name=False)
 
-        return {"name": commons_filename, "text": text, "dt_obj": dt_obj}
+        return {"name": commons_filename, "text": text, "dt_obj": dt_obj,"wikidata":wikidata}
 
     def commons_filename(self, filename, objectnames, wikidata, dt_obj, add_administrative_name=True) -> str:
         # file name on commons
@@ -1806,7 +1841,10 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                         0]
                     del secondary_wikidata_ids[0]
                 else:
-                    wikidata = modelwiki.wikidata_input2id(
+                    if os.path.isfile(desc_dict['wikidata']):
+                        wikidata=desc_dict['wikidata']
+                    else:
+                        wikidata = modelwiki.wikidata_input2id(
                         desc_dict['wikidata'])
 
                 texts = self.make_image_texts_simple(
@@ -1817,6 +1855,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     secondary_wikidata_ids=secondary_wikidata_ids,
                     quick=desc_dict['later']
                 )
+                wikidata=texts['wikidata'] #if wikidata taken from gpkg file
                 wikidata_list = list()
                 wikidata_list.append(wikidata)
                 wikidata_list += secondary_wikidata_ids

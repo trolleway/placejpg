@@ -45,9 +45,9 @@ nano user-config.py
 ```
 
 Run
-```
+```bash
 docker run --rm -v "${PWD}:/opt/commons-uploader"  -it placejpg:2023.11
-
+```
 
 ## Used EXIF/IPTC image params
 

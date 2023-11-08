@@ -276,8 +276,10 @@ class Fileprocessor:
         # if street - vector file path: get street wikidata code by point in polygon
         if street is not None:
             street_wdid = self.get_place_from_input(filename,street,geo_dict)
-
-    
+            
+            if street_wdid is None:
+                self.logger.error('not set place/street')
+                return None
             street_wd = modelwiki.get_wikidata_simplified(street_wdid)
             street_names = street_wd["labels"]
             wikidata_4_structured_data.add(street_wd['id'])
@@ -819,7 +821,7 @@ class Fileprocessor:
                 cat = modelwiki.get_category_object_in_location(
                     wdid, street_wdid, verbose=True)
                 if cat is not None:
-                    text = text + cat + "\n"
+                    categories.add(cat)
                 else:
                     wd_record = modelwiki.get_wikidata_simplified(wdid)
                     if wd_record is None:
@@ -832,8 +834,7 @@ class Fileprocessor:
                             wdid + ' must have commons'
 
                     if 'commons' in wd_record and wd_record["commons"] is not None:
-                        text = text + \
-                            "[[Category:" + wd_record["commons"] + "]]" + "\n"
+                       categories.add(wd_record['commons'])
 
         categories.update(camera_categories)
         for catname in categories:

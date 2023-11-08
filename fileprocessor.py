@@ -501,6 +501,8 @@ class Fileprocessor:
                     if today.strftime('%Y-%m') == '2023-09':
                         text += "{{Wiki Loves Monuments 2023|1=ru}}"
         text += "\n"
+        text += self.get_date_information_part(dt_obj, country)
+        text += "}}\n"
         tech_description, tech_categories = self.get_tech_description(filename, geo_dict, country)
         text +=tech_description+"\n"
         categories.update(tech_categories)
@@ -1113,7 +1115,6 @@ class Fileprocessor:
         st += " {{ on Wikidata|" + wikidata + "}}"
         st += "\n"
         st += self.get_date_information_part(dt_obj, country)
-
         st += "}}\n"
 
         text += st

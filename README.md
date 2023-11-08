@@ -1,12 +1,12 @@
-# commons-uploader
-python docker/termux script for upload to wikimedia commons photos of buildings and vehicles
+# placejpg
+python docker/termux script for upload to wikimedia commons photos of places, buildings and vehicles
 
-Automation script for upload my photo collection to Wikimedia Commons. Automatic create Wikidata objects, Commons categories, generate image descriptions based on Wikidata and EXIF. 
+Automation script for upload my photo collection to Wikimedia Commons. Commons categories, generate image descriptions based on Wikidata and EXIF. 
 Limited to process images of buildings and vehicles. 
 
 ## Usage
 
-### Upload files to Wikimedia Commons using search wikidata object
+### Simple usage
 
 ```
 python3 upload.py  --location "United States" "Hollywood Boulevard"  i/imgfolder
@@ -14,6 +14,15 @@ python3 upload.py  --location "United States" "Hollywood Boulevard"  i/imgfolder
 
 python3 upload.py Q382500 --location Russia --later  i/imgfolder
 # add to queue.sh command for Uploads files from i/imgfolder to Wikimedia Commons. Use Wikidata object Q382500, use Commons Category for this object. Append template {{Taken on|yyyy-mm-dd|location=Russia}}
+
+```
+### Advanced usage
+```
+python3 upload.py FROMFILENAME --location Russia   i/imgfolder/Q123456_101_20230203_001_Q666_Q777.jpg
+# Upload file/folder to commons category of wikidata object Q123456. If this is a some geographic region, like city district, will search for needed categories for Q666 and Q777 entities.
+
+python3 upload.py railway.gpkg --location Russia   i/imgfolder
+# Upload file/folder, make spatial intersect of photo EXIF coordinates to vector polygons in file railway.gpkg, use it 'wikidata' field to determine object
 ```
 
 ## Install
@@ -23,49 +32,38 @@ python3 upload.py Q382500 --location Russia --later  i/imgfolder
 
 2. Build image
 ```
-git clone https://github.com/trolleway/commons-uploader.git
-cd commons-uploader 
-docker build --tag commons-uploader:1.0 .
+git clone https://github.com/trolleway/placejpg.git
+cd placejpg 
+docker build --tag placejpg:2023.11 .
 
-docker run --rm -v "${PWD}:/opt/commons-uploader" -v "${PWD}/wikibase-cli:/root/.config/wikibase-cli" -v "${PWD}/wikibase-cache:/root/.cache/wikibase-cli" -it commons-uploader:1.0
-cp user-config.example.py user-config.py 
+docker run --rm -v "${PWD}:/opt/commons-uploader" -it placejpg:2023.11
+cp config.example.py config.py 
 
 
-#Open user-config.py in text editor, set your Wikimedia Username in usernames['commons']['commons'] = 
+# Open config.py in text editor, set author names
 nano user-config.py
-chmod o-w  user-config.py
-wb config instance https://www.wikidata.org
-wb config credentials https://www.wikidata.org test
 ```
 
 Run
 ```
-docker run --rm -v "${PWD}:/opt/commons-uploader" -v "${PWD}/wikibase-cli:/root/.config/wikibase-cli" -v "${PWD}/wikibase-cache:/root/.cache/wikibase-cli" -it commons-uploader:1.0
+docker run --rm -v "${PWD}:/opt/commons-uploader"  -it placejpg:2023.11
+
+
+## Used EXIF/IPTC image params
+
+* GPS coordinates
+* DateTime
+* GPS Dest coordinates optional
+* Make optional
+* Model optional
+* Lens model optional
+* F number optional
+* focal length in 35mm format optional
 
 
 
-# emulate upload files for building https://www.wikidata.org/wiki/Q118113014 witch has wikimedia commons category from directiry i
-./building-upload.py https://www.wikidata.org/wiki/Q118113014 i --dry
-```
-The wikibase-cli volumes used by wikibase-cli tool for auth storage
 
-### Install in Android / termux
-
-```
-pkg install git
-git clone --depth 1 https://github.com/trolleway/commons-uploader.git
-cd commons-uploader 
-
-#run commands from termux-deploy.sh
-```
-
-
-## Usage
-
-Upload files for building from directory 
-```
-./building-upload.py https://www.wikidata.org/wiki/Q118113014 i/3k2 --dry
-```
+# Advanced tools
 
 Create building and upload files from directory i/21
 ```
@@ -78,17 +76,6 @@ Create building and upload files from directory i/21
 2. Use expression for generate command
 
 './add-building.py --street "'|| "addr:street" || '" --housenumber "'|| "addr:housenumber" || '" --coords "' ||round(y(point_on_surface( @geometry)),4) || ' ' || round(x(point_on_surface( @geometry)),4) ||'" -cs osm --levels '||"building:levels" || ' --photos "i/'|| replace("addr:housenumber",'/','_')||'"' 
-
-## Used image params
-
-* GPS coordinates
-* DateTime
-* GPS Dest coordinates optional
-* Make optional
-* Model optional
-* Lens model optional
-* F number optional
-* focal length in 35mm format optional
 
 
 

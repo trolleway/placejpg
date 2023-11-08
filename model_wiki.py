@@ -1115,6 +1115,16 @@ LIMIT 100
                 print(info)
                 # self.logger.info(info)
 
+            # search category "objects in city/country" by name
+            if object_wd.get('commons') is not None and geoobject_wd.get('commons') is not None:
+                suggested_category=object_wd['commons'] + ' in '+geoobject_wd['commons']
+                if self.is_category_exists(suggested_category):
+                    text=suggested_category
+                    if order:
+                        text = text+'|'+order
+                    return text
+
+            # search category by wikidata
             union_category_name = self.search_commonscat_by_2_wikidata(
                 object_wdid, geoobject_wd['id'])
             if union_category_name is not None:

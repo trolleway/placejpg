@@ -37,11 +37,14 @@ cd placejpg
 docker build --tag placejpg:2023.11 .
 
 docker run --rm -v "${PWD}:/opt/commons-uploader" -it placejpg:2023.11
-cp config.example.py config.py 
 
+# Create placejpg config, set author names
+cp placejpgconfig.example.py placejpgconfig.py 
+nano placejpgconfig.py
 
-# Open config.py in text editor, set author names
-nano user-config.py
+# Create pywikibot config, set username
+cp user-config.example.py user-config.py 
+nano user-config.py 
 ```
 
 Run

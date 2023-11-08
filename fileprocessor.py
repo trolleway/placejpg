@@ -23,7 +23,7 @@ from tqdm import tqdm
 import contextlib
 import io
 
-import config
+import placejpgconfig
 
 
 class Fileprocessor:
@@ -41,7 +41,7 @@ class Fileprocessor:
     optional_langs = ('de', 'fr', 'it', 'es', 'pt', 'uk', 'be', 'ja')
     chunk_size = 102400
     # chunk_size = 0
-    photographer = config.photographer
+    photographer = placejpgconfig.photographer
 
     folder_keywords = ['commons_uploaded', 'commons_duplicates']
 
@@ -507,7 +507,7 @@ class Fileprocessor:
         st += "\n"
         st += (
             """|source={{own}}
-|author="""+config.author+"""
+|author="""+placejpgconfig.author+"""
 |date="""
             + "{{Taken on|"
             + dt_obj.isoformat()
@@ -555,7 +555,7 @@ class Fileprocessor:
         text = (
             text
             + """== {{int:license-header}} == 
-            """+config.license
+            """+placejpgconfig.license
 
 
         )
@@ -967,7 +967,7 @@ class Fileprocessor:
         text = (
             text
             + """== {{int:license-header}} ==
-            """+config.license
+            """+placejpgconfig.license
         )
         categories = set()
         categories.update(camera_categories)

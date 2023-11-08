@@ -1,5 +1,8 @@
 # This script files
 config.py
+placejpgconfig.py
+user-config.py
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

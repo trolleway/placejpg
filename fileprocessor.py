@@ -74,9 +74,6 @@ class Fileprocessor:
         except subprocess.CalledProcessError:
             print("Exiftool is not installed. WEBP file created without exif tags")
 
-
-        
-
         return destination
 
     def input2filelist(self, filepath):
@@ -463,7 +460,7 @@ class Fileprocessor:
 
         text = ''
 
-        st = """== {{int:filedesc}} ==
+        text = """== {{int:filedesc}} ==
 {{Information
 |description="""
         captions = dict()
@@ -477,7 +474,7 @@ class Fileprocessor:
                 'labels'], 'object https://www.wikidata.org/wiki/' + line_wdid + ' must has name en'
             captions['en'] += ' ' + \
                 modelwiki.get_wikidata_simplified(line_wdid)['labels']['en']
-        st += "{{en|1=" + captions['en'] + '}}'
+        text += "{{en|1=" + captions['en'] + '}}'+"\n"
 
         captions['ru'] = objectname_ru + ' на ' +  \
             street_names['ru'].replace(
@@ -487,78 +484,28 @@ class Fileprocessor:
         if line_wdid is not None:
             captions['ru'] += ' ' + \
                 modelwiki.get_wikidata_simplified(line_wdid)['labels']['ru']
-        st += "{{ru|1=" + captions['ru'] + '}}'
+        text += "{{ru|1=" + captions['ru'] + '}}'+"\n"
 
         if model is not None:
-            st += " {{on Wikidata|" + model_wdid.split('#')[0] + "}}\n"
-        st += " {{on Wikidata|" + street_wdid + "}}\n"
+            text += " {{on Wikidata|" + model_wdid.split('#')[0] + "}}\n"
+        text += " {{on Wikidata|" + street_wdid + "}}\n"
 
         if type(secondary_wikidata_ids) == list and len(secondary_wikidata_ids) > 0:
             for wdid in secondary_wikidata_ids:
-                st += " {{on Wikidata|" + wdid + "}}\n"
+                text += " {{on Wikidata|" + wdid + "}}\n"
                 heritage_id = None
                 heritage_id = modelwiki.get_heritage_id(wdid)
                 if heritage_id is not None:
-                    st += "{{Cultural Heritage Russia|" + heritage_id + "}}"
+                    text += "{{Cultural Heritage Russia|" + heritage_id + "}}"
                     today = datetime.today()
                     if today.strftime('%Y-%m') == '2023-09':
-                        st += "{{Wiki Loves Monuments 2023|1=ru}}"
+                        text += "{{Wiki Loves Monuments 2023|1=ru}}"
+        text += "\n"
+        tech_description, tech_categories = self.get_tech_description(filename, geo_dict, country)
+        text +=tech_description+"\n"
+        categories.update(tech_categories)
+        
 
-        st += "\n"
-        st += (
-            """|source={{own}}
-|author="""+placejpgconfig.author+"""
-|date="""
-            + "{{Taken on|"
-            + dt_obj.isoformat()
-            + "|location="
-            + country
-            + "|source=EXIF}}"
-            + "\n"
-        )
-        st += "}}\n"
-
-        text += st
-
-        if geo_dict is not None:
-            st = (
-                "{{Location dec|"
-                + str(geo_dict.get("lat"))
-                + "|"
-                + str(geo_dict.get("lon"))
-            )
-            if "direction" in geo_dict:
-                st += "|heading:" + str(geo_dict.get("direction"))
-            st += "}}\n"
-            text += st
-
-            if "dest_lat" in geo_dict:
-                st = (
-                    "{{object location|"
-                    + str(geo_dict.get("dest_lat"))
-                    + "|"
-                    + str(geo_dict.get("dest_lon"))
-                    + "}}"
-                    + "\n"
-                )
-                text += st
-        camera_text, camera_categories = self.get_camera_text(filename)
-        text += camera_text
-        """
-        make
-        model
-        f_number
-        lens_model
-
-        """
-
-        text = (
-            text
-            + """== {{int:license-header}} == 
-            """+placejpgconfig.license
-
-
-        )
         transports = {
             'tram': 'Trams',
             'trolleybus': 'Trolleybuses',
@@ -855,7 +802,6 @@ class Fileprocessor:
                     if 'commons' in wd_record and wd_record["commons"] is not None:
                        categories.add(wd_record['commons'])
 
-        categories.update(camera_categories)
         for catname in categories:
             catname = catname.replace('Category:', '')
             text += "[[Category:"+catname+"]]" + "\n"
@@ -934,7 +880,7 @@ class Fileprocessor:
         )
         return st
 
-    def get_tech_templates(self, filename, geo_dict, country):
+    def get_tech_description(self, filename, geo_dict, country):
         text = ''
         if 'stitch' in filename:
             text = text + "{{Panorama}}" + "\n"
@@ -971,19 +917,15 @@ class Fileprocessor:
         )
         categories = set()
         categories.update(camera_categories)
-        for catname in categories:
-            catname = catname.replace('Category:', '')
-            text += "[[Category:"+catname+"]]" + "\n"
 
-        text = text + "[[Category:Photographs by " + \
-            self.photographer+'/'+country+"]]" + "\n"
+
         if 'ShiftN' in filename:
-            text = text + "[[Category:Corrected with ShiftN]]" + "\n"
+            categories.add('Corrected with ShiftN')
         if 'stitch' in filename:
-            text = text + "[[Category:Photographs by " + \
-                self.photographer+'/Stitched panoramics]]' + "\n"
+            categories.add('Photographs by ' + self.photographer + '/Stitched panoramics')
+        categories.add('Uploaded with Placejpg')
 
-        return text
+        return text,categories
 
     def make_image_texts_standalone(self, filename, wikidata, secondary_wikidata_ids) -> dict:
         from model_wiki import Model_wiki as Model_wiki_ask
@@ -1072,6 +1014,7 @@ class Fileprocessor:
 
         assert os.path.isfile(filename), 'not found '+filename
 
+        categories = set()
         # obtain exif
         if not quick:
             dt_obj = self.image2datetime(filename)
@@ -1176,9 +1119,27 @@ class Fileprocessor:
         text += st
 
         if not quick:
-            text = text + self.get_tech_templates(filename, geo_dict, country)
+            tech_description, tech_categories = self.get_tech_description(filename, geo_dict, country)
+            text = text + tech_description
         else:
+            tech_categories = set()
             text = text + " >>>>> TECH TEMPLATES SKIPPED <<<<<<\n"
+        del tech_description
+        categories.update(tech_categories)
+
+        # PHOTOS OF USER IN COUNTRY
+        cat = 'Photographs by {photographer}/{country}'
+        cat = cat.format(photographer=self.photographer,
+                         country=country,
+                        )           
+        cat_content='''{{Usercat}}
+[[Category:Photographs by '''+self.photographer+''']]
+[[Category:Photographs of '''+country+''' by photographer]]'''
+        modelwiki.create_category(
+                cat, cat_content)
+        categories.add(cat)
+        
+
         if rail:
             text += "[[Category:Railway photographs taken on " + \
                 dt_obj.strftime("%Y-%m-%d")+"]]" + "\n"
@@ -1209,6 +1170,11 @@ class Fileprocessor:
                         wdid + ' must have commons'
                     text = text + \
                         "[[Category:" + wd_record["commons"] + "]]" + "\n"
+                    
+        for catname in categories:
+            catname = catname.replace('Category:', '')
+            text += "[[Category:"+catname+"]]" + "\n"
+
         commons_filename = self.commons_filename(
             filename, objectnames, wikidata, dt_obj, add_administrative_name=False)
 
@@ -1530,57 +1496,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
         return geo_dict
 
-    def image2coords0(self, path):
-        def dms_to_dd(d, m, s):
-            dd = d + float(m) / 60 + float(s) / 3600
-            return dd
-
-        try:
-            with open(path, "rb") as image_file:
-                image_exif = Image(image_file)
-                lat_dms = image_exif.gps_latitude
-                lat = dms_to_dd(lat_dms[0], lat_dms[1], lat_dms[2])
-                lon_dms = image_exif.gps_longitude
-                lon = dms_to_dd(lon_dms[0], lon_dms[1], lon_dms[2])
-
-                lat = round(float(lat), 6)
-                lon = round(float(lon), 6)
-
-                direction = None
-                if "gps_img_direction" in image_exif.list_all():
-                    try:
-                        direction = round(float(image_exif.gps_img_direction))
-                    except:
-                        direction = None
-                geo_dict = {}
-                geo_dict = {"lat": lat, "lon": lon}
-                if direction:
-                    geo_dict["direction"] = direction
-
-                # dest coords
-
-                dest_lat = None
-                dest_lon = None
-                try:
-                    lat_dms = image_exif.gps_dest_latitude
-                    lat = dms_to_dd(lat_dms[0], lat_dms[1], lat_dms[2])
-                    lon_dms = image_exif.gps_dest_longitude
-                    lon = dms_to_dd(lon_dms[0], lon_dms[1], lon_dms[2])
-
-                    dest_lat = round(float(lat), 6)
-                    dest_lon = round(float(lon), 6)
-                except:
-                    pass
-                if dest_lat is not None:
-                    geo_dict["dest_lat"] = dest_lat
-                    geo_dict["dest_lon"] = dest_lon
-
-                return geo_dict
-
-        except:
-            return None
-
-    def prepare_commonsfilename(self, commonsfilename):
+    def prepare_commonsfilename(self, commonsfilename)->str:
         commonsfilename = commonsfilename.strip()
         if commonsfilename.startswith("File:") == False:
             commonsfilename = "File:" + commonsfilename
@@ -1638,23 +1554,6 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                           statement.target.labels.get("en"))
                 else:
                     print(prop, statement.target)
-
-    def append_structured_data0(self, commonsfilename):
-        commonsfilename = self.prepare_commonsfilename(commonsfilename)
-        commons_site = pywikibot.Site("commons", "commons")
-
-        # File to test and work with
-
-        page = pywikibot.FilePage(commons_site, commonsfilename)
-        repo = commons_site.data_repository()
-
-        # Retrieve Wikibase data
-        item = page.data_item()
-        item.get()
-
-        stringclaim = pywikibot.Claim(repo, "P180")  # Adding IMDb ID (P345)
-        stringclaim.setTarget(4212644)  # Using a string
-        item.addClaim(stringclaim, summary="Adding string claim")
 
     def append_image_descripts_claim(self, commonsfilename, entity_list, dry_run):
         warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)

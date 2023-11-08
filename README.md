@@ -44,7 +44,9 @@ nano placejpgconfig.py
 
 # Create pywikibot config, set username
 cp user-config.example.py user-config.py 
+chmod 600 user-config.py
 nano user-config.py 
+
 ```
 
 Run

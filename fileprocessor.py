@@ -23,6 +23,8 @@ from tqdm import tqdm
 import contextlib
 import io
 
+import config
+
 
 class Fileprocessor:
     logging.basicConfig(
@@ -39,7 +41,7 @@ class Fileprocessor:
     optional_langs = ('de', 'fr', 'it', 'es', 'pt', 'uk', 'be', 'ja')
     chunk_size = 102400
     # chunk_size = 0
-    photographer = 'Artem Svetlov'
+    photographer = config.photographer
 
     folder_keywords = ['commons_uploaded', 'commons_duplicates']
 
@@ -505,7 +507,7 @@ class Fileprocessor:
         st += "\n"
         st += (
             """|source={{own}}
-|author={{Creator:Artem Svetlov}}
+|author="""+config.author+"""
 |date="""
             + "{{Taken on|"
             + dt_obj.isoformat()
@@ -552,9 +554,10 @@ class Fileprocessor:
 
         text = (
             text
-            + """== {{int:license-header}} ==
-{{self|cc-by-sa-4.0|author=Artem Svetlov}}
-"""
+            + """== {{int:license-header}} == 
+            """+config.license
+
+
         )
         transports = {
             'tram': 'Trams',
@@ -583,9 +586,25 @@ class Fileprocessor:
                 text = text + \
                     "[[Category:" + system_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
 
-        text = text + "[[Category:Photographs by " + \
-            self.photographer+'/'+country+'/' + \
-            transports[vehicle].lower().capitalize()+"]]" + "\n"
+        cat = 'Photographs by {photographer}/{country}/{transport}'
+        cat = cat.format(photographer=self.photographer,
+                         country=country,
+                         transport=transports[vehicle].lower().capitalize())
+        categories.add(cat)
+        cat_content='''{{Usercat}}
+[[Category:Photographs_by_'''+self.photographer+'/'+country+''']]'''
+        modelwiki.create_category(
+                cat, cat_content)
+        cat = 'Photographs by {photographer}/{country}'
+        cat = cat.format(photographer=self.photographer,
+                         country=country,
+                         transport=transports[vehicle].lower().capitalize())
+        cat_content='''{{Usercat}}
+[[Category:Photographs_by_'''+self.photographer+''']]
+[[Category:Photographs_of_'''+country+'''_by_photographer]]'''
+        modelwiki.create_category(
+                cat, cat_content)
+
 
         trains_on_line_cat = None
         trains_on_station_cat = None
@@ -948,8 +967,7 @@ class Fileprocessor:
         text = (
             text
             + """== {{int:license-header}} ==
-{{self|cc-by-sa-4.0|author=""" + self.photographer+"""}}
-"""
+            """+config.license
         )
         categories = set()
         categories.update(camera_categories)

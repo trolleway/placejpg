@@ -38,7 +38,8 @@ class Fileprocessor:
     exiftool_path = "exiftool"
 
     wikidata_cache = dict()
-    optional_langs = ('de', 'fr', 'it', 'es', 'pt', 'uk', 'be', 'ja')
+    langs_optional = placejpgconfig.langs_optional
+    langs_primary = placejpgconfig.langs_primary
     chunk_size = 102400
     # chunk_size = 0
     photographer = placejpgconfig.photographer
@@ -157,7 +158,7 @@ class Fileprocessor:
             raise ValueError('object https://www.wikidata.org/wiki/' +
                              wikidata+' must has name ru and name en')
 
-        for lang in self.optional_langs:
+        for lang in self.langs_optional:
             if lang in object_wd["labels"]:
                 object_record['names'][lang] = object_wd["labels"][lang]
         if "P373" in object_wd["claims"]:
@@ -949,6 +950,7 @@ class Fileprocessor:
                 modelwiki.get_wikidata_simplified(i['value']))
 
         objectnames = {}
+        #TODO switch from hardcoded names to config
         assert 'en' in wd_record['labels'], 'object https://www.wikidata.org/wiki/' + \
             wd_record['id']+' must has name en'
         objectnames['en'] = wd_record['labels']["en"]
@@ -1032,7 +1034,7 @@ class Fileprocessor:
             wikidata = self.get_place_from_input(filename,street,geo_dict)
             del street
 
-
+        
         wd_record = modelwiki.get_wikidata_simplified(wikidata)
 
         instance_of_data = list()
@@ -1042,23 +1044,35 @@ class Fileprocessor:
 
         text = ""
         objectnames = {}
+        objectname_long = {}
+        objectnames_long = {}
 
-        objectnames['en'] = wd_record['labels']["en"]
-        objectnames['ru'] = wd_record['labels']["ru"]
-        for lang in self.optional_langs:
+        for lang in self.langs_primary:
+            if lang not in wd_record['labels']:
+                self.logger.error('object https://www.wikidata.org/wiki/' +
+                                 wd_record['id']+' must has name '+lang)
+                return None
+            objectnames[lang] = wd_record['labels'][lang]
+            objectname_long[lang] = objectnames[lang]
+
+        for lang in self.langs_optional:
             if lang in wd_record['labels']:
                 objectnames[lang] = wd_record['labels'][lang]
 
-        objectname_long_ru = objectnames['ru']
-        objectname_long_en = objectnames['en']
         # TODO change objectname_long_en to objectnames_long[en]
-        objectnames_long = {}
+        # BUILD DESCRIPTION FROM 'INSTANCE OF' NAMES
+        #  
         if len(instance_of_data) > 0:
-            objectname_long_ru = ', '.join(
-                d['labels']['ru'] for d in instance_of_data) + ' '+objectnames['ru']
-            objectname_long_en = ', '.join(
-                d['labels']['en'] for d in instance_of_data) + ' '+objectnames['en']
-            for lang in self.optional_langs:
+            for lang in self.langs_primary:
+                for i in instance_of_data:
+                    if lang not in i['labels']:
+                        self.logger.error('object https://www.wikidata.org/wiki/' +
+                                 i['id']+' must has name '+lang)
+                        return None
+                objectname_long[lang] = ', '.join(
+                d['labels'][lang] for d in instance_of_data) + ' '+objectnames[lang]
+
+            for lang in self.langs_optional:
                 try:
                     objectnames_long[lang] = ', '.join(
                         d['labels'][lang] for d in instance_of_data) + ' '+objectnames[lang]
@@ -1097,9 +1111,10 @@ class Fileprocessor:
         st = """== {{int:filedesc}} ==
 {{Information
 |description="""
-        st += "{{en|1=" + objectname_long_en + "}} \n"
-        st += "{{ru|1=" + objectname_long_ru + "}} \n"
-        for lang in self.optional_langs:
+        for lang in self.langs_primary:
+            st += "{{"+lang+"|1=" + objectname_long[lang] + "}} \n"
+
+        for lang in self.langs_optional:
             if lang in objectnames_long:
                 st += "{{"+lang+"|1=" + objectnames_long[lang] + "}} \n"
 
@@ -1774,12 +1789,13 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     secondary_wikidata_ids=secondary_wikidata_ids,
                     quick=desc_dict['later']
                 )
+                if texts is None: continue
                 wikidata=texts['wikidata'] #if wikidata taken from gpkg file
                 wikidata_list = list()
                 wikidata_list.append(wikidata)
                 wikidata_list += secondary_wikidata_ids
-                standalone_captions_dict = self.make_image_texts_standalone(
-                    filename, wikidata, secondary_wikidata_ids)
+                #standalone_captions_dict = self.make_image_texts_standalone(
+                #    filename, wikidata, secondary_wikidata_ids)
 
             elif desc_dict['mode'] == 'vehicle':
                 desc_dict['model'] = modelwiki.wikidata_input2id(
@@ -1851,11 +1867,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
 
                 print(upload_messages)
 
-                # copy uploaded file to standalone-sources dir
 
-                # self.copy_image4standalone(filename,standalone_captions_dict['new_filename'])
-                self.create_json4standalone(
-                    filename, standalone_captions_dict['new_filename'], standalone_captions_dict['ru'], standalone_captions_dict['en'])
 
             self.logger.info('append claims')
             claims_append_result = modelwiki.append_image_descripts_claim(

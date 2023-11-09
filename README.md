@@ -49,9 +49,18 @@ nano user-config.py
 
 ```
 
-Run
+## Run
 ```bash
 docker run --rm -v "${PWD}:/opt/commons-uploader"  -it placejpg:2023.11
+```
+
+## Caching
+
+Script use cache for state of wikidata entities.
+
+### Manual reset cache
+```
+rm temp_wikidata_cache.dat
 ```
 
 ## Used EXIF/IPTC image params

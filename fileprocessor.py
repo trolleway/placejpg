@@ -1359,7 +1359,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
                 if image_exif.get("iso", '') != "" and image_exif.get("iso", '') != "":
                     categories.add(
-                        'ISO speed rating '+str(image_exif.get("iso"))[0:5]+'')
+                        'ISO speed rating '+str(round(float(str(image_exif.get("iso"))[0:5])))+'')
 
                 cameramodels_dict = {
                     'Pentax corporation PENTAX K10D': 'Pentax K10D',

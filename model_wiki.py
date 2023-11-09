@@ -1046,6 +1046,11 @@ LIMIT 100
         street_wd = self.get_wikidata_simplified(
             building_wd["claims"]["P669"][0]["value"])
 
+        if 'qualifiers' not in building_wd["claims"]["P669"][0]:
+            self.logger.error( "object https://www.wikidata.org/wiki/"
+                    + wikidata
+                    + "#P669 has [P669 Located on street]. If it has qualifier [P670 house number], this page name will improved. Upload without address text now")
+            return None
         building_record = {
             "building": "yes",
             "addr:street:ru": street_wd["labels"]["ru"],
@@ -1059,11 +1064,7 @@ LIMIT 100
                 reversed=True,
             ),
         }
-        if "P373" in building_wd["claims"]:
-            building_record['commons'] = building_wd["claims"]["P373"][0]["value"]
-        elif 'commonswiki' in building_wd["sitelinks"]:
-            building_record['commons'] = building_wd["sitelinks"]["commonswiki"]["title"].replace(
-                'Category:', '')
+        building_record['commons'] = building_wd["commons"]
 
         return building_record
 

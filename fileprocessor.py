@@ -46,11 +46,6 @@ class Fileprocessor:
 
     folder_keywords = ['commons_uploaded', 'commons_duplicates']
 
-    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY = list()
-    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY.append('Q660770')  # RZD
-    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY.append('Q5499')  # MOSCOW METRO
-    NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY.append('Q76987')  # BCH
-
     def convert_to_webp(self, filepath: str) -> str:
         """Convert image to webp.
 
@@ -532,9 +527,8 @@ class Fileprocessor:
                 route=route,
                 city=city_name_en) + "\n"
         if 'system_wd' in locals():
-            if system_wd['id'] not in self.NO_ADD_VEHICLE_TO_THIS_OPERATORS_CATEGORY:
-                text = text + \
-                    "[[Category:" + system_wd["claims"]["P373"][0]["value"] + "]]" + "\n"
+            if vehicle not in train_synonims:
+                categories.add(system_wd['commons'])
 
         cat = 'Photographs by {photographer}/{country}/{transport}'
         cat = cat.format(photographer=self.photographer,

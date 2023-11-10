@@ -287,6 +287,21 @@ class Fileprocessor:
                 return None
 
             wikidata_4_structured_data.add(city_wd['id'])
+        
+        # TAKEN ON LOCATION
+        # search filename for pattern "_locationMoscow-Oblast"
+        import re
+        l=None
+        regex = "_location(.*?)[_.\b]"
+        test_str = os.path.basename(filename)
+
+        matches = re.finditer(regex, test_str, re.MULTILINE)
+        for match in matches:
+            l = match.group()[9:-1].replace('-',' ').title()
+        if l == 'location':
+            l = None
+        if l is not None: country=l
+        del l
 
         # ROUTE
         if route is None:
@@ -807,6 +822,7 @@ class Fileprocessor:
             str(' '.join(list(wikidata_4_structured_data)))
         return {"name": commons_filename, "text": text,
                 "structured_data_on_commons": list(wikidata_4_structured_data),
+                "country":country,
                 'captions': captions,
                 "dt_obj": dt_obj}
 
@@ -1188,7 +1204,11 @@ class Fileprocessor:
         commons_filename = self.commons_filename(
             filename, objectnames, wikidata, dt_obj, add_administrative_name=False)
 
-        return {"name": commons_filename, "text": text, "dt_obj": dt_obj,"wikidata":wikidata}
+        return {"name": commons_filename, 
+                "text": text, 
+                "dt_obj": dt_obj,
+                "country":country,
+                "wikidata":wikidata}
 
     def commons_filename(self, filename, objectnames, wikidata, dt_obj, add_administrative_name=True) -> str:
         # file name on commons
@@ -1349,12 +1369,14 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
                 if image_exif.get("focallength", '') != "" and image_exif.get("focallength", '') != "":
                     categories.add(
-                        'Lens focal length '+str(image_exif.get("focallength"))[0:5]+' mm')
+                        'Lens focal length '+str(image_exif.get("focallength"))+' mm')
 
                 if image_exif.get("iso", '') != "" and image_exif.get("iso", '') != "":
-                    categories.add(
-                        'ISO speed rating '+str(round(float(str(image_exif.get("iso"))[0:5])))+'')
-
+                    try:
+                        categories.add(
+                        'ISO speed rating '+str(round(float(str(image_exif.get("iso")))))+'')
+                    except:
+                        self.logger.info('ISO value is bad:'+str(image_exif.get("iso", '')))
                 cameramodels_dict = {
                     'Pentax corporation PENTAX K10D': 'Pentax K10D',
                     'Pentax PENTAX K-r': 'Pentax K-r',
@@ -1364,6 +1386,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                     'Nikon corporation NIKON': 'Nikon',
                     'Panasonic': 'Panasonic Lumix',
                     'Hmd global Nokia 5.3': 'Nokia 5.3',
+                    'COOLPIX':'Coolpix',
                 }
                 lensmodel_dict = {
                     'OLYMPUS M.12-40mm F2.8': 'Olympus M.Zuiko Digital ED 12-40mm f/2.8 PRO',
@@ -1868,7 +1891,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 texts["name"], wikidata_list, dry_run)
             if not dry_run:
                 modelwiki.create_category_taken_on_day(
-                    desc_dict['country'].capitalize(), texts['dt_obj'].strftime("%Y-%m-%d"))
+                    texts['country'].title(), texts['dt_obj'].strftime("%Y-%m-%d"))
             else:
                 print('will append '+' '.join(wikidata_list))
 

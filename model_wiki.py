@@ -1051,20 +1051,23 @@ LIMIT 100
                     + wikidata
                     + "#P669 has [P669 Located on street]. If it has qualifier [P670 house number], this page name will improved. Upload without address text now")
             return None
-        building_record = {
-            "building": "yes",
-            "addr:street:ru": street_wd["labels"]["ru"],
-            "addr:street:en": street_wd["labels"]["en"],
-            "addr:housenumber:local": building_wd["claims"]["P669"][0]["qualifiers"][
-                "P670"
-            ][0]['datavalue']["value"],
-            "addr:housenumber:en": translit(
-                building_wd["claims"]["P669"][0]["qualifiers"]["P670"][0]['datavalue']["value"],
-                "ru",
-                reversed=True,
-            ),
-        }
-        building_record['commons'] = building_wd["commons"]
+        try:
+            building_record = {
+                "building": "yes",
+                "addr:street:ru": street_wd["labels"]["ru"],
+                "addr:street:en": street_wd["labels"]["en"],
+                "addr:housenumber:local": building_wd["claims"]["P669"][0]["qualifiers"][
+                    "P670"
+                ][0]['datavalue']["value"],
+                "addr:housenumber:en": translit(
+                    building_wd["claims"]["P669"][0]["qualifiers"]["P670"][0]['datavalue']["value"],
+                    "ru",
+                    reversed=True,
+                ),
+            }
+            building_record['commons'] = building_wd["commons"]
+        except:
+            return None
 
         return building_record
 

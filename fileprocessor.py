@@ -249,6 +249,7 @@ class Fileprocessor:
         from model_wiki import Model_wiki as Model_wiki_ask
         modelwiki = Model_wiki_ask()
         categories = set()
+        need_create_categories = list()
 
         vehicle_names = {'ru': {'tram': 'трамвай', 'trolleybus': 'троллейбус',
                                 'bus': 'автобус', 'train': 'поезд', 'locomotive': 'локомотив', 'auto': 'автомобиль', 'plane': 'самолёт'}}
@@ -514,7 +515,7 @@ class Fileprocessor:
         text += "\n"
         text += self.get_date_information_part(dt_obj, country)
         text += "}}\n"
-        tech_description, tech_categories = self.get_tech_description(filename, geo_dict, country)
+        tech_description, tech_categories = self.get_tech_description(filename, geo_dict)
         text +=tech_description+"\n"
         categories.update(tech_categories)
         
@@ -824,6 +825,7 @@ class Fileprocessor:
                 "structured_data_on_commons": list(wikidata_4_structured_data),
                 "country":country,
                 'captions': captions,
+                'need_create_categories':need_create_categories,
                 "dt_obj": dt_obj}
 
     def get_colorlist_from_string(self, test_str: str) -> list:
@@ -893,7 +895,7 @@ class Fileprocessor:
         )
         return st
 
-    def get_tech_description(self, filename, geo_dict, country):
+    def get_tech_description(self, filename, geo_dict):
         text = ''
         if 'stitch' in filename:
             text = text + "{{Panorama}}" + "\n"
@@ -925,8 +927,7 @@ class Fileprocessor:
 
         text = (
             text
-            + """== {{int:license-header}} ==
-            """+placejpgconfig.license
+            + '== {{int:license-header}} =='+"\n"+placejpgconfig.license+"\n\n"
         )
         categories = set()
         categories.update(camera_categories)
@@ -1026,6 +1027,8 @@ class Fileprocessor:
         from model_wiki import Model_wiki as Model_wiki_ask
         modelwiki = Model_wiki_ask()
 
+        need_create_categories = list()
+
         assert os.path.isfile(filename), 'not found '+filename
 
         categories = set()
@@ -1069,7 +1072,6 @@ class Fileprocessor:
             if lang in wd_record['labels']:
                 objectnames[lang] = wd_record['labels'][lang]
 
-        # TODO change objectname_long_en to objectnames_long[en]
         # BUILD DESCRIPTION FROM 'INSTANCE OF' NAMES
         #  
         if len(instance_of_data) > 0:
@@ -1145,7 +1147,7 @@ class Fileprocessor:
         text += st
 
         if not quick:
-            tech_description, tech_categories = self.get_tech_description(filename, geo_dict, country)
+            tech_description, tech_categories = self.get_tech_description(filename, geo_dict)
             text = text + tech_description
         else:
             tech_categories = set()
@@ -1161,8 +1163,7 @@ class Fileprocessor:
         cat_content='''{{Usercat}}
 [[Category:Photographs by '''+self.photographer+''']]
 [[Category:Photographs of '''+country+''' by photographer]]'''
-        modelwiki.create_category(
-                cat, cat_content)
+        need_create_categories.append({'name':cat,'content':cat_content})
         categories.add(cat)
         
 
@@ -1208,6 +1209,7 @@ class Fileprocessor:
                 "text": text, 
                 "dt_obj": dt_obj,
                 "country":country,
+                "need_create_categories":need_create_categories,
                 "wikidata":wikidata}
 
     def commons_filename(self, filename, objectnames, wikidata, dt_obj, add_administrative_name=True) -> str:
@@ -1907,6 +1909,14 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                         filename, uploaded_folder_path_dublicate)
                 # Continue to next file
                 continue
+            # CREATE CATEGORY PAGES
+            if len(texts['need_create_categories'])>0:
+                for ctd in texts['need_create_categories']:
+                    if not modelwiki.is_category_exists(ctd['name']):
+                        self.logger.info()
+                    modelwiki.create_category(ctd['name'], ctd['content'])
+                    
+
             # move uploaded file to subfolder
             if not dry_run:
                 self.move_file_to_uploaded_dir(

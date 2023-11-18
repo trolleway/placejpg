@@ -192,14 +192,231 @@ class Model_wiki:
             return None, None
         return float(struct[0]), float(struct[-1])
 
+
+    def create_wikidata_item(self,wd_object):
+        '''
+        created with bing ai 
+        https://www.bing.com/search?iscopilotedu=1&sendquery=1&q=%D0%A7%D1%82%D0%BE+%D1%82%D0%B0%D0%BA%D0%BE%D0%B5+%D0%BD%D0%BE%D0%B2%D1%8B%D0%B9+Bing%3F&showconv=1&filters=wholepagesharingscenario%3A%22Conversation%22&shareId=4d855391-009e-4938-81b4-8591617df8db&shtc=0&shsc=Codex_ConversationMode&form=EX0050&shid=b116c20e-9d13-494d-a4cc-8f8b3a8a6260&shtp=GetUrl&shtk=0J7Qt9C90LDQutC%2B0LzRjNGC0LXRgdGMINGBINGN0YLQuNC8INC%2B0YLQstC10YLQvtC8IEJpbmc%3D&shdk=0JLQvtGCINC%2B0YLQstC10YIsINC%2F0L7Qu9GD0YfQtdC90L3Ri9C5INGBINC%2F0L7QvNC%2B0YnRjNGOINC90L7QstC%2B0LPQviBCaW5nLCDQs9C70L7QsdCw0LvRjNC90L7QuSDRgdC40YHRgtC10LzRiyDQvtGC0LLQtdGC0L7QsiDQvdCwINCx0LDQt9C1INC40YHQutGD0YHRgdGC0LLQtdC90L3QvtCz0L4g0LjQvdGC0LXQu9C70LXQutGC0LAuINCp0LXQu9C60L3QuNGC0LUg0LTQu9GPINC%2F0YDQvtGB0LzQvtGC0YDQsCDQvtGC0LLQtdGC0LAg0YbQtdC70LjQutC%2B0Lwg0Lgg0L%2FQvtC%2F0YDQvtCx0YPQudGC0LUg0Y3RgtGDINGE0YPQvdC60YbQuNGOINGB0LDQvNC%2B0YHRgtC%2B0Y%2FRgtC10LvRjNC90L4u&shhk=KUktXhHaQFr142oHDgOzFPKk2Snr3G22dzXkpH3KtHg%3D&shth=OBFB.107AF8B2FB79BD01FFDCABA4D756224A
+
+
+
+        
+        '''
+        # create a site object for wikidata
+        site = pywikibot.Site("wikidata", "wikidata")
+        # create a new item
+        new_item = pywikibot.ItemPage(site)
+        # set the labels, descriptions and aliases from the wd_object
+        try:
+            new_item.editLabels(labels=wd_object["labels"], summary="Setting labels")
+            new_item.editDescriptions(descriptions=wd_object["descriptions"], summary="Setting descriptions")
+            new_item.editAliases(aliases=wd_object["aliases"], summary="Setting aliases")
+        except:
+            self.logger.warning('prorably this building already created in wikidata. we will merge later')
+            pass
+        # iterate over the claims in the wd_object
+        for prop, value in wd_object["claims"].items():
+            # create a claim object for the property
+            claim = pywikibot.Claim(site, prop)
+            # check the type of the value
+            if isinstance(value, str) and self.is_wikidata_id(value):
+                # it is a wikidata item id
+                # get the item object for the value
+                target = pywikibot.ItemPage(site, value)
+            elif isinstance(value, dict) and self.is_wikidata_id(value.get('value',None)):
+                # it is a wikidata item id
+                # get the item object for the value
+                target = pywikibot.ItemPage(site, value.get('value'))                
+            elif isinstance(value, dict):
+                # if the value is a dict, it is a special value type
+                # check the type of the value
+                if value["value"].get("latitude"):
+                    # if the value has latitude, it is a coordinate type
+                    # create a coordinate object for the value
+                    target = pywikibot.Coordinate(
+                        lat=value["value"]["latitude"],
+                        lon=value["value"]["longitude"],
+                        precision=value["value"]["precision"],
+                        site=site,
+                        #globe=value["value"]["globe"],
+                    )
+                elif value["value"].get("time"):
+                    # if the value has time, it is a time type
+                    # create a time object for the value
+                    target = pywikibot.WbTime(
+                        year=int(value["value"]["time"]["year"]),
+                        #month=value["value"]["time"]["month"],
+                        #day=value["value"]["time"]["day"],
+                        #hour=value["value"]["time"]["hour"],
+                        #minute=value["value"]["time"]["minute"],
+                        #second=value["value"]["time"]["second"],
+                        precision=value["value"]["precision"],
+                        #calendarmodel=value["value"]["calendarmodel"],
+                    )
+                elif value["value"].get("amount"):
+                    # if the value has amount, it is a quantity type
+                    # create a quantity object for the value
+                    target = pywikibot.WbQuantity(
+                        amount=value["value"]["amount"],
+                        unit=value["value"]["unit"],
+                        error=value["value"].get("error"),
+                    )
+                else:
+                    # otherwise, the value is not supported
+                    # raise an exception
+                    raise ValueError(f"Unsupported value type: {value}")
+            else:
+                # otherwise, the value is not supported
+                # raise an exception
+                raise ValueError(f"Unsupported value type: {value}")
+            # set the target of the claim to the value object
+            claim.setTarget(target)
+            # check if the value has qualifiers
+            if isinstance(value, dict) and value.get("qualifiers"):
+                # iterate over the qualifiers
+                for qual_prop, qual_value in value["qualifiers"].items():
+                    # create a qualifier object for the property
+                    qualifier = pywikibot.Claim(site, qual_prop)
+                    # check the type of the qualifier value
+                    if isinstance(qual_value, str) and self.is_wikidata_id(qual_value):
+                        # if the qualifier value is a wikidata item id
+                        # get the item object for the qualifier value
+                        qual_target = pywikibot.ItemPage(site, qual_value)
+                    elif isinstance(qual_value, str):
+                        # qualifier value is string
+                        qual_target = qual_value
+                    elif isinstance(qual_value, dict):
+                        # if the qualifier value is a dict, it is a special value type
+                        # check the type of the qualifier value
+                        if qual_value["value"].get("latitude"):
+                            # if the qualifier value has latitude, it is a coordinate type
+                            # create a coordinate object for the qualifier value
+                            qual_target = pywikibot.Coordinate(
+                                lat=qual_value["value"]["latitude"],
+                                lon=qual_value["value"]["longitude"],
+                                precision=qual_value["value"]["precision"],
+                                site=site,
+                                #globe=qual_value["value"]["globe"],
+                            )
+                        elif qual_value["value"].get("time"):
+                            # if the qualifier value has time, it is a time type
+                            # create a time object for the qualifier value
+                            qual_target = pywikibot.WbTime(
+                                year=int(qual_value["value"]["time"]["year"]),
+                                #month=qual_value["value"]["time"]["month"],
+                                #day=qual_value["value"]["time"]["day"],
+                                #hour=qual_value["value"]["time"]["hour"],
+                                #minute=qual_value["value"]["time"]["minute"],
+                                #second=qual_value["value"]["time"]["second"],
+                                precision=qual_value["value"]["precision"],
+                                #calendarmodel=qual_value["value"]["calendarmodel"],
+                            )
+                        elif qual_value["value"].get("amount"):
+                            # if the qualifier value has amount, it is a quantity type
+                            # create a quantity object for the qualifier value
+                            qual_target = pywikibot.WbQuantity(
+                                amount=qual_value["value"]["amount"],
+                                unit=qual_value["value"]["unit"],
+                                error=qual_value["value"].get("error"),
+                            )
+                        else:
+                            # otherwise, the qualifier value is not supported
+                            # raise an exception
+                            raise ValueError(f"Unsupported qualifier value type: {qual_value}")
+                    else:
+                        # otherwise, the qualifier value is not supported
+                        # raise an exception
+                        raise ValueError(f"Unsupported qualifier value type: {qual_value}")
+                    # set the target of the qualifier to the qualifier value object
+                    qualifier.setTarget(qual_target)
+                    # add the qualifier to the claim
+                    claim.addQualifier(qualifier, summary="Adding qualifier")
+            # check if the value has references
+            if isinstance(value, dict) and value.get("references"):
+                # iterate over the references
+                for reference in value["references"]:
+                    # create a list of source claims for the reference
+                    source_claims = []
+                    # iterate over the reference properties and values
+                    for ref_prop, ref_value in reference.items():
+                        # create a source claim object for the property
+                        source_claim = pywikibot.Claim(site, ref_prop)
+                        # check the type of the reference value
+                        if isinstance(ref_value, str):
+                            # if the reference value is a string, it is a wikidata item id or a url
+                            # check if the reference value starts with http
+                            if ref_value.startswith("http"):
+                                # if the reference value is a url, create a url object for the reference value
+                                ref_target = ref_value
+                                #source_claim.is_reference=True ???
+                            else:
+                                # if the reference value is a wikidata item id, get the item object for the reference value
+                                ref_target = pywikibot.ItemPage(site, ref_value)
+                        elif isinstance(ref_value, dict):
+                            # if the reference value is a dict, it is a special value type
+                            # check the type of the reference value
+                            if ref_value["value"].get("latitude"):
+                                # if the reference value has latitude, it is a coordinate type
+                                # create a coordinate object for the reference value
+                                ref_target = pywikibot.Coordinate(
+                                    lat=ref_value["value"]["latitude"],
+                                    lon=ref_value["value"]["longitude"],
+                                    precision=ref_value["value"]["precision"],
+                                    globe=ref_value["value"]["globe"],
+                                )
+                            elif ref_value["value"].get("time"):
+                                # if the reference value has time, it is a time type
+                                # create a time object for the reference value
+                                ref_target = pywikibot.WbTime(
+                                    year=int(ref_value["value"]["time"]["year"]),
+                                    #month=ref_value["value"]["time"]["month"],
+                                    #day=ref_value["value"]["time"]["day"],
+                                    #hour=ref_value["value"]["time"]["hour"],
+                                    #minute=ref_value["value"]["time"]["minute"],
+                                    #second=ref_value["value"]["time"]["second"],
+                                    precision=ref_value["value"]["precision"],
+                                    #calendarmodel=ref_value["value"]["calendarmodel"],
+                                )
+                            elif ref_value["value"].get("amount"):
+                                # if the reference value has amount, it is a quantity type
+                                # create a quantity object for the reference value
+                                ref_target = pywikibot.WbQuantity(
+                                    amount=ref_value["value"]["amount"],
+                                    unit=ref_value["value"]["unit"],
+                                    error=ref_value["value"].get("error"),
+                                )
+                            else:
+                                # otherwise, the reference value is not supported
+                                # raise an exception
+                                raise ValueError(f"Unsupported reference value type: {ref_value}")
+                        else:
+                            # otherwise, the reference value is not supported
+                            # raise an exception
+                            raise ValueError(f"Unsupported reference value type: {ref_value}")
+                        # set the target of the source claim to the reference value object
+                        source_claim.setTarget(ref_target)
+                        # append the source claim to the source claims list
+                        source_claims.append(source_claim)
+                    # add the source claims as a reference to the claim
+                    claim.addSources(source_claims, summary="Adding reference")
+            # add the claim to the new item
+            new_item.addClaim(claim, summary="Adding claim")
+        # return the new item id
+        return new_item.getID()
+        
+    def claim_dict2pywikibot_claim(self,repo, claim):
+        """
+        return new pywikibot claim object for add to wikidata using pywikibot from dict 
+        """
+
+
     def create_wikidata_building(self, data, dry_mode=False):
         assert "street_wikidata" in data
 
         # get street data from wikidata
         assert data["street_wikidata"] is not None
-        cmd = ["wd", "generate-template", "--json", data["street_wikidata"]]
-        response = subprocess.run(cmd, capture_output=True)
-        street_dict_wd = json.loads(response.stdout.decode())
+
+        street_dict_wd = self.get_wikidata_simplified(data["street_wikidata"])
         data["street_name_ru"] = street_dict_wd["labels"]["ru"]
         data["street_name_en"] = street_dict_wd["labels"]["en"]
 
@@ -214,7 +431,7 @@ class Model_wiki:
       },
       "aliases": {},
       "claims": {
-        "P31": ["Q41176"],
+        "P31": "Q41176",
         "P17": "Q159",
         "P625":{ 
             "value":{
@@ -227,6 +444,9 @@ class Model_wiki:
       }
     }
     """
+        
+        # sample
+       
 
         data["lat"], data["lon"] = self.location_string_parse(
             data["latlonstr"])
@@ -278,7 +498,7 @@ class Model_wiki:
 
         if "year" in data:
             wd_object["claims"]["P1619"] = {
-                "value": {"time": str(data["year"])}}
+                "value": {"time": {"year":int(str(data["year"])[0:4])},"precision":9}}
             if "year_source" or "year_url" in data:
                 wd_object["claims"]["P1619"]["references"] = list()
                 wd_object["claims"]["P1619"]["references"].append(dict())
@@ -298,7 +518,7 @@ class Model_wiki:
 
         if "levels" in data:
             wd_object["claims"]["P1101"] = {
-                "value": {"amount": int(data["levels"]), "unit": "1"}
+                "value": {"amount": int(data["levels"]), "unit": None,"error":None}
             }
             if "levels_source" or "levels_url" in data:
                 wd_object["claims"]["P1101"]["references"] = list()
@@ -319,12 +539,16 @@ class Model_wiki:
         if 'building' in data and data['building'] in ('commercial', 'office'):
             wd_object["claims"]["P31"] = 'Q1021645'
 
-        with open("temp_json_data.json", "w") as outfile:
-            json.dump(wd_object, outfile)
+
         if dry_mode:
             print(json.dumps(wd_object, indent=1))
             self.logger.info("dry mode, no creating wikidata entity")
             return
+
+        new_item_id = self.create_wikidata_item(wd_object)
+        print("created https://www.wikidata.org/wiki/" + new_item_id)
+        return new_item_id
+
 
         cmd = ["wb", "create-entity", "./temp_json_data.json"]
         print(cmd)
@@ -387,6 +611,23 @@ class Model_wiki:
             quit()
         return object_wd
 
+    def validate_street_in_building_record(self, data):
+        assert data["street_wikidata"] is not None
+        wd_street = self.get_wikidata_simplified(data["street_wikidata"])
+        result = None
+        
+        if 'commons' not in wd_street:
+            self.logger.debug(
+                "street "
+                + wikidata_street_url
+                + " must have wikimedia commons category"
+            )
+            return False
+        if result is None:
+            result = True
+        return True
+
+        
     def get_wikidata_simplified(self, entity_id) -> dict:
         assert entity_id is not None
         # get all claims of this wikidata objects
@@ -414,7 +655,7 @@ class Model_wiki:
 
                 claim_s=dict()
                 claim_s['rank']=claim.get('rank',None)
-                if prop_id=='P1813' and entity_id=='Q660770':                
+                if prop_id=='P1101':                
                     pass
                 if 'datatype' not in claim['mainsnak']:
                     pass
@@ -423,9 +664,12 @@ class Model_wiki:
                     claim_s['value'] = 'Q'+str(claim['mainsnak']['datavalue']['value']['numeric-id'])
                 elif claim['mainsnak']['datatype'] == 'time':
                     claim_s['value'] = claim['mainsnak']['datavalue']['value']['time'][8:]
+                    claim_s['precision'] = claim['mainsnak']['datavalue']['value']['precision']
                 elif claim['mainsnak']['datatype'] == 'external-id':
                     claim_s['value'] = str(claim['mainsnak']['datavalue']['value'])
                 elif claim['mainsnak']['datatype'] == 'string':
+                    claim_s['value'] = str(claim['mainsnak']['datavalue']['value'])
+                elif claim['mainsnak']['datatype'] == 'quantity':
                     claim_s['value'] = str(claim['mainsnak']['datavalue']['value'])
                 elif claim['mainsnak']['datatype'] == 'monolingualtext':
                     claim_s['value'] =  claim['mainsnak']['datavalue']['value']['text'] 
@@ -626,6 +870,7 @@ class Model_wiki:
     @staticmethod
     def is_wikidata_id(text) -> bool:
         # check if string is valid wikidata id
+        if not isinstance(text,str): return False
         if text.startswith('Q') and text[1:].isnumeric():
             return True
         else:
@@ -742,6 +987,7 @@ LIMIT 100
     def wikidata_input2id(self, inp) -> str:
         if inp is None:
             return None
+        candidates = list()
 
         # detect user input string for wikidata
         # if user print a query - search wikidata
@@ -751,23 +997,37 @@ LIMIT 100
         if inp.startswith('Q'):
             return self.normalize_wdid(inp)
 
-        # search
-        cmd = ['wb', 'search', inp, '--json', '--lang', 'en']
-        response = subprocess.run(cmd, capture_output=True)
+        site = pywikibot.Site("wikidata", "wikidata")
 
-        try:
-            result_wd = json.loads(response.stdout.decode())
-        except:
-            self.logger.error('error parce json from wikibase query')
-            self.logger.error(' '.join(cmd))
-            self.logger.error(response.stdout.decode())
+        # Define the name of the entity to search
+        name = "Albert Einstein"
 
-        candidates = list()
-        for element in result_wd:
-            candidates.append(element['id']+' '+element['display']['label']['value'] +
-                              ' '+element['display'].get('description', {'value': ''})['value'])
+        # Use the wbsearchentities action to get a list of possible matches
+        # See https://www.mediawiki.org/wiki/Wikibase/API#wbsearchentities for details
+        params = {
+            "action": "wbsearchentities",
+            "format": "json",
+            "language": "en",
+            "type": "item",
+            "search": inp,
+        }
+        request = pywikibot.data.api.Request(site=site, **params)
+        results = request.submit()
+
+        # Print the results
+        for result in results["search"]:
+            # Get the entity ID, label, description and URL
+            entity_id = result["id"]
+            label = result["label"]
+            description = result.get("description", "No description")
+            url = result["url"]
+            candidates.append(result['id']+' '+result['label'] +
+                              ' '+result.get("description", "No description"))
+        
+     
+        
         if len(candidates) == 1:
-            selected_url = result_wd[0]['id']
+            selected_url = results["search"][0]['id']
             return selected_url
         else:
             try:
@@ -777,9 +1037,9 @@ LIMIT 100
             except:
                 # special for run in temmux
                 menu_entry_index = self.user_select(candidates)
-            selected_url = result_wd[menu_entry_index]['id']
+            selected_url = results["search"][menu_entry_index]['id']
         print('For '+inp+' selected 【'+selected_url+' ' +
-              result_wd[menu_entry_index].get("description", '[no description]')+'】')
+              results["search"][menu_entry_index]['description']+'】')
 
         return selected_url
 
@@ -963,6 +1223,222 @@ LIMIT 100
             print('invalid date: '+text)
             return False
         return text
+    
+    def create_building_category(self, wikidata:str, city_en:str, dry_mode=False ) -> str:
+        """
+        Create wikimedia commons category for wikidata building entity
+
+        Return: category name
+        """
+        if wikidata is None and dry_mode:
+            print("commons category will be created here...")
+            return
+        street_name=dict()
+
+        assert wikidata.startswith("Q")
+        building_dict_wd=self.get_wikidata_simplified(wikidata)
+       
+
+        assert "P669" in building_dict_wd["claims"], (
+            "https://www.wikidata.org/wiki/"
+            + wikidata
+            + " must have P669 street name and housenumber"
+        )
+        # retrive category name for street
+
+        street_dict_wd = self.get_wikidata_simplified(building_dict_wd['claims']['P669'][0]['value'])
+        housenumber = building_dict_wd["claims"]["P669"][0]['qualifiers']['P670'][0]["datavalue"]["value"]
+        category_street = street_dict_wd['commons']     
+        category_street +='|'+housenumber
+               
+        category_name = building_dict_wd["labels"]["en"]
+        street_name['ru'] = street_dict_wd["labels"]["ru"]
+        
+        year = ""
+        decade = ""
+        year_field = None
+        if "P1619" in building_dict_wd["claims"]:
+            year_field = "P1619"
+        elif "P580" in building_dict_wd["claims"]:
+            year_field = "P580"
+            year_field = "P1619"
+        elif "P571" in building_dict_wd["claims"]:
+            year_field = "P571"
+        if year_field is not None:
+            try:
+                if building_dict_wd["claims"][year_field][0]["precision"] >= 9:
+                    year = building_dict_wd["claims"][year_field][0]["value"][0:4]
+                if building_dict_wd["claims"][year_field][0]["precision"] == 8:
+                    decade = (
+                        building_dict_wd["claims"][year_field][0]["value"][0:3]
+                        + "0"
+                    )
+            except:
+                pass
+            # no year in building
+        assert isinstance(year, str)
+        assert year == "" or len(year) == 4, "invalid year:" + str(year)
+        assert decade == "" or len(decade) == 4, "invalid decade:" + str(decade)
+        levels = 0
+        try:
+            levels = building_dict_wd["claims"]["P1101"][0]["value"]["amount"]
+        except:
+            pass
+            # no levels in building
+        assert isinstance(levels, int)
+        assert levels == 0 or levels > 0, "invalid levels:" + str(levels)
+
+        code = """
+{{Object location}}
+{{Wikidata infobox}}
+{{Building address|Country=RU|City=%city%|Street name=%street%|House number=%housenumber%}}
+[[Category:%building_function% in %city%]]
+[[Category:%streetcategory%]]
+"""
+
+        if year != "":
+            code += "[[Category:Built in %city% in %year%]]" + "\n"
+
+        if decade != "":
+            code += "[[Category:%decade%s architecture in %city%]]" + "\n"
+
+        if levels > 0:
+            code += "[[Category:%levelstr%-story buildings in %city%]]" + "\n"
+
+        building_function='Buildings'
+        if any(d['value'] == 'Q13402009' for d in building_dict_wd["claims"]["P31"]): building_function = 'Apartment buildings'
+        if any(d['value'] == 'Q1021645' for d in building_dict_wd["claims"]["P31"]): building_function = 'Office buildings'
+        if any(d['value'] == 'Q847950' for d in building_dict_wd["claims"]["P31"]): building_function = 'Dormitories'
+        if any(d['value'] == 'Q3661265' for d in building_dict_wd["claims"]["P31"]): building_function = 'Dormitories'
+        
+
+        
+        code = code.replace("%building_function%", building_function)
+        code = code.replace("%city%", city_en)
+        #code = code.replace("%city_loc%", city_ru)
+        code = code.replace("%streetcategory%", category_street)
+        code = code.replace("%street%", street_name['ru'])
+        code = code.replace("%year%", year)
+        code = code.replace("%housenumber%", housenumber)
+        code = code.replace("%decade%", decade)
+        if levels > 0 and levels < 21:
+            code = code.replace("%levelstr%", str(num2words(levels).capitalize()))
+        elif levels > 20:
+            code = code.replace("%levelstr%", str(levels))
+
+        if dry_mode:
+            print()
+            print(category_name)
+            print(code)
+            self.logger.info("dry mode, no creating wikidata entity")
+            return category_name
+
+        commonscat_create_result = self.create_category(category_name, code)
+        self.wikidata_add_commons_category(wikidata, category_name)
+
+        return category_name
+    
+    def create_number_on_vehicles_category(self,vehicle:str,number:str):
+        """
+        Create commons category for vehicle number:
+        Number 7854 on trolleybuses
+        Number 5007 on trams
+
+        """
+
+        number=str(number)
+
+        if vehicle=='bus':
+            name = f'Number {number} on buses'
+            content = '{{Numbercategory-buses|'+number+'}}'
+            self.create_category(name, content)
+
+            name = f'Number {number} on vehicles'
+            content = '{{Numbercategory-vehicle|'+number+'|vehicle|Number '+number+' on objects|Vehicle}}'
+            self.create_category(name, content)
+
+            name = f'Number {number} on objects'
+            content = '{{number on object|n='+number+'}}'
+            self.create_category(name, content)
+        
+        if vehicle=='trolleybus':
+            name = f'Number {number} on trolleybuses'
+            content = '{{Numbercategory-trolleybuses|'+number+'}}'
+            self.create_category(name, content)
+            self.create_number_on_vehicles_category('bus',number)
+        
+        if vehicle=='tram':
+            name = f'Trams with fleet number {number}'
+            content = '{{tram fleet number|'+number+'|image=}}'
+            self.create_category(name, content)
+            
+            name = f'Items numbered {number}'
+            content = '{{number cat|nt=nom|n='+number+'}}'
+            self.create_category(name, content)
+
+                        
+            name = f'Number {number} on trams'
+            content = '{{numbercategoryTram|'+number+'}}'
+            self.create_category(name, content)
+
+
+
+    def create_vehicle_in_city_category(self,vehicle:str, number:str,city_name:str,model_name:str)->str:
+        """
+        create category for vehicle in city like "Moscow tram 1220"
+
+        Returns: category name
+        """
+        city_name = city_name.capitalize()
+
+        if vehicle == 'trolleybus':
+            name = f'{city_name} trolleybus {number}'
+            content = """{{GeoGroup}}
+[[Category:%model_name% in %city_name%|%number%]]
+[[Category:Trolleybuses in %city_name% by registration number]]
+[[Category:Number %number% on trolleybuses]]
+
+
+{{DEFAULTSORT:%number% }}
+"""
+            content = content.replace('%number%',number)
+            content = content.replace('%model_name%',model_name)
+            content = content.replace('%city_name%',city_name)
+
+
+            self.create_category(name, content)
+            self.create_number_on_vehicles_category('trolleybus',number)
+
+        return name
+    def wikidata_add_commons_category(self,item_id:str, category_name:str):
+        """
+        Set a sitelink to a commons category in a wikidata item.
+
+        Parameters:
+        item_id (str): the ID of the wikidata item, e.g. 'Q42'
+        category_name (str): the name of the commons category, e.g. 'Category:Albert Einstein'
+
+        Returns:
+        None
+        """
+        # Create a site object for wikidata
+        site = pywikibot.Site('wikidata', 'wikidata')
+        # Create an item object from the item ID
+        item = pywikibot.ItemPage(site, item_id)
+        # Create a site object for commons
+        commons = pywikibot.Site('commons', 'commons')
+        # Create a page object from the category name
+        category = pywikibot.Page(commons, category_name)
+        # Check if the category exists and is a category page
+        if not category.exists():
+            self.logger.error('category not exists:'+category_name)
+            return None
+        if category.exists() and category.is_categorypage():
+            # Set the sitelink to the category
+            item.setSitelink(category, summary='Set sitelink to commons category')
+        else:
+            # Print an error message
+            print('Invalid category name')
 
     def create_category_taken_on_day(self, location, yyyymmdd):
         location = location.title()
@@ -986,6 +1462,12 @@ LIMIT 100
             self.create_category_taken_on_day('Russia', yyyymmdd)
 
     def create_category(self, pagename: str, content: str):
+        """
+        Create wikimedia commons category
+
+        pagename:   with or without category
+        content:    text content
+        """
         if not pagename.startswith('Category:'):
             pagename = 'Category:'+pagename
         if not self.is_category_exists(pagename):

@@ -53,20 +53,22 @@ args = parser.parse_args()
 processor = trolleway_commons.CommonsOps()
 modelwiki = Model_wiki()
 
+city = args.city
+dry_run = args.dry_run
+# --- move to method
+
 if args.snow_fix is not None:
     assert args.wikidata is not None
     building_wikidata = modelwiki.wikidata_input2id(args.wikidata)
-    modelwiki.wikidata_set_building_entity_name(building_wikidata,city_en=args.city)
+    modelwiki.wikidata_set_building_entity_name(building_wikidata,city_en=city)
     quit()
     
 elif args.wikidata is not None:
     building_wikidata = modelwiki.wikidata_input2id(args.wikidata)
-    category_name = processor.create_commonscat(
-        building_wikidata, city_en=args.city, dry_mode=args.dry_run,
-        
-    )
+    category_name = modelwiki.create_building_category(
+            building_wikidata, city_en=city, dry_mode=dry_run)
+
     print('Created https://www.wikidata.org/wiki/'+building_wikidata)
-    print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))
     print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))
 
     quit()
@@ -76,10 +78,10 @@ buildings = list()
 building = {
         "housenumber": str(args.housenumber),
         "building": args.building,
-        "street_wikidata": processor.wikidata_input2id(str(args.street).strip()),
+        "street_wikidata": modelwiki.wikidata_input2id(str(args.street).strip()),
         "latlonstr": args.coords,
         "coord_source": args.coord_source,
-        'city':args.city,
+        'city':city,
         }
         
 if args.levels: building['levels'] = args.levels            
@@ -90,10 +92,11 @@ if args.year_url: building['year_url'] = args.year_url
 
 
 buildings.append(building)
+del building
 
 validation_pass = True
-for data in buildings:
-    if processor.validate_street(data) == False:
+for building in buildings:
+    if modelwiki.validate_street_in_building_record(building) == False:
         validation_pass = False
 print('validation ok')
 
@@ -101,13 +104,14 @@ if not validation_pass:
     print("street wikidata objects non valid")
     quit()
 for data in buildings:
-    building_wikidata = modelwiki.create_wikidata_building(data, dry_mode=args.dry_run)
+    building_wikidata = modelwiki.create_wikidata_building(data, dry_mode=dry_run)
     if not args.wikidata_only:
-        category_name = processor.create_commonscat(
-            building_wikidata, city_en=args.city, dry_mode=args.dry_run)
-        
-    if args.dry_run:
-        quit()
-        
-    print('Created https://www.wikidata.org/wiki/'+building_wikidata)
-    if not args.wikidata_only: print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))
+        category_name = modelwiki.create_building_category(
+            building_wikidata, city_en=city, dry_mode=dry_run)
+
+# end of method    
+if args.dry_run:
+    quit()
+    
+print('Created https://www.wikidata.org/wiki/'+building_wikidata)
+if not args.wikidata_only: print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))

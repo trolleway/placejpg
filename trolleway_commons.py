@@ -24,7 +24,7 @@ class CommonsOps:
 
     
 
-    def create_commonscat_page(self, name, code) -> bool:
+    def deprecated_create_commonscat_page(self, name, code) -> bool:
         # created with Bing Ai 2023-04-07
         # Import pywikibot library
         import pywikibot
@@ -49,12 +49,13 @@ class CommonsOps:
             self.logger.info("The category was created successfully. https://commons.wikimedia.org/wiki/"+name)
             return True
 
-    def create_commonscat(self, wikidata, city_en, dry_mode=False ) -> str:
+    def deprecated_create_building_category(self, wikidata, city_en, dry_mode=False ) -> str:
         if wikidata is None and dry_mode:
             print("commons category will be created here...")
             return
 
         assert wikidata.startswith("Q")
+        
         cmd = ["wd", "generate-template", "--json",            '--no-minimize',  wikidata]
         response = subprocess.run(cmd, capture_output=True)
         building_dict_wd = json.loads(response.stdout.decode())
@@ -171,33 +172,7 @@ class CommonsOps:
 
         return category_name
         
-    def wikidata_input2id(self,inp)->str:
-        warnings.warn('need move to model_wiki', DeprecationWarning, stacklevel=2)
-        #detect user input string for wikidata
-        #if user print a query - search wikidata
-        #returns wikidata id
-        
-        inp = self.prepare_wikidata_url(inp)
-        if inp.startswith('Q'): return inp
-        
-        # search
-        cmd = ['wb','search',inp,'--json','--lang','ru']
-        response = subprocess.run(cmd, capture_output=True)
-        try:
-            result_wd = json.loads(response.stdout.decode())
-        except:
-            self.logger.error('error parce json from wikibase query')
-            self.logger.error(' '.join(cmd))
-            self.logger.error(response.stdout.decode())
-            
-        candidates = list()
-        for element in result_wd:
-            candidates.append(element['id']+' '+element['display']['label']['value']+' '+element['display'].get('description',{'value':''})['value'])
-        terminal_menu = TerminalMenu(candidates, title="Select street")
-        menu_entry_index = terminal_menu.show()
-        selected_url = result_wd[menu_entry_index]['id']
-        print('For '+inp+' selected '+selected_url+' '+result_wd[menu_entry_index].get("description",'[no description]'))
-        return selected_url
+
             
         
         
@@ -210,25 +185,9 @@ class CommonsOps:
             wikidata = 'Q'+wikidata
         return wikidata
 
-    def wikidata_add_commonscat(self, wikidata, category_name) -> bool:
-        assert wikidata.startswith("Q")
 
-        cmd = ["wb", "add-claim", wikidata, "P373", category_name]
-        response = subprocess.run(cmd, capture_output=True)
-        result_wd = json.loads(response.stdout.decode())
 
-        cmd = [
-            "wb",
-            "set-sitelink",
-            wikidata,
-            "commonswiki",
-            "Category:" + category_name,
-        ]
-        print(" ".join(cmd))
-        response = subprocess.run(cmd, capture_output=True)
-        result_wd = json.loads(response.stdout.decode())
-
-    def get_category_name_from_building(self, wikidata) -> str:
+    def deprecated_get_category_name_from_building(self, wikidata) -> str:
         assert wikidata.startswith("Q")
         cmd = ["wd", "generate-template", "--json", wikidata]
         response = subprocess.run(cmd, capture_output=True)
@@ -238,37 +197,6 @@ class CommonsOps:
 
 
 
-    def validate_street(self, data):
-        assert data["street_wikidata"] is not None
-        wikidata_street_url = "https://www.wikidata.org/wiki/" + data["street_wikidata"]
-
-        cmd = ["wd", "generate-template", "--json", data["street_wikidata"]]
-        response = subprocess.run(cmd, capture_output=True)
-        try:
-            street_dict_wd = json.loads(response.stdout.decode())
-        except:
-            self.logger.error('not JSON')
-            self.logger.error('command was'+' '.join(cmd))
-            print(response.stdout.decode())
-            quit()
-        result = None
-        
-        if "ru" not in street_dict_wd["labels"]:
-            print("street " + wikidata_street_url + " must have name ru")
-            result = False
-        if "en" not in street_dict_wd["labels"]:
-            print("street " + wikidata_street_url + " must have name en")
-            result = False
-        if "P373" not in street_dict_wd["claims"] and ('commonswiki' not in street_dict_wd["sitelinks"]):
-            print(
-                "street "
-                + wikidata_street_url
-                + " must have wikimedia commons category"
-            )
-            result = False
-
-        if result is None:
-            result = True
-        return result
+    
 
 

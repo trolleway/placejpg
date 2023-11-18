@@ -35,16 +35,20 @@ class Fileprocessor:
     logger = logging.getLogger(__name__)
     pp = pprint.PrettyPrinter(indent=4)
 
-    exiftool_path = "exiftool"
-
-    wikidata_cache = dict()
     langs_optional = placejpgconfig.langs_optional
     langs_primary = placejpgconfig.langs_primary
+    
+    exiftool_path = "exiftool"
+    
+    # TIFF LARGER THAN THIS VALUE WILL BE COMPRESSED TO WEBP 
+    tiff2webp_min_size_mb = 11
+    
     chunk_size = 102400
     # chunk_size = 0
+    
     photographer = placejpgconfig.photographer
-
     folder_keywords = ['commons_uploaded', 'commons_duplicates']
+    wikidata_cache = dict()
 
     def convert_to_webp(self, filepath: str) -> str:
         """Convert image to webp.
@@ -329,6 +333,16 @@ class Fileprocessor:
                 digital_number = match.group()[2:-1]
 
         # SYSTEM
+        if system=='FROMFILENAME':
+            # extract system "Q123456" from 16666_20070707_000_systemQ123456.jpg
+            import re
+            regex = "_system(.*?)[_.\b]"
+            test_str = os.path.basename(filename)
+
+            matches = re.finditer(regex, test_str, re.MULTILINE)
+            for match in matches:
+                system = match.group()[7:-1]
+
         if system is not None:
             system_wdid = modelwiki.wikidata_input2id(system)
             system_wd = modelwiki.get_wikidata_simplified(system_wdid)
@@ -722,9 +736,14 @@ class Fileprocessor:
                     '-')+1:]
             if digital_number is None:
                 digital_number = number_filtered
-        if number is not None and vehicle in train_synonims:
+        if number is not None and vehicle in ('bus','trolleybus','tram'):
+            cat = f'{city_name_en} {vehicle} {number}'
+            self.logger.info('search if exist optional category '+cat)
+            if modelwiki.is_category_exists(cat):
+                has_category_for_this_vehicle = True
+                categories.add(cat)
+        elif number is not None and vehicle in train_synonims:
             # search for category for this railway locomotive
-            has_category_for_this_vehicle = False
             cat = f'{locomotive_railway_code} {locomotive_inscription}'
             if modelwiki.is_category_exists(cat):
                 has_category_for_this_vehicle = True
@@ -745,26 +764,25 @@ class Fileprocessor:
                 catname = 'Number '+digital_number+' on objects'
                 category_page_content = '{{Number on object|n='+digital_number+'}}'
                 modelwiki.create_category(catname, category_page_content)
-
-        elif number is not None and vehicle == 'bus':
-            text += "[[Category:Number "+digital_number+" on buses]]\n"
+        # end of search category for this vehicle 
+        
+        if number is not None and vehicle == 'bus':
+            catname = f'Number {digital_number} on buses'
+            if not has_category_for_this_vehicle: categories.add(catname)
+            modelwiki.create_number_on_vehicles_category(vehicle='bus', number=digital_number)
         elif number is not None and vehicle == 'trolleybus':
-            catname = "Number "+digital_number+" on trolleybuses"
-            category_page_content = '{{numbercategory-trolleybuses|'+digital_number+'}}'
-            modelwiki.create_category(catname, category_page_content)
-            text += "[[Category:"+catname+"]]\n"
-
-            catname = "Number "+digital_number+" on buses"
-            category_page_content = '{{numbercategory-buses|'+digital_number+'}}'
-            modelwiki.create_category(catname, category_page_content)
-        elif number is not None and vehicle != 'tram':
-            text += "[[Category:Number "+digital_number+" on vehicles]]\n"
-        if number is not None and vehicle == 'tram':
+            catname = f'Number {digital_number} on trolleybuses'
+            if not has_category_for_this_vehicle: categories.add(catname)
+            modelwiki.create_number_on_vehicles_category(vehicle='trolleybus', number=digital_number)
+        elif number is not None and vehicle == 'tram':
             catname="Trams with fleet number "+digital_number
-            categories.add(catname)
+            if not has_category_for_this_vehicle: categories.add(catname)
             category_page_content = '{{' + \
                 f'Numbercategory-vehicle-fleet number|{digital_number}|Trams|Number {digital_number} on trams'+'|image=}}'
             modelwiki.create_category(catname, category_page_content)
+        elif number is not None and vehicle != 'tram':
+            text += "[[Category:Number "+digital_number+" on vehicles]]\n"
+
         if dt_obj is not None and vehicle not in train_synonims:
             catname = "{transports} in {country} photographed in {year}".format(
                 transports=transports[vehicle],
@@ -1046,9 +1064,16 @@ class Fileprocessor:
             street=wikidata
             wikidata = self.get_place_from_input(filename,street,geo_dict)
             del street
-
-        
+            if wikidata is None:
+                #place should taken from gpkg, but not found
+                return None
+       
         wd_record = modelwiki.get_wikidata_simplified(wikidata)
+        
+        if wd_record["commons"] is None: 
+            self.logger.error('https://www.wikidata.org/wiki/' + \
+            wikidata + ' must have commons')
+            return None
 
         instance_of_data = list()
         for i in wd_record['claims']['P31']:
@@ -1175,10 +1200,7 @@ class Fileprocessor:
                     dt_obj.strftime("%B %Y") + \
                     " in rail transport in "+country+"]]" + "\n"
 
-        assert 'commons' in wd_record, 'https://www.wikidata.org/wiki/' + \
-            wikidata + ' must have commons'
-        assert wd_record["commons"] is not None, 'https://www.wikidata.org/wiki/' + \
-            wikidata + ' must have commons'
+            
         if len(secondary_wikidata_ids) < 1:
             text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
         else:
@@ -1821,14 +1843,12 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     desc_dict.get('model', None))
                 # transfer street user input deeper, it can be vector file name
                 desc_dict['street'] = desc_dict.get('street', None)
-                desc_dict['system'] = modelwiki.wikidata_input2id(
-                    desc_dict.get('system', None))
+
                 desc_dict['city'] = modelwiki.wikidata_input2id(
                     desc_dict.get('city', None))
                 desc_dict['line'] = modelwiki.wikidata_input2id(
                     desc_dict.get('line', None))
-                desc_dict['line'] = modelwiki.wikidata_input2id(
-                    desc_dict.get('line', None))
+
 
                 texts = self.make_image_texts_vehicle(
                     filename=filename,
@@ -1862,7 +1882,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             # if exists file with webp extension:
             filename_webp = filename.replace('.tif', '.webp')
             src_filesize_mb = os.path.getsize(filename) / (1024 * 1024)
-            if filename.endswith('.tif') and src_filesize_mb > 25:
+            if filename.endswith('.tif') and src_filesize_mb > self.tiff2webp_min_size_mb :
                 print('file is big, convert to webp to bypass upload errors')
                 self.convert_to_webp(filename)
 

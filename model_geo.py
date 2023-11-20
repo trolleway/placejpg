@@ -10,6 +10,7 @@ class Model_Geo:
     )
     logger = logging.getLogger(__name__)
     pp = pprint.PrettyPrinter(indent=4)
+    gdal.UseExceptions()
     
     def make_search_rect(self,pointgeom):
         

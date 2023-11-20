@@ -32,7 +32,7 @@ desc_dict['vehicle'] = args.vehicle
 desc_dict['city_name'] = args.city_name
 desc_dict['model_name'] = args.model_name
 
-if desc_dict['city_name']  != '' and desc_dict['model_name'] != '':
+if desc_dict['city_name']  is not None and desc_dict['model_name'] is not None:
     
     modelwiki.create_vehicle_in_city_category(vehicle=desc_dict['vehicle'], number=desc_dict['number'],city_name=desc_dict['city_name'],model_name=desc_dict['model_name'])
 else:

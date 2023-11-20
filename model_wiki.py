@@ -50,6 +50,9 @@ class Model_wiki:
         self.wikidata_cache = self.wikidata_cache_load(
             wikidata_cache_filename=self.wikidata_cache_filename)
 
+    def reset_cache(self):
+        os.unlink(self.wikidata_cache_filename)
+
     def replace_file_commons(self, pagename, filepath):
         assert pagename
         # Login to your account
@@ -121,16 +124,6 @@ class Model_wiki:
         pagecode = pagecode.replace('https://commons.wikimedia.org/wiki/', '')
         pagecode = pagecode.replace('[[commons:', '').replace(']]', '')
         return pagecode
-
-    def op1(self):
-
-        pages = self.search_files_geo(lat=55.42, lon=37.52)
-
-        for page in pages:
-            print(page.title())
-            pagecode = self.wikipedia_get_page_content(page)
-            if self.is_change_need(pagecode, 'taken on'):
-                print('---need change')
 
     def url_add_template_taken_on(self, pagename, location, dry_run=True):
         assert pagename
@@ -212,7 +205,7 @@ class Model_wiki:
             new_item.editDescriptions(descriptions=wd_object["descriptions"], summary="Setting descriptions")
             new_item.editAliases(aliases=wd_object["aliases"], summary="Setting aliases")
         except:
-            self.logger.warning('prorably this building already created in wikidata. we will merge later')
+            self.logger.warning('prorably this building already created in wikidata. merge not implement yet')
             pass
         # iterate over the claims in the wd_object
         for prop, value in wd_object["claims"].items():
@@ -260,6 +253,7 @@ class Model_wiki:
                         amount=value["value"]["amount"],
                         unit=value["value"]["unit"],
                         error=value["value"].get("error"),
+                        site=site
                     )
                 else:
                     # otherwise, the value is not supported
@@ -318,6 +312,7 @@ class Model_wiki:
                                 amount=qual_value["value"]["amount"],
                                 unit=qual_value["value"]["unit"],
                                 error=qual_value["value"].get("error"),
+                                site=site
                             )
                         else:
                             # otherwise, the qualifier value is not supported
@@ -384,6 +379,7 @@ class Model_wiki:
                                     amount=ref_value["value"]["amount"],
                                     unit=ref_value["value"]["unit"],
                                     error=ref_value["value"].get("error"),
+                                    site=site
                                 )
                             else:
                                 # otherwise, the reference value is not supported
@@ -1224,6 +1220,43 @@ LIMIT 100
             return False
         return text
     
+    def create_street_category(self,street_wikidata:str, city_wikidata:str=None)-> str:
+        if street_wikidata is None:
+            return None
+        assert street_wikidata.startswith("Q")
+        street_wd = self.get_wikidata_simplified(street_wikidata)
+        if 'en' not in street_wd['labels']:
+            self.logger.error('object https://www.wikidata.org/wiki/' +
+                              street_wikidata+' must have english label')
+            return None
+
+        if city_wikidata is not None:      
+            assert city_wikidata.startswith("Q")
+            city_wd = self.get_wikidata_simplified(city_wikidata)
+            if 'en' not in city_wd['labels']:
+                self.logger.error('object https://www.wikidata.org/wiki/' +
+                                city_wikidata+' must have english label')
+                return None
+        else:
+            city_wikidata = street_wd['claims']['P131'][0]['value']
+            city_wd = self.get_wikidata_simplified(city_wikidata)
+
+                
+        # MAKE CATEGORY NAME
+        streetname = street_wd['labels']['en']
+        cityname = city_wd['labels']['en']
+        catname = f'{streetname} ({cityname})'
+        content = """{{Wikidata infobox}}
+        {{GeoGroup}}
+        [[Category:Streets in %cityname%]]
+        """
+        content = content.replace('%cityname%',cityname)
+        if not self.is_category_exists(catname):
+            self.create_category(catname,content)
+            self.wikidata_add_commons_category(street_wikidata,catname)
+        else:
+            print('category already exists')
+        
     def create_building_category(self, wikidata:str, city_en:str, dry_mode=False ) -> str:
         """
         Create wikimedia commons category for wikidata building entity
@@ -1233,7 +1266,7 @@ LIMIT 100
         if wikidata is None and dry_mode:
             print("commons category will be created here...")
             return
-        street_name=dict()
+
 
         assert wikidata.startswith("Q")
         building_dict_wd=self.get_wikidata_simplified(wikidata)
@@ -1248,11 +1281,12 @@ LIMIT 100
 
         street_dict_wd = self.get_wikidata_simplified(building_dict_wd['claims']['P669'][0]['value'])
         housenumber = building_dict_wd["claims"]["P669"][0]['qualifiers']['P670'][0]["datavalue"]["value"]
+        assert street_dict_wd['commons'] is not None
         category_street = street_dict_wd['commons']     
-        category_street +='|'+housenumber
+        category_street +='|'+housenumber.zfill(2)
                
         category_name = building_dict_wd["labels"]["en"]
-        street_name['ru'] = street_dict_wd["labels"]["ru"]
+
         
         year = ""
         decade = ""
@@ -1317,7 +1351,7 @@ LIMIT 100
         code = code.replace("%city%", city_en)
         #code = code.replace("%city_loc%", city_ru)
         code = code.replace("%streetcategory%", category_street)
-        code = code.replace("%street%", street_name['ru'])
+        code = code.replace("%street%", street_dict_wd["labels"]["en"])
         code = code.replace("%year%", year)
         code = code.replace("%housenumber%", housenumber)
         code = code.replace("%decade%", decade)
@@ -1421,6 +1455,9 @@ LIMIT 100
         Returns:
         None
         """
+        if not category_name.startswith('Category:'):
+            category_name = 'Category:'+category_name
+
         # Create a site object for wikidata
         site = pywikibot.Site('wikidata', 'wikidata')
         # Create an item object from the item ID
@@ -1439,6 +1476,7 @@ LIMIT 100
         else:
             # Print an error message
             print('Invalid category name')
+        self.reset_cache()
 
     def create_category_taken_on_day(self, location, yyyymmdd):
         location = location.title()
@@ -1860,7 +1898,8 @@ LIMIT 100
         page.save('add {{Wikidata infobox}} template')
 
     def search_commonscat_by_2_wikidata(self, abstract_wdid, geo_wdid):
-
+        if abstract_wdid==geo_wdid:
+            return None
         if abstract_wdid in self.wikidata_cache['commonscat_by_2_wikidata']:
             if geo_wdid in self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid]:
                 return self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid][geo_wdid]
@@ -1906,14 +1945,16 @@ LIMIT 100
             pagegenerators.WikidataSPARQLPageGenerator(sparql, site=repo))
         for item in generator:
             item_dict = item.get()
+            commonscat = None
             try:
                 commonscat = item.getSitelink('commonswiki')
             except:
                 claim_list = item_dict["claims"].get('P373', ())
-                assert claim_list is not none, 'https://www.wikidata.org/wiki/' + \
-                    abstract_wdid + ' must have P373commons'
+                assert claim_list is not None, 'https://www.wikidata.org/wiki/' + \
+                    abstract_wdid + ' must have P373'
                 for claim in claim_list:
                     commonscat = claim.getTarget()
+            assert commonscat is not None, 'invalid entity '+str(item) + "\n"+sparql
             commonscat = commonscat.replace('Category:', '')
 
             if abstract_wdid not in self.wikidata_cache['commonscat_by_2_wikidata']:

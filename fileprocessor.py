@@ -1076,6 +1076,10 @@ class Fileprocessor:
             return None
 
         instance_of_data = list()
+        if 'P31' not in wd_record['claims']:
+            self.logger.error('https://www.wikidata.org/wiki/' + \
+            wikidata + ' must have some P31')
+            return None
         for i in wd_record['claims']['P31']:
             instance_of_data.append(
                 modelwiki.get_wikidata_simplified(i['value']))
@@ -1371,6 +1375,24 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
         st = ''
         categories = set()
         image_exif = self.image2camera_params(filename)
+        lens_invalid_names=('0.0 mm f/0.0',)
+        cameramodels_dict = {
+                    'Pentax corporation PENTAX K10D': 'Pentax K10D',
+                    'Pentax PENTAX K-r': 'Pentax K-r',
+                    'Gopro HERO8 Black': 'GoPro Hero8 Black',
+                    'Samsung SM-G7810': 'Samsung Galaxy S20 FE 5G',
+                    'Olympus imaging corp.': 'Olympus',
+                    'Nikon corporation NIKON': 'Nikon',
+                    'Panasonic': 'Panasonic Lumix',
+                    'Hmd global Nokia 5.3': 'Nokia 5.3',
+                    'COOLPIX':'Coolpix',
+                }
+        lensmodel_dict = {
+                    'OLYMPUS M.12-40mm F2.8': 'Olympus M.Zuiko Digital ED 12-40mm f/2.8 PRO',
+                    'smc PENTAX-DA 35mm F2.4 AL': 'SMC Pentax-DA 35mm F2.4',
+                    'smc PENTAX-DA 14mm F2.8 EDIF': 'SMC PENTAX DA 14 mm f/2.8 ED IF',
+                }
+        lens = None
         if image_exif.get("make") is not None and image_exif.get("model") is not None:
             if image_exif.get("make") != "" and image_exif.get("model") != "":
                 make = image_exif.get("make").strip()
@@ -1380,6 +1402,10 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
                 st += '{{Photo Information|Model = ' + make + " " + model
                 if image_exif.get("lensmodel", '') != "" and image_exif.get("lensmodel", '') != "":
+                    lens = image_exif.get("lensmodel")
+                    if lens in lens_invalid_names:
+                        lens = None
+                if lens is not None:
                     st += '|Lens = ' + image_exif.get("lensmodel")
 
                 if image_exif.get("fnumber", '') != "" and image_exif.get("fnumber", '') != "":
@@ -1401,36 +1427,15 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                         'ISO speed rating '+str(round(float(str(image_exif.get("iso")))))+'')
                     except:
                         self.logger.info('ISO value is bad:'+str(image_exif.get("iso", '')))
-                cameramodels_dict = {
-                    'Pentax corporation PENTAX K10D': 'Pentax K10D',
-                    'Pentax PENTAX K-r': 'Pentax K-r',
-                    'Gopro HERO8 Black': 'GoPro Hero8 Black',
-                    'Samsung SM-G7810': 'Samsung Galaxy S20 FE 5G',
-                    'Olympus imaging corp.': 'Olympus',
-                    'Nikon corporation NIKON': 'Nikon',
-                    'Panasonic': 'Panasonic Lumix',
-                    'Hmd global Nokia 5.3': 'Nokia 5.3',
-                    'COOLPIX':'Coolpix',
-                }
-                lensmodel_dict = {
-                    'OLYMPUS M.12-40mm F2.8': 'Olympus M.Zuiko Digital ED 12-40mm f/2.8 PRO',
-                    'smc PENTAX-DA 35mm F2.4 AL': 'SMC Pentax-DA 35mm F2.4',
-                    'smc PENTAX-DA 14mm F2.8 EDIF': 'SMC PENTAX DA 14 mm f/2.8 ED IF',
-                }
+
                 for camerastring in cameramodels_dict.keys():
                     if camerastring in st:
                         st = st.replace(
                             camerastring, cameramodels_dict[camerastring])
 
                 # lens quess
-                lens_detected = ''
-                if image_exif.get("lensmodel", '') != "" and image_exif.get("lensmodel", '') != "":
-                    lens_detected = image_exif.get("lensmodel")
-
-                self.logger.info('detected lens'+lens_detected)
-
-                if image_exif.get("lensmodel", '') != "" and image_exif.get("lensmodel", '') != "":
-                    st += "{{Taken with|" + image_exif.get("lensmodel").replace(
+                if lens is not None:
+                    st += "{{Taken with|" + lens.replace(
                         '[', '').replace(']', '').replace('f/ ', 'f/') + "|sf=1|own=1}}" + "\n"
 
                 for lensstring in lensmodel_dict.keys():
@@ -1767,7 +1772,6 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         files, uploaded_folder_path = self.input2filelist(filepath)
 
         if len(files) == 0:
-            print(filepath+' all files already uploaded')
             quit()
 
         dry_run = desc_dict['dry_run']

@@ -1,5 +1,4 @@
 pywikibot
-mwxml
 transliterate
 num2words
 exif

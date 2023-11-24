@@ -56,17 +56,18 @@ modelwiki = Model_wiki()
 city = args.city
 dry_run = args.dry_run
 # --- move to method
-
+city_wdid = modelwiki.wikidata_input2id(args.city)
 if args.snow_fix is not None:
     assert args.wikidata is not None
     building_wikidata = modelwiki.wikidata_input2id(args.wikidata)
-    modelwiki.wikidata_set_building_entity_name(building_wikidata,city_en=city)
+    
+    modelwiki.wikidata_set_building_entity_name(building_wikidata,city_wdid=city_wdid)
     quit()
     
 elif args.wikidata is not None:
     building_wikidata = modelwiki.wikidata_input2id(args.wikidata)
     category_name = modelwiki.create_building_category(
-            building_wikidata, city_en=city, dry_mode=dry_run)
+            building_wikidata, city_wikidata=city_wdid, dry_mode=dry_run)
 
     print('Created https://www.wikidata.org/wiki/'+building_wikidata)
     print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))
@@ -81,7 +82,7 @@ building = {
         "street_wikidata": modelwiki.wikidata_input2id(str(args.street).strip()),
         "latlonstr": args.coords,
         "coord_source": args.coord_source,
-        'city':city,
+        'city':city_wdid,
         }
         
 if args.levels: building['levels'] = args.levels            
@@ -107,7 +108,7 @@ for data in buildings:
     building_wikidata = modelwiki.create_wikidata_building(data, dry_mode=dry_run)
     if not args.wikidata_only:
         category_name = modelwiki.create_building_category(
-            building_wikidata, city_en=city, dry_mode=dry_run)
+            building_wikidata, city_wikidata=city_wikidata, dry_mode=dry_run)
 
 # end of method    
 if args.dry_run:

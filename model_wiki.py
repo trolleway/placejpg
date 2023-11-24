@@ -413,6 +413,7 @@ class Model_wiki:
         assert data["street_wikidata"] is not None
 
         street_dict_wd = self.get_wikidata_simplified(data["street_wikidata"])
+        city_wd = self.get_wikidata_simplified(data["city"])
         data["street_name_ru"] = street_dict_wd["labels"]["ru"]
         data["street_name_en"] = street_dict_wd["labels"]["en"]
 
@@ -457,16 +458,16 @@ class Model_wiki:
         wd_object["labels"]["ru"] = data["street_name_ru"] + \
             " " + data["housenumber"]
         wd_object["labels"]["en"] = (
-            data["city"] + ' '
+            city_wd['labels']['en'] + ' '
             + data["street_name_en"]
             + " "
             + translit(data["housenumber"], "ru", reversed=True)
         )
-        wd_object["descriptions"]["ru"] = "Здание в " + data["city"]
-        wd_object["descriptions"]["en"] = "Building in " + data["city"]
+        wd_object["descriptions"]["ru"] = "Здание в " + city_wd['labels']['ru']
+        wd_object["descriptions"]["en"] = "Building in " + city_wd['labels']['en']
         wd_object["aliases"] = {"ru": list()}
         wd_object["aliases"]["ru"].append(
-            data["city"] + ' ' + data["street_name_ru"] +
+            city_wd['labels']['ru'] + ' ' + data["street_name_ru"] +
             " дом " + data["housenumber"]
         )
         wd_object["claims"]["P625"]["value"]["latitude"] = round(
@@ -1257,7 +1258,7 @@ LIMIT 100
         else:
             print('category already exists')
         
-    def create_building_category(self, wikidata:str, city_en:str, dry_mode=False ) -> str:
+    def create_building_category(self, wikidata:str, city_wikidata:str, dry_mode=False ) -> str:
         """
         Create wikimedia commons category for wikidata building entity
 
@@ -1270,6 +1271,7 @@ LIMIT 100
 
         assert wikidata.startswith("Q")
         building_dict_wd=self.get_wikidata_simplified(wikidata)
+        city_dict_wd=self.get_wikidata_simplified(city_wikidata)
        
 
         assert "P669" in building_dict_wd["claims"], (
@@ -1348,7 +1350,7 @@ LIMIT 100
 
         
         code = code.replace("%building_function%", building_function)
-        code = code.replace("%city%", city_en)
+        code = code.replace("%city%", city_dict_wd['labels']['en'])
         #code = code.replace("%city_loc%", city_ru)
         code = code.replace("%streetcategory%", category_street)
         code = code.replace("%street%", street_dict_wd["labels"]["en"])
@@ -1439,10 +1441,26 @@ LIMIT 100
             content = content.replace('%model_name%',model_name)
             content = content.replace('%city_name%',city_name)
 
-
             self.create_category(name, content)
             self.create_number_on_vehicles_category('trolleybus',number)
+        elif vehicle == 'tram':
+            name = f'{city_name} tram {number}'
+            content = """{{GeoGroup}}
+[[Category:%model_name% in %city_name%|%number%]]
+[[Category:Trams in %city_name% by fleet number]]
+[[Category:Trams with fleet number %number% ]]
 
+
+{{DEFAULTSORT:%number% }}
+"""
+            content = content.replace('%number%',number)
+            content = content.replace('%model_name%',model_name)
+            content = content.replace('%city_name%',city_name)
+
+            self.create_category(name, content)
+            self.create_number_on_vehicles_category('tram',number)
+        else:
+            self.logger.error(vehicle +' not implemented')
         return name
     def wikidata_add_commons_category(self,item_id:str, category_name:str):
         """
@@ -1761,7 +1779,7 @@ LIMIT 100
 
         return True
 
-    def wikidata_set_building_entity_name(self, wdid, city_en):
+    def wikidata_set_building_entity_name(self, wdid, city_wdid):
         '''
         change names and aliaces of wikidata entity for building created by SNOW https://ru-monuments.toolforge.org/snow/index.php?id=6330122000
 
@@ -1782,10 +1800,12 @@ LIMIT 100
         site.get_tokens("csrf")  # preload csrf token
         item = pywikibot.ItemPage(site, wdid)
         item.get()
+        
+        city_wd = self.get_wikidata_simplified(city_wdid)
 
         assert ('en' not in item.labels)
         assert ('ru' in item.labels)
-        assert 'P669' in item.claims
+        assert 'P669' in item.claims, 'you should set P669 en at https://www.wikidata.org/wiki/'+wdid+''
         claims = item.claims.get("P669")
         for claim in claims:
             # Print the street address value
@@ -1821,26 +1841,10 @@ LIMIT 100
         item.editLabels(
             labels=labels, summary="Set name from address P669+P670")
         item.editDescriptions(
-            descriptions={"en": "Building in "+city_en}, summary="Edit description")
-        '''
-        claimStreet = item.claims["P669"][0].getTarget()
-        print(claimStreet)
-        qualifiers = claimStreet.qualifiers.get("P670")
-        for qualifier in qualifiers:
-            print(qualifier.getTarget())
-        '''
+            descriptions={"en": "Building in "+city_wd['labels']['en']}, summary="Edit description")
 
         return
 
-        # Edit the entity name in English
-        item.editLabels(labels={"en": "Douglas Noel Adams"},
-                        summary="Edit entity name")
-
-        # Add an entity alias in English
-        item.editAliases(
-            aliases={"en": ["DNA", "Doug"]}, summary="Add entity alias")
-        item.editDescriptions(
-            descriptions={"en": "British author and humorist"}, summary="Edit description")
 
     def create_wikidata_object_for_bylocation_category(self, category, wikidata1, wikidata2):
         assert category.startswith(

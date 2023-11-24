@@ -41,7 +41,7 @@ class Fileprocessor:
     exiftool_path = "exiftool"
     
     # TIFF LARGER THAN THIS VALUE WILL BE COMPRESSED TO WEBP 
-    tiff2webp_min_size_mb = 11
+    tiff2webp_min_size_mb = 21
     
     chunk_size = 102400
     # chunk_size = 0
@@ -230,8 +230,10 @@ class Fileprocessor:
                 regions_filepath = street
                 from model_geo import Model_Geo as Model_geo_ask
                 modelgeo = Model_geo_ask()
-                street_wdid = modelgeo.identify_deodata(geo_dict.get(
-                    "lat"), geo_dict.get("lon"), regions_filepath, 'wikidata')
+                if 'dest_lat' in geo_dict and 'dest_lon' in geo_dict:
+                    street_wdid = modelgeo.identify_deodata(geo_dict.get("dest_lat"), geo_dict.get("dest_lon"), regions_filepath, 'wikidata')
+                else:
+                    street_wdid = modelgeo.identify_deodata(geo_dict.get("lat"), geo_dict.get("lon"), regions_filepath, 'wikidata')
                 if street_wdid is None:
                     msg = 'file: '+regions_filepath
                     self.logger.error(filename.ljust(
@@ -1076,13 +1078,10 @@ class Fileprocessor:
             return None
 
         instance_of_data = list()
-        if 'P31' not in wd_record['claims']:
-            self.logger.error('https://www.wikidata.org/wiki/' + \
-            wikidata + ' must have some P31')
-            return None
-        for i in wd_record['claims']['P31']:
-            instance_of_data.append(
-                modelwiki.get_wikidata_simplified(i['value']))
+        if 'P31' in wd_record['claims']:
+            for i in wd_record['claims']['P31']:
+                instance_of_data.append(
+                    modelwiki.get_wikidata_simplified(i['value']))
 
         text = ""
         objectnames = {}
@@ -1119,6 +1118,11 @@ class Fileprocessor:
                         d['labels'][lang] for d in instance_of_data) + ' '+objectnames[lang]
                 except:
                     pass
+        else:
+            for lang in self.langs_primary:
+                if lang in objectnames:  objectname_long[lang] = objectnames[lang]
+            for lang in self.langs_optional:
+                if lang in objectnames:   objectname_long[lang] = objectnames[lang]
 
         """== {{int:filedesc}} ==
 {{Information
@@ -1551,7 +1555,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
         if 'gpsdestlatitude' in exiftool_metadata:
             geo_dict["dest_lat"] = round(
-                float(exiftool_metadata.get('gpslatitude')), 6)
+                float(exiftool_metadata.get('gpsdestlatitude')), 6)
         if 'gpsdestlongitude' in exiftool_metadata:
             geo_dict["dest_lon"] = round(
                 float(exiftool_metadata.get('gpsdestlongitude')), 6)

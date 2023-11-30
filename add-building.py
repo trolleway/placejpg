@@ -108,7 +108,7 @@ for data in buildings:
     building_wikidata = modelwiki.create_wikidata_building(data, dry_mode=dry_run)
     if not args.wikidata_only:
         category_name = modelwiki.create_building_category(
-            building_wikidata, city_wikidata=city_wikidata, dry_mode=dry_run)
+            building_wikidata, city_wikidata=city_wdid, dry_mode=dry_run)
 
 # end of method    
 if args.dry_run:

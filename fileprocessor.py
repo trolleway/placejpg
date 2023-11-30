@@ -783,7 +783,7 @@ class Fileprocessor:
                 f'Numbercategory-vehicle-fleet number|{digital_number}|Trams|Number {digital_number} on trams'+'|image=}}'
             modelwiki.create_category(catname, category_page_content)
         elif number is not None and vehicle != 'tram':
-            text += "[[Category:Number "+digital_number+" on vehicles]]\n"
+            pass
 
         if dt_obj is not None and vehicle not in train_synonims:
             catname = "{transports} in {country} photographed in {year}".format(
@@ -1412,7 +1412,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                 if lens is not None:
                     st += '|Lens = ' + image_exif.get("lensmodel")
 
-                if image_exif.get("fnumber", '') != "" and image_exif.get("fnumber", '') != "":
+                if image_exif.get("fnumber", '') != "" and image_exif.get("fnumber", '') != "" and int(image_exif.get("fnumber", 0)) != 0:
                     st += '|Aperture = f/' + str(image_exif.get("fnumber"))
                     categories.add(
                         'F-number f/'+str(image_exif.get("fnumber"))[0:5])
@@ -1421,7 +1421,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                         str(image_exif.get("'focallengthin35mmformat'"))
                 st += '}}' + "\n"
 
-                if image_exif.get("focallength", '') != "" and image_exif.get("focallength", '') != "":
+                if image_exif.get("focallength", '') != "" and image_exif.get("focallength", '') != "" and int(image_exif.get("focallength", 0)) != 0:
                     categories.add(
                         'Lens focal length '+str(image_exif.get("focallength"))+' mm')
 

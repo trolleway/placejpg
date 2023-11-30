@@ -546,46 +546,6 @@ class Model_wiki:
         print("created https://www.wikidata.org/wiki/" + new_item_id)
         return new_item_id
 
-
-        cmd = ["wb", "create-entity", "./temp_json_data.json"]
-        print(cmd)
-        response = subprocess.run(cmd, capture_output=True)
-        if '"success":1' not in response.stdout.decode():
-            print("error create wikidata, prorably building in wikidata already crated")
-
-            error_response = response.stderr.decode()
-
-            print(error_response)
-            if "permissiondenied" in error_response:
-                raise ConnectionRefusedError(error_response)
-
-            s = error_response[error_response.find(
-                "[["): error_response.find("]]")]
-
-            s = s.replace("[[", "")
-            s = s.replace("]]", "")
-
-            wikidata = s.split("|")[0]
-            if s == "":
-                raise ValueError
-            print("building found: https://www.wikidata.org/wiki/" + wikidata)
-            return wikidata
-            # raise ValueError
-        else:
-            building_dict_wd = json.loads(response.stdout.decode())
-            return building_dict_wd["entity"]["id"]
-
-    def _deprecated_get_wikidata(self, wikidata) -> dict:
-
-        cmd = ['wb', 'gt', '--json', '--no-minimize', wikidata]
-        response = subprocess.run(cmd, capture_output=True)
-        try:
-            object_wd = json.loads(response.stdout.decode())
-        except:
-            print(response.stdout.decode())
-            quit()
-        return object_wd
-
     def get_territorial_entity(self, wd_record) -> dict:
         if 'P131' not in wd_record['claims']:
             return None
@@ -593,20 +553,6 @@ class Model_wiki:
             wd_record['claims']['P131'][0]['value'])
         return object_wd
 
-    def deprecated_get_territorial_entity(self, wd_record) -> dict:
-
-        try:
-            cmd = ['wb', 'gt', '--json', '--no-minimize',
-                   wd_record['claims']['P131'][0]['value']]
-        except:
-            return None
-        response = subprocess.run(cmd, capture_output=True)
-        try:
-            object_wd = json.loads(response.stdout.decode())
-        except:
-            self.logger.error('check '+' '.join(cmd))
-            quit()
-        return object_wd
 
     def validate_street_in_building_record(self, data):
         assert data["street_wikidata"] is not None
@@ -698,48 +644,6 @@ class Model_wiki:
         self.wikidata_cache['entities_simplified'][entity_id] = object_record
         self.wikidata_cache_save(
             self.wikidata_cache, self.wikidata_cache_filename)
-        return object_record
-
-    def prev_get_wikidata_simplified(self, wikidata) -> dict:
-
-        # get all claims of this wikidata objects
-        if wikidata in self.wikidata_cache['entities_simplified']:
-            return self.wikidata_cache['entities_simplified'][wikidata]
-
-        cmd = ["wb", "gt", "--json", "--no-minimize", wikidata]
-        response = subprocess.run(cmd, capture_output=True)
-        try:
-            object_wd = json.loads(response.stdout.decode())
-        except:
-            self.logger.error('server response not decoded')
-            self.logger.error(' '.join(cmd))
-            self.logger.error(response.stdout.decode())
-            quit()
-        object_record = {'labels': {}}
-        object_record['labels'] = object_wd["labels"]
-        object_record['id'] = object_wd["id"]
-
-        '''if "en" not in object_wd["labels"]:
-            self.logger.error('object https://www.wikidata.org/wiki/' +
-                              wikidata+' must have english label')
-            return None
-        '''
-        if "P373" in object_wd["claims"]:
-            object_record['commons'] = object_wd["claims"]["P373"][0]["value"]
-        elif 'commonswiki' in object_wd["sitelinks"]:
-            object_record['commons'] = object_wd["sitelinks"]["commonswiki"]["title"].replace(
-                'Category:', '')
-        else:
-            object_record['commons'] = None
-
-        if "P31" in object_wd["claims"]:
-            object_record['instance_of_list'] = object_wd["claims"]["P31"]
-        object_record['claims'] = object_wd["claims"]
-
-        self.wikidata_cache['entities_simplified'][wikidata] = object_record
-        self.wikidata_cache_save(
-            self.wikidata_cache, self.wikidata_cache_filename)
-
         return object_record
 
     def page_template_taken_on(self, page, location, dry_run=True, interactive=False, verbose=True):
@@ -844,25 +748,6 @@ class Model_wiki:
                 page.save('add {{Taken on location}} template')
                 self.create_category_taken_on_day(location, datestr)
 
-    def take_user_wikidata_id(self, wdid) -> str:
-        warnings.warn('use wikidata_input2id',
-                      DeprecationWarning, stacklevel=2)
-        # parse user input wikidata string.
-        # it may be wikidata id, wikidata uri, string.
-        # call search if need
-        # return valid wikidata id
-
-        # accept values with hints after #: Q198271#ZIU-9
-        if '#' in wdid:
-            wdid = wdid[0:wdid.index('#')]
-
-        if Model_wiki.is_wikidata_id(wdid):
-            result_wdid = wdid
-        else:
-            result_wdid = Model_wiki.search_wikidata_by_string(
-                wdid, stop_on_error=True)
-
-        return result_wdid
 
     @staticmethod
     def is_wikidata_id(text) -> bool:
@@ -934,53 +819,6 @@ LIMIT 100
 
         return None
 
-    def get_heritage_id_old(self, wikidata) -> str:
-
-        # if wikidata object "heritage designation" is one of "culture heritage in Russia" - return russian monument id
-
-        # get all claims of this wikidata objects
-        cmd = ["wb", "gt", "--props", "claims",
-               "--json", "--no-minimize", wikidata]
-        response = subprocess.run(cmd, capture_output=True)
-        try:
-            dict_wd = json.loads(response.stdout.decode())
-        except:
-            return None
-        # check heritage status of object
-        if "P1435" not in dict_wd["claims"]:
-            return None
-        if "P1483" not in dict_wd["claims"]:
-            return None
-
-        cmd = [
-            "wb",
-            "query",
-            "--property",
-            "P279",
-            "--object",
-            "Q8346700",
-            "--format",
-            "json",
-        ]
-        response = subprocess.run(cmd, capture_output=True)
-        try:
-            heritage_types = {"RU": json.loads(response.stdout.decode())}
-        except:
-            self.logger.error(' '.join(cmd))
-            self.logger.error('error parsing json'+response.stdout.decode())
-            self.logger.error(
-                'hack for termux. using hardcoded list of russian cultural heritage types from 2022')
-
-            heritage_types = {'RU': (
-                "Q23668083",
-                "Q105835744",
-                "Q105835766",
-                "Q105835774")}
-
-        for element in dict_wd["claims"]["P1435"]:
-            if element["value"] in heritage_types["RU"]:
-                return dict_wd["claims"]["P1483"][0]["value"]
-
     def wikidata_input2id(self, inp) -> str:
         if inp is None:
             return None
@@ -995,9 +833,6 @@ LIMIT 100
             return self.normalize_wdid(inp)
 
         site = pywikibot.Site("wikidata", "wikidata")
-
-        # Define the name of the entity to search
-        name = "Albert Einstein"
 
         # Use the wbsearchentities action to get a list of possible matches
         # See https://www.mediawiki.org/wiki/Wikibase/API#wbsearchentities for details
@@ -1973,50 +1808,4 @@ LIMIT 100
         self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid][geo_wdid] = None
         self.wikidata_cache_save(
             self.wikidata_cache, self.wikidata_cache_filename)
-        return None
-
-    def dev_search_wikidata_union_commons_cat(self, wikidata, country_wdid) -> str:
-        # for given wikidata objects "PARK" and "COUNTRYNAME" finds CATEGORY:PARKS IN COUNTRYNAME usind P971. returns category name
-
-        sample = '''
-
-wb sparql t.sparql --format json
-'''
-        template = '''
-        SELECT DISTINCT ?item ?itemLabel WHERE {
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE]". }
-  {
-    SELECT DISTINCT ?item WHERE {
-      ?item p:P971 ?statement0.
-      ?statement0 (ps:P971) wd:$SUBJECT.
-      ?item p:P971 ?statement1.
-      ?statement1 (ps:P971) wd:$COUNTRY.
-    }
-    LIMIT 100
-  }
-}
-'''
-        sparql = template
-        sparql = sparql.replace('$SUBJECT', wikidata)
-        sparql = sparql.replace('$COUNTRY', country_wdid)
-
-        tempfile_sparql = tempfile.NamedTemporaryFile()
-
-        # Open the file for writing.
-        with open(tempfile_sparql.name, 'w') as f:
-            # with open('temp.rq', 'w') as f:
-            # where `stuff` is, y'know... stuff to write (a string)
-            f.write(sparql)
-
-        cmd = ['wb', 'sparql', tempfile_sparql.name, '--format', 'json']
-
-        response = subprocess.run(cmd, capture_output=True)
-
-        dict_wd = json.loads(response.stdout.decode())
-        try:
-            wikidata_id = dict_wd[0]['item']
-            return wikidata_id
-        except:
-            return None
-
         return None

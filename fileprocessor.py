@@ -41,7 +41,7 @@ class Fileprocessor:
     exiftool_path = "exiftool"
     
     # TIFF LARGER THAN THIS VALUE WILL BE COMPRESSED TO WEBP 
-    tiff2webp_min_size_mb = 21
+    tiff2webp_min_size_mb = 25
     
     chunk_size = 102400
     # chunk_size = 0
@@ -344,7 +344,7 @@ class Fileprocessor:
             matches = re.finditer(regex, test_str, re.MULTILINE)
             for match in matches:
                 system = match.group()[7:-1]
-
+        system_names = dict()
         if system is not None:
             system_wdid = modelwiki.wikidata_input2id(system)
             system_wd = modelwiki.get_wikidata_simplified(system_wdid)
@@ -450,9 +450,9 @@ class Fileprocessor:
             # commons_filename = objectname_en + " " +dt_obj.strftime("%Y-%m %s") + model_names['en'] + ' '+ ' '.join(placenames['en'])+ ' ' + filename_extension
         elif vehicle in train_synonims:
             assert street_names is not None or line_names is not None
-            if system_names['en'] == '':
+            if 'en' not in system_names:
                 system_names['en'] = ''
-            if system_names['ru'] == '':
+            if 'ru' not in system_names:
                 system_names['ru'] = ''
 
             # {model} removed
@@ -1126,7 +1126,7 @@ class Fileprocessor:
 
         """== {{int:filedesc}} ==
 {{Information
-|description={{en|1=2nd Baumanskaya Street 1 k1}}{{ru|1=Вторая Бауманская улица дом 1 К1}} {{ on Wikidata|Q86663303}}  {{Building address|Country=RU|Street name=2-я Бауманская улица|House number=1 К1}}  
+|description={{en|1=2nd Baumanskaya Street 1 k1}}{{ru|1=Вторая Бауманская улица дом 1 К1}} {{on Wikidata|Q86663303}}  {{Building address|Country=RU|Street name=2-я Бауманская улица|House number=1 К1}}  
 |source={{own}}
 |author={{Creator:Artem Svetlov}}
 |date={{According to Exif data|2022-07-03|location=Moscow}}
@@ -1163,6 +1163,12 @@ class Fileprocessor:
             if lang in objectnames_long:
                 st += "{{"+lang+"|1=" + objectnames_long[lang] + "}} \n"
 
+        st += " {{on Wikidata|" + wikidata + "}}\n"
+        if len(secondary_wikidata_ids) > 0:
+            for secondary_wikidata_id in secondary_wikidata_ids:
+                if secondary_wikidata_id == wikidata: continue
+                st += " {{on Wikidata|" + secondary_wikidata_id + "}}\n"
+            
         # CULTURAL HERITAGE
         # if main object is cultural heritage: insert special templates
         heritage_id = None
@@ -1172,8 +1178,8 @@ class Fileprocessor:
             today = datetime.today()
             if today.strftime('%Y-%m') == '2023-09':
                 st += "{{Wiki Loves Monuments 2023|1=ru}}"
-        st += " {{ on Wikidata|" + wikidata + "}}"
-        st += "\n"
+                
+
         st += self.get_date_information_part(dt_obj, country)
         st += "}}\n"
 

@@ -199,6 +199,7 @@ class Model_wiki:
         site = pywikibot.Site("wikidata", "wikidata")
         # create a new item
         new_item = pywikibot.ItemPage(site)
+        self.logger.info('created https://www.wikidata.org/wiki/'+str(new_item.getID()))
         # set the labels, descriptions and aliases from the wd_object
         try:
             new_item.editLabels(labels=wd_object["labels"], summary="Setting labels")
@@ -405,6 +406,61 @@ class Model_wiki:
         return new pywikibot claim object for add to wikidata using pywikibot from dict 
         """
 
+    def create_street_wikidata(self,city,name_en,coords,street_type='Q79007',dry_mode=False)->str:
+        wikidata_template = """
+    {
+      "type": "item",
+      "labels": {
+        "en": ""
+      },
+      "descriptions": {
+        "en": ""
+      },
+      "aliases": {},
+      "claims": {
+        "P31": "Q79007",
+        "P625":{ 
+            "value":{
+          "latitude": 55.666,
+          "longitude": 37.666,
+          "precision": 0.0001,
+          "globe": "http://www.wikidata.org/entity/Q2"
+            }
+        }
+      }
+    }
+    """
+        
+        lat=None
+        lon=None
+        lat, lon = self.location_string_parse(coords)
+
+        assert lat is not None
+        assert lon is not None
+
+        city_wd = self.get_wikidata_simplified(city)
+        street_type_wd = self.get_wikidata_simplified(street_type)
+        wd_object = json.loads(wikidata_template)
+        wd_object["labels"]["en"] = name_en
+        wd_object["descriptions"]["en"] = street_type_wd['labels']['en'] + ' in ' + city_wd['labels']['en']
+        wd_object["claims"]["P625"]["value"]["latitude"] = round(
+            float(lat), 5
+        )  # coords
+        wd_object["claims"]["P625"]["value"]["longitude"] = round(
+            float(lon), 5
+        )  # coords
+
+        # State
+        # wd_object["claims"]["P17"] = city_wd['claims']["P17"]
+        wd_object["claims"]["P131"] = city_wd['id']
+
+        if dry_mode:
+            print(json.dumps(wd_object, indent=1))
+            self.logger.info("dry mode, no creating wikidata entity")
+            return
+
+        new_item_id = self.create_wikidata_item(wd_object)
+        self.logger.info(f'street object created: https://www.wikidata.org/wiki/{new_item_id}  Please set state and district.')
 
     def create_wikidata_building(self, data, dry_mode=False):
         assert "street_wikidata" in data
@@ -533,6 +589,8 @@ class Model_wiki:
                 wd_object["claims"]["P1101"]["references"][0]["P854"] = data["levels_url"]
         if 'building' in data and data['building'] == 'apartments':
             wd_object["claims"]["P31"] = 'Q13402009'
+        if 'building' in data and data['building'] == 'house':
+            wd_object["claims"]["P31"] = 'Q3947'    
         if 'building' in data and data['building'] in ('commercial', 'office'):
             wd_object["claims"]["P31"] = 'Q1021645'
 
@@ -1081,7 +1139,7 @@ LIMIT 100
         # MAKE CATEGORY NAME
         streetname = street_wd['labels']['en']
         cityname = city_wd['labels']['en']
-        catname = f'{streetname} ({cityname})'
+        catname = f'{streetname}, {cityname}'
         content = """{{Wikidata infobox}}
         {{GeoGroup}}
         [[Category:Streets in %cityname%]]
@@ -1092,6 +1150,8 @@ LIMIT 100
             self.wikidata_add_commons_category(street_wikidata,catname)
         else:
             print('category already exists')
+
+        return catname
         
     def create_building_category(self, wikidata:str, city_wikidata:str, dry_mode=False ) -> str:
         """
@@ -1204,10 +1264,49 @@ LIMIT 100
             self.logger.info("dry mode, no creating wikidata entity")
             return category_name
 
+
+
+            
+
         commonscat_create_result = self.create_category(category_name, code)
         self.wikidata_add_commons_category(wikidata, category_name)
+        category_name_building = category_name
 
-        return category_name
+        if year != "":
+            city = city_dict_wd['labels']['en']
+            category_name='Built in %city% in %year%'
+            category_name = category_name.replace("%year%", year)
+            category_name = category_name.replace("%city%", city)
+            country_wdid = self.get_best_claim(city_dict_wd['id'],'P17')
+            country_wd = self.get_wikidata_simplified(country_wdid)
+            country = country_wd['labels']['en']
+            code = """[[Category:Built in %country% in %year%| %city%]]
+[[Category:Buildings in %city% by year of completion]]"""
+            code =  code.replace("%year%", year)
+            code =  code.replace("%city%", city)
+            code =  code.replace("%country%", country)
+
+            print(category_name)
+            print(code)
+            commonscat_create_result = self.create_category(category_name, code)
+
+
+            category_name=f'Buildings in {city} by year of completion'
+            code = """
+{{metacat|year of completion}}
+[[Category:Buildings in %city%| Year]]
+[[Category:%city% by year|  ]]
+[[Category:Buildings in %country% by year of completion by city|%city%]]
+"""
+            code =  code.replace("%year%", year)
+            code =  code.replace("%city%", city)
+            code =  code.replace("%country%", country)
+
+            print(category_name)
+            print(code)
+            commonscat_create_result = self.create_category(category_name, code)
+
+        return category_name_building
     
     def create_number_on_vehicles_category(self,vehicle:str,number:str):
         """
@@ -1326,6 +1425,13 @@ LIMIT 100
         if category.exists() and category.is_categorypage():
             # Set the sitelink to the category
             item.setSitelink(category, summary='Set sitelink to commons category')
+            # Delete old commons category link claim P373 if exist
+            item.get() # load the item data
+            claims = item.claims # get the claims dictionary
+            if "P373" in claims: # check if the item has the property
+                claim = claims["P373"][0] # get the first (and only) claim for that property
+                item.removeClaims([claim]) # remove the claim
+                print("Claim P373 removed")
         else:
             # Print an error message
             print('Invalid category name')

@@ -12,7 +12,7 @@ RUN apt-get install --no-install-recommends --fix-missing -y \
 
 
 RUN apt-get install -y libimage-exiftool-perl
-
+RUN apt-get install -y ffmpeg
 
 RUN mkdir /opt/commons-uploader
 

@@ -595,6 +595,7 @@ class Model_wiki:
             wd_object["claims"]["P31"] = 'Q1021645'
 
 
+
         if dry_mode:
             print(json.dumps(wd_object, indent=1))
             self.logger.info("dry mode, no creating wikidata entity")
@@ -1195,6 +1196,8 @@ LIMIT 100
             year_field = "P1619"
         elif "P571" in building_dict_wd["claims"]:
             year_field = "P571"
+        elif "P729" in building_dict_wd["claims"]:
+            year_field = "P729"
         if year_field is not None:
             try:
                 if building_dict_wd["claims"][year_field][0]["precision"] >= 9:
@@ -1241,6 +1244,7 @@ LIMIT 100
         if any(d['value'] == 'Q1021645' for d in building_dict_wd["claims"]["P31"]): building_function = 'Office buildings'
         if any(d['value'] == 'Q847950' for d in building_dict_wd["claims"]["P31"]): building_function = 'Dormitories'
         if any(d['value'] == 'Q3661265' for d in building_dict_wd["claims"]["P31"]): building_function = 'Dormitories'
+        if any(d['value'] == 'Q3947' for d in building_dict_wd["claims"]["P31"]): building_function = 'Houses'
         
 
         
@@ -1257,17 +1261,24 @@ LIMIT 100
         elif levels > 20:
             code = code.replace("%levelstr%", str(levels))
 
+
+
+
+            
+        # architectural style
+        prop='P149'
+        if prop in building_dict_wd["claims"]:
+            style_value = self.get_best_claim(wikidata,prop)
+            category = self.get_category_object_in_location(style_value,street_dict_wd['id'])
+            assert category is not None, f'wrong architecture style: https://www.wikidata.org/wiki/{wikidata}#P149'
+            code += "\n[[Category:"+category+"]]"
+
         if dry_mode:
             print()
             print(category_name)
             print(code)
             self.logger.info("dry mode, no creating wikidata entity")
             return category_name
-
-
-
-            
-
         commonscat_create_result = self.create_category(category_name, code)
         self.wikidata_add_commons_category(wikidata, category_name)
         category_name_building = category_name
@@ -1305,6 +1316,7 @@ LIMIT 100
             print(category_name)
             print(code)
             commonscat_create_result = self.create_category(category_name, code)
+            
 
         return category_name_building
     
@@ -1772,7 +1784,7 @@ LIMIT 100
 
         entitynames = dict()
         labels = dict()
-        labels['en'] = street_name_en+' '+housenumber
+        labels['en'] = street_name_en+' '+translit(housenumber,'ru',reversed=True)
         labels['ru'] = street_name_ru+' '+housenumber
         aliases = item.aliases
         if 'ru' not in aliases:

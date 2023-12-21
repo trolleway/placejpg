@@ -43,7 +43,7 @@ class Fileprocessor:
     # TIFF LARGER THAN THIS VALUE WILL BE COMPRESSED TO WEBP 
     tiff2webp_min_size_mb = 25
     
-    chunk_size = 102400
+    chunk_size = 10240000
     # chunk_size = 0
     
     photographer = placejpgconfig.photographer
@@ -101,7 +101,7 @@ class Fileprocessor:
 
         return wikidata
 
-    def upload_file(self, filepath, commons_name, description, verify_description=True):
+    def upload_file(self, filepath, commons_name, description, verify_description=True,ignore_warning=True):
         # The site object for Wikimedia Commons
         site = pywikibot.Site("commons", "commons")
 
@@ -117,6 +117,7 @@ class Fileprocessor:
             targetSite=site,  # The site object for Wikimedia Commons
             aborts=True,  # List of the warning types to abort upload on
             chunk_size=self.chunk_size,
+            ignore_warning=ignore_warning
         )
         print()
         print('=======================================================')
@@ -665,6 +666,8 @@ class Fileprocessor:
                     dt_obj.strftime("%B %Y") + \
                     " in tram transport in "+country+"]]" + "\n"
 
+        
+                
         # do not add facing category if this is interior
         if 'Q60998096' in secondary_wikidata_ids:
             facing = None
@@ -811,7 +814,7 @@ class Fileprocessor:
             else:
                 categories.add(model_wd["commons"] +
                                '|' + digital_number)
-
+        
         # categories for secondary_wikidata_ids
         # search for geography categories using street like (ZIU-9 in Russia)
 
@@ -834,14 +837,14 @@ class Fileprocessor:
 
                     if 'commons' in wd_record and wd_record["commons"] is not None:
                        categories.add(wd_record['commons'])
-
         for catname in categories:
             catname = catname.replace('Category:', '')
             text += "[[Category:"+catname+"]]" + "\n"
 
         assert None not in wikidata_4_structured_data, 'empty value added to structured data set:' + \
             str(' '.join(list(wikidata_4_structured_data)))
-        return {"name": commons_filename, "text": text,
+        return {"name": commons_filename, 
+        "text": text,
                 "structured_data_on_commons": list(wikidata_4_structured_data),
                 "country":country,
                 'captions': captions,
@@ -1508,7 +1511,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
     def check_extension_valid(self, filepath) -> bool:
         ext = os.path.splitext(filepath)[1].lower()[1:]
         allowed = ['tiff', 'tif', 'png', 'gif', 'jpg', 'jpeg', 'webp', 'xcf', 'mid', 'ogg', 'ogv',
-                   'svg', 'djvu', 'stl', 'oga', 'flac', 'opus', 'wav', 'webm', 'mp3', 'midi', 'mpg', 'mpeg']
+                   'svg', 'djvu', 'stl', 'oga', 'flac', 'opus', 'wav', 'webm','mp4', 'mp3', 'midi', 'mpg', 'mpeg']
         if ext in allowed:
             return True
         return False
@@ -1519,13 +1522,17 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
             if not path.lower().endswith('.stl'):
                 try:
                     image_exif = Image(image_file)
-
+                    
                     dt_str = image_exif.get("datetime_original", None)
+
                     dt_obj = datetime.strptime(dt_str, "%Y:%m:%d %H:%M:%S")
                 except:
                     dt_obj = None
-                    cmd = [self.exiftool_path, path,
-                           "-datetimeoriginal", "-csv"]
+                    cmd = [self.exiftool_path, path, "-datetimeoriginal", "-csv"]
+                    if path.lower().endswith('.mp4'):
+                        cmd = [self.exiftool_path, path, "-createdate", "-csv"]
+                        self.logger.debug('video')
+
                     exiftool_text_result = subprocess.check_output(cmd)
                     tmp = exiftool_text_result.splitlines()[1].split(b",")
                     if len(tmp) > 1:
@@ -1537,8 +1544,12 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                 dt_obj = None
 
             if dt_obj is None:
+                #try:
                 dt_obj = datetime.strptime(os.path.basename(path)[
                                            0:15], '%Y%m%d_%H%M%S')
+                #except:
+                #    print(f'file {path}: failed to get date, failed to read from start of filename')
+                #    quit()
 
             if dt_obj is None:
                 return None
@@ -1810,6 +1821,10 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         for filename in files:
             if 'commons_uploaded' in filename:
                 continue
+            if not(os.path.isfile(filename)):
+                # this section goes when upload mp4: mp4 converted to webp, upload failed, then run second time, mp4 moved, webp uploaded, ciycle continued   
+                continue
+            
 
             secondary_wikidata_ids = modelwiki.input2list_wikidata(
                 desc_dict['secondary_objects'])
@@ -1908,6 +1923,18 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                         filename, uploaded_folder_path)
                 filename = filename_webp
                 texts["name"] = texts["name"].replace('.tif', '.webp')
+                
+            if filename.lower().endswith('.mp4'):
+                video_converted_filename=self.convert_to_webm(filename)
+            if filename.lower().endswith('.mp4') and os.path.isfile(video_converted_filename):
+                print(
+                    'found mp4 and webm file with same name. upload webm with fileinfo from mp4')
+                if not dry_run:
+                    self.move_file_to_uploaded_dir(
+                        filename, uploaded_folder_path)
+                filename = video_converted_filename
+                texts["name"] = texts["name"].replace('.mp4', '.webm').replace('.MP4', '.webm')        
+                
 
             print(texts["name"])
             print(texts["text"])
@@ -2017,7 +2044,21 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             print(cmd)
             with open("queue.sh", "a") as file_object:
                 file_object.write(cmd+"\n")
+                
+    def convert_to_webm(self,filename)->str:
+        # convert video to webm vp9. files not overwriten
+        filename_dst = filename.replace('.mp4', '.webm').replace('.MP4', '.webm')
+        if os.path.isfile(filename_dst): return filename_dst
 
+        cmd = ['ffmpeg', '-i',filename, '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '30', '-pass', '1', '-row-mt', '1', '-an', '-f', 'webm', '-y', '/dev/null']
+        print(' '.join(cmd))
+        response = subprocess.run(cmd)
+
+        cmd = ['ffmpeg', '-i', filename, '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '30', '-pass', '2', '-row-mt', '1', '-c:a', 'libopus',   filename_dst]
+        print(' '.join(cmd))
+        response = subprocess.run(cmd)
+        return filename_dst
+        
     def move_file_to_uploaded_dir(self, filename, uploaded_folder_path):
         # move uploaded file to subfolder
         if not os.path.exists(uploaded_folder_path):

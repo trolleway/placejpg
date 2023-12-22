@@ -1756,7 +1756,6 @@ LIMIT 100
         
         city_wd = self.get_wikidata_simplified(city_wdid)
 
-        assert ('en' not in item.labels)
         assert ('ru' in item.labels)
         assert 'P669' in item.claims, 'you should set P669 en at https://www.wikidata.org/wiki/'+wdid+''
         claims = item.claims.get("P669")
@@ -1786,11 +1785,18 @@ LIMIT 100
         labels = dict()
         labels['en'] = street_name_en+' '+translit(housenumber,'ru',reversed=True)
         labels['ru'] = street_name_ru+' '+housenumber
+        
+        # move names to aliaces
         aliases = item.aliases
         if 'ru' not in aliases:
             aliases['ru'] = list()
+        if 'en' not in aliases:
+            aliases['en'] = list()
         aliases['ru'].append(item.labels['ru'])
+        if 'en' in item.labels:
+            aliases['en'].append(item.labels['en'])
         item.editAliases(aliases=aliases, summary="Move name to alias")
+        
         item.editLabels(
             labels=labels, summary="Set name from address P669+P670")
         item.editDescriptions(

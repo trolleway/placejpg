@@ -548,6 +548,15 @@ class Model_wiki:
             "value": data["street_wikidata"],
             "qualifiers": {"P670": data["housenumber"]},
         }
+        
+        if "district_wikidata"  in data:
+            wd_object["claims"]["P131"]={
+            "value": data["district_wikidata"]
+            }        
+        if "project"  in data:
+            wd_object["claims"]["P144"]={
+            "value": data["project"]
+            }
 
         if "year" in data:
             wd_object["claims"]["P1619"] = {
@@ -1270,8 +1279,25 @@ LIMIT 100
         if prop in building_dict_wd["claims"]:
             style_value = self.get_best_claim(wikidata,prop)
             category = self.get_category_object_in_location(style_value,street_dict_wd['id'])
-            assert category is not None, f'wrong architecture style: https://www.wikidata.org/wiki/{wikidata}#P149'
+            assert category is not None, f'wrong architecture style: https://www.wikidata.org/wiki/{wikidata}#{prop}'
             code += "\n[[Category:"+category+"]]"
+            del style_value
+            
+        # project
+        prop='P144'
+        if prop in building_dict_wd["claims"]:
+            project_value = self.get_best_claim(wikidata,prop)
+
+            category = self.get_category_object_in_location(project_value,street_dict_wd['id'],verbose=True)
+            if category is not None:
+                code += "\n[[Category:"+category+"]]"
+            else:
+                category = self.get_wikidata_simplified(project_value)["commons"]
+                code += "\n[[Category:"+category+"]]"
+            del category
+            
+            
+            del project_value
 
         if dry_mode:
             print()
@@ -1606,7 +1632,7 @@ LIMIT 100
                 info = 'search category for union ' + \
                     str(object_wd['labels'].get('en', object_wd['id']))+' ' + \
                     str(geoobject_wd['labels'].get(
-                        'en', geoobject_wd['id'])[0:40].rjust(40))
+                        'en', geoobject_wd['id'])[0:35].rjust(35))
                 print(info)
                 # self.logger.info(info)
 

@@ -28,9 +28,11 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument('--wikidata', type=str, required=False, help='Wikidata object optional')
 parser.add_argument('--building', type=str, required=False,default='yes', help='Value of building=* tag from openstreetmap')
-parser.add_argument('--city', type=str, required=True, help='City name string')
+parser.add_argument('--city', type=str, required=True, help='City wikidata entity. Can be wikidata id, wikidata url, wikidata name')
+parser.add_argument('--district', type=str, required=False, help='Administrative entity wikidata entity. Can be wikidata id, wikidata url, wikidata name')
+parser.add_argument('--project', type=str, required=False, help='project wikidata entity. Can be wikidata id, wikidata url, wikidata name')
 
-parser.add_argument('--street', type=str, required='wikidata'  in sys.argv, help='Street wikidata entity. Can bu wikidata id, wikidata url, wikidata name')
+parser.add_argument('--street', type=str, required='wikidata'  in sys.argv, help='Street wikidata entity. Can be wikidata id, wikidata url, wikidata name')
 parser.add_argument('-n','--housenumber', type=str, required='wikidata'  in sys.argv, help='housenumber')
 parser.add_argument('-c','--coords', type=str, required='wikidata' in sys.argv, help='latlong string in EPSG:4326. Separators: " ", | ,')
 parser.add_argument('-cs','--coord_source', type=str, required='wikidata'  in sys.argv, choices=['osm','yandex maps','reforma'], help='internet project - source of coordinates')
@@ -89,6 +91,8 @@ if args.levels: building['levels'] = args.levels
 if args.levels_url: building['levels_url'] = args.levels_url               
 if args.year: building['year'] = args.year            
 if args.year_url: building['year_url'] = args.year_url            
+if args.district: building['district_wikidata'] = modelwiki.wikidata_input2id(str(args.district).strip())
+if args.project: building['project'] = modelwiki.wikidata_input2id(str(args.project).strip())
         
 
 

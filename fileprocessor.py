@@ -232,13 +232,16 @@ class Fileprocessor:
                 from model_geo import Model_Geo as Model_geo_ask
                 modelgeo = Model_geo_ask()
                 if 'dest_lat' in geo_dict and 'dest_lon' in geo_dict:
-                    street_wdid = modelgeo.identify_deodata(geo_dict.get("dest_lat"), geo_dict.get("dest_lon"), regions_filepath, 'wikidata')
+                    lat=geo_dict.get("dest_lat")
+                    lon=geo_dict.get("dest_lon")
                 else:
-                    street_wdid = modelgeo.identify_deodata(geo_dict.get("lat"), geo_dict.get("lon"), regions_filepath, 'wikidata')
+                    lat=geo_dict.get("lat")
+                    lon=geo_dict.get("lon")
+                street_wdid = modelgeo.identify_deodata(lat, lat, regions_filepath, 'wikidata')
                 if street_wdid is None:
-                    msg = 'file: '+regions_filepath
+                    msg = f'file:{regions_filepath} https://geohack.toolforge.org/geohack.php?params={lat};{lon}_type:camera'
                     self.logger.error(filename.ljust(
-                        100) + ' not found location in '+msg+'')
+                        40) + ' not found location in '+msg+'')
                     return None
                 #street_wd = modelwiki.get_wikidata_simplified(street_wdid)
             else:

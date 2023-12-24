@@ -237,7 +237,7 @@ class Fileprocessor:
                 else:
                     lat=geo_dict.get("lat")
                     lon=geo_dict.get("lon")
-                street_wdid = modelgeo.identify_deodata(lat, lat, regions_filepath, 'wikidata')
+                street_wdid = modelgeo.identify_deodata(lat, lon, regions_filepath, 'wikidata')
                 if street_wdid is None:
                     msg = f'file:{regions_filepath} https://geohack.toolforge.org/geohack.php?params={lat};{lon}_type:camera'
                     self.logger.error(filename.ljust(

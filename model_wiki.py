@@ -38,6 +38,7 @@ class Model_wiki:
 
     wiki_content_cache = dict()
     cache_category_object_in_location = dict()
+    cache_settlement_for_object = dict()
     wikidata_cache = dict()
     wikidata_cache_filename = 'temp_wikidata_cache.dat'
     optional_langs = ('de', 'fr', 'it', 'es', 'pt', 'uk', 'be', 'ja')
@@ -69,7 +70,10 @@ class Model_wiki:
 
     def wikidata_cache_load(self, wikidata_cache_filename):
         if os.path.isfile(wikidata_cache_filename) == False:
-            cache = {'entities_simplified': {},  'commonscat_by_2_wikidata': {}, 'commonscat_exists_set': set()}
+            cache = {'entities_simplified': {},  
+                     'commonscat_by_2_wikidata': {}, 
+                     'cities_ids':{},
+                     'commonscat_exists_set': set()}
             return cache
         else:
             file = open(wikidata_cache_filename, 'rb')
@@ -849,7 +853,7 @@ class Model_wiki:
     ?item rdfs:label ?label
   }
 }
-LIMIT 100
+
 '''
         sparql = template
         site = pywikibot.Site("wikidata", "wikidata")
@@ -862,6 +866,40 @@ LIMIT 100
             items_ids.append(item.id)
         heritage_types = {"RU": items_ids}
         return heritage_types
+
+
+    def get_settlements_wdids(self) -> list:
+
+        if len(self.wikidata_cache['cities_ids'])>1:
+            return self.wikidata_cache['cities_ids']
+        '''
+        return list of settlements types ids
+        '''
+        template = '''
+        SELECT ?item ?label ?_image WHERE {
+  ?item wdt:P279 wd:Q7930989.
+  SERVICE wikibase:label {
+    bd:serviceParam wikibase:language "en" . 
+    ?item rdfs:label ?label
+  }
+}
+
+'''
+        sparql = template
+        site = pywikibot.Site("wikidata", "wikidata")
+        repo = site.data_repository()
+
+        generator = pagegenerators.PreloadingEntityGenerator(
+            pagegenerators.WikidataSPARQLPageGenerator(sparql, site=repo))
+        items_ids = list()
+        for item in generator:
+            items_ids.append(item.id)
+
+        self.wikidata_cache['cities_ids'] = items_ids
+        self.wikidata_cache_save(
+            self.wikidata_cache, self.wikidata_cache_filename)
+        return items_ids
+
 
     def get_heritage_id(self, wdid) -> str:
         # if wikidata object "heritage designation" is one of "culture heritage in Russia" - return russian monument id
@@ -1588,7 +1626,7 @@ LIMIT 100
 
         return building_record
 
-    def get_best_claim(self, wdid, prop) -> str:
+    def get_best_claim(self, wdid:str, prop:str) -> str:
         assert prop.startswith('P')
         entity=self.get_wikidata_simplified(wdid)
         claims=entity['claims'].get(prop)
@@ -1611,6 +1649,40 @@ LIMIT 100
             return object_wdid
         else:
             return object_wdid[0:object_wdid.find('#')]
+
+    def get_settlement_for_object(self,location_wdid, verbose=False)->str:
+        """
+        for wikidata object run by P131 properties and find its settlement object
+        return None if not found
+        """
+        location_wdid = self.normalize_wdid(location_wdid)
+        cache_key = location_wdid
+        if cache_key in self.cache_settlement_for_object:
+            return self.cache_settlement_for_object[cache_key]
+        stop_hieraechy_walk = False
+        cnt = 0
+        geoobject_wd = self.get_wikidata_simplified(location_wdid)
+        settlements_ids = self.get_settlements_wdids()
+        while not stop_hieraechy_walk:
+            cnt = cnt+1
+            if cnt > 9:
+                stop_hieraechy_walk = True
+            if verbose:
+                print('check if settlement is '+geoobject_wd['labels'].get('en',' no english name'))
+            # is one of p31 is settlements?
+            for instance in  geoobject_wd["claims"]["P31"]:
+                if instance['value'] in  settlements_ids:
+                    if verbose:
+                        print('this is settlement')
+                    self.cache_settlement_for_object[cache_key]=geoobject_wd['id'] 
+                    return geoobject_wd['id']  
+
+            upper_wdid = self.get_upper_location_wdid(geoobject_wd)
+            if upper_wdid is None:
+                stop_hieraechy_walk = True
+                return None
+            geoobject_wd = self.get_wikidata_simplified(upper_wdid)
+            
 
     def get_category_object_in_location(self, object_wdid, location_wdid, order: str = None, verbose=False) -> str:
         object_wdid = self.normalize_wdid(object_wdid)

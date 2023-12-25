@@ -1273,7 +1273,7 @@ class Model_wiki:
 {{Object location}}
 {{Wikidata infobox}}
 {{Building address|Country=RU|City=%city%|Street name=%street%|House number=%housenumber%}}
-[[Category:%building_function% in %city%]]
+
 [[Category:%streetcategory%]]
 """
 
@@ -1287,15 +1287,10 @@ class Model_wiki:
             code += "[[Category:%levelstr%-story buildings in %city%]]" + "\n"
 
         building_function='Buildings'
-        if any(d['value'] == 'Q13402009' for d in building_dict_wd["claims"]["P31"]): building_function = 'Apartment buildings'
-        if any(d['value'] == 'Q1021645' for d in building_dict_wd["claims"]["P31"]): building_function = 'Office buildings'
-        if any(d['value'] == 'Q847950' for d in building_dict_wd["claims"]["P31"]): building_function = 'Dormitories'
-        if any(d['value'] == 'Q3661265' for d in building_dict_wd["claims"]["P31"]): building_function = 'Dormitories'
-        if any(d['value'] == 'Q3947' for d in building_dict_wd["claims"]["P31"]): building_function = 'Houses'
-        
+        for instance in building_dict_wd["claims"]["P31"]:
+            cat=self.get_category_object_in_location(instance['value'],street_dict_wd['id'],verbose=True) 
+            code += f"[[Category:{cat}]]" + "\n"
 
-        
-        code = code.replace("%building_function%", building_function)
         code = code.replace("%city%", city_dict_wd['labels']['en'])
         #code = code.replace("%city_loc%", city_ru)
         code = code.replace("%streetcategory%", category_street)

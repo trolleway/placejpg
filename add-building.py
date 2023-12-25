@@ -80,6 +80,10 @@ elif args.wikidata is not None:
 
     category_name = modelwiki.create_building_category(
             building_wikidata, city_wikidata=city_wdid, dry_mode=dry_run)
+    if dry_run: 
+        print('dry run. For object https://www.wikidata.org/wiki/'+building_wikidata)
+        print('Proposed category name: https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))
+        quit()
 
     print('Created https://www.wikidata.org/wiki/'+building_wikidata)
     print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))

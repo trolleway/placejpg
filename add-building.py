@@ -28,7 +28,7 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument('--wikidata', type=str, required=False, help='Wikidata object optional')
 parser.add_argument('--building', type=str, required=False,default='yes', help='Value of building=* tag from openstreetmap')
-parser.add_argument('--city', type=str, required=True, help='City wikidata entity. Can be wikidata id, wikidata url, wikidata name')
+parser.add_argument('--city', type=str, required=False, default=None, help='City wikidata entity. When not set, will be searched in "administrative entity" in wikidata. Can be wikidata id, wikidata url, wikidata name')
 parser.add_argument('--district', type=str, required=False, help='Administrative entity wikidata entity. Can be wikidata id, wikidata url, wikidata name')
 parser.add_argument('--project', type=str, required=False, help='project wikidata entity. Can be wikidata id, wikidata url, wikidata name')
 
@@ -57,17 +57,27 @@ modelwiki = Model_wiki()
 
 city = args.city
 dry_run = args.dry_run
+city_wdid = args.city
 # --- move to method
-city_wdid = modelwiki.wikidata_input2id(args.city)
+
+if city_wdid is not None: city_wdid = modelwiki.wikidata_input2id(city_wdid.city)
+
 if args.snow_fix is not None:
     assert args.wikidata is not None
     building_wikidata = modelwiki.wikidata_input2id(args.wikidata)
+    if city_wdid is None: city_wdid = modelwiki.get_settlement_for_object(building_wikidata)
+    if city_wdid is None: raise ValueError(f'can not find city for https://www.wikidata.org/wiki/{building_wikidata}')
     
     modelwiki.wikidata_set_building_entity_name(building_wikidata,city_wdid=city_wdid)
     quit()
     
 elif args.wikidata is not None:
+    # create building category
+
     building_wikidata = modelwiki.wikidata_input2id(args.wikidata)
+    if city_wdid is None: city_wdid = modelwiki.get_settlement_for_object(building_wikidata)
+    if city_wdid is None: raise ValueError(f'can not find city for https://www.wikidata.org/wiki/{building_wikidata}')
+
     category_name = modelwiki.create_building_category(
             building_wikidata, city_wikidata=city_wdid, dry_mode=dry_run)
 
@@ -76,47 +86,54 @@ elif args.wikidata is not None:
 
     quit()
     
-    
-buildings = list()
-building = {
-        "housenumber": str(args.housenumber),
-        "building": args.building,
-        "street_wikidata": modelwiki.wikidata_input2id(str(args.street).strip()),
-        "latlonstr": args.coords,
-        "coord_source": args.coord_source,
-        'city':city_wdid,
-        }
+else:    
+    # create new building in wikidata
+
+
+    street_wdid = modelwiki.wikidata_input2id(str(args.street).strip())    
+    if city_wdid is None: 
+        city_wdid = Model_wiki.get_settlement_for_object(street_wdid)
+        if city_wdid is None: raise ValueError(f'can not find city for https://www.wikidata.org/wiki/{building_wikidata}') 
+    assert city_wdid is not None   
+    buildings = list()
+    building = {
+            "housenumber": str(args.housenumber),
+            "building": args.building,
+            "street_wikidata":street_wdid ,
+            "latlonstr": args.coords,
+            "coord_source": args.coord_source,
+            'city':city_wdid,
+            }
+    if args.levels: building['levels'] = args.levels            
+    if args.levels_url: building['levels_url'] = args.levels_url               
+    if args.year: building['year'] = args.year            
+    if args.year_url: building['year_url'] = args.year_url            
+    if args.district: building['district_wikidata'] = modelwiki.wikidata_input2id(str(args.district).strip())
+    if args.project: building['project'] = modelwiki.wikidata_input2id(str(args.project).strip())
+            
+
+
+    buildings.append(building)
+    del building
+
+    validation_pass = True
+    for building in buildings:
+        if modelwiki.validate_street_in_building_record(building) == False:
+            validation_pass = False
+    print('validation ok')
+
+    if not validation_pass:
+        print("street wikidata objects non valid")
+        quit()
+    for data in buildings:
+        building_wikidata = modelwiki.create_wikidata_building(data, dry_mode=dry_run)
+        if not args.wikidata_only:
+            category_name = modelwiki.create_building_category(
+                building_wikidata, city_wikidata=city_wdid, dry_mode=dry_run)
+
+    # end of method    
+    if args.dry_run:
+        quit()
         
-if args.levels: building['levels'] = args.levels            
-if args.levels_url: building['levels_url'] = args.levels_url               
-if args.year: building['year'] = args.year            
-if args.year_url: building['year_url'] = args.year_url            
-if args.district: building['district_wikidata'] = modelwiki.wikidata_input2id(str(args.district).strip())
-if args.project: building['project'] = modelwiki.wikidata_input2id(str(args.project).strip())
-        
-
-
-buildings.append(building)
-del building
-
-validation_pass = True
-for building in buildings:
-    if modelwiki.validate_street_in_building_record(building) == False:
-        validation_pass = False
-print('validation ok')
-
-if not validation_pass:
-    print("street wikidata objects non valid")
-    quit()
-for data in buildings:
-    building_wikidata = modelwiki.create_wikidata_building(data, dry_mode=dry_run)
-    if not args.wikidata_only:
-        category_name = modelwiki.create_building_category(
-            building_wikidata, city_wikidata=city_wdid, dry_mode=dry_run)
-
-# end of method    
-if args.dry_run:
-    quit()
-    
-print('Created https://www.wikidata.org/wiki/'+building_wikidata)
-if not args.wikidata_only: print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))
+    print('Created https://www.wikidata.org/wiki/'+building_wikidata)
+    if not args.wikidata_only: print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))

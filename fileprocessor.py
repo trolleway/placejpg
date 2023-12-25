@@ -101,7 +101,7 @@ class Fileprocessor:
 
         return wikidata
 
-    def upload_file(self, filepath, commons_name, description, verify_description=True,ignore_warning=True):
+    def upload_file(self, filepath, commons_name, description, verify_description=True,ignore_warning=False):
         # The site object for Wikimedia Commons
         site = pywikibot.Site("commons", "commons")
 

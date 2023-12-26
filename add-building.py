@@ -61,7 +61,7 @@ city_wdid = args.city
 building_wdid = args.building
 # --- move to method
 
-if city_wdid is not None: city_wdid = modelwiki.wikidata_input2id(city_wdid.city)
+city_wdid = modelwiki.wikidata_input2id(city_wdid)
 
 if args.snow_fix is not None:
     assert args.wikidata is not None

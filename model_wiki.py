@@ -410,7 +410,7 @@ class Model_wiki:
         return new pywikibot claim object for add to wikidata using pywikibot from dict 
         """
 
-    def create_street_wikidata(self,city,name_en,coords,street_type='Q79007',dry_mode=False)->str:
+    def create_street_wikidata(self,city,name_en,coords,name_ru=None,named_after=None, street_type='Q79007',country=None,dry_mode=False)->str:
         wikidata_template = """
     {
       "type": "item",
@@ -447,6 +447,10 @@ class Model_wiki:
         wd_object = json.loads(wikidata_template)
         wd_object["labels"]["en"] = name_en
         wd_object["descriptions"]["en"] = street_type_wd['labels']['en'] + ' in ' + city_wd['labels']['en']
+        if name_ru is not None:
+            wd_object["labels"]["ru"] = name_ru
+        wd_object["descriptions"]["ru"] = street_type_wd['labels']['ru'] + ' в ' + city_wd['labels']['ru']
+
         wd_object["claims"]["P625"]["value"]["latitude"] = round(
             float(lat), 5
         )  # coords
@@ -455,8 +459,11 @@ class Model_wiki:
         )  # coords
 
         # State
-        # wd_object["claims"]["P17"] = city_wd['claims']["P17"]
+        country_claim=self.get_best_claim(city,'P17')
+        wd_object["claims"]["P17"] = country_claim
+        # located in adm
         wd_object["claims"]["P131"] = city_wd['id']
+        if named_after is not None: wd_object["claims"]["P138"] = named_after
 
         if dry_mode:
             print(json.dumps(wd_object, indent=1))
@@ -465,6 +472,7 @@ class Model_wiki:
 
         new_item_id = self.create_wikidata_item(wd_object)
         self.logger.info(f'street object created: https://www.wikidata.org/wiki/{new_item_id}  Please set state and district.')
+        return new_item_id
 
     def create_wikidata_building(self, data, dry_mode=False):
         assert "street_wikidata" in data
@@ -1627,11 +1635,17 @@ class Model_wiki:
         assert prop.startswith('P')
         entity=self.get_wikidata_simplified(wdid)
         claims=entity['claims'].get(prop)
-        for claim in claims:
-            if claim['rank']=='preferred':
+        try:
+            for claim in claims:
+                if claim['rank']=='preferred':
+                    return claim['value']
+            for claim in claims:
                 return claim['value']
-        for claim in claims:
-            return claim['value']
+        except:
+            self.logger.error(f'can not get claims from https://www.wikidata.org/wiki/{wdid}')
+            self.pp.pprint(entity['claims'])
+
+            quit()
 
     def get_upper_location_wdid(self, wdobj):
         if 'P131' in wdobj['claims']:

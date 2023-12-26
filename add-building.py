@@ -141,4 +141,5 @@ else:
         quit()
         
     print('Created https://www.wikidata.org/wiki/'+building_wikidata)
+    print(building_wikidata)
     if not args.wikidata_only: print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))

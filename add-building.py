@@ -27,7 +27,7 @@ parser = argparse.ArgumentParser(
 
 
 parser.add_argument('--wikidata', type=str, required=False, help='Wikidata object optional')
-parser.add_argument('--building', type=str, required=False,default='yes', help='Value of building=* tag from openstreetmap')
+parser.add_argument('--building', type=str, required=False,default=None, help='building type wkidata entity. Can be wikidata id, wikidata url, wikidata name')
 parser.add_argument('--city', type=str, required=False, default=None, help='City wikidata entity. When not set, will be searched in "administrative entity" in wikidata. Can be wikidata id, wikidata url, wikidata name')
 parser.add_argument('--district', type=str, required=False, help='Administrative entity wikidata entity. Can be wikidata id, wikidata url, wikidata name')
 parser.add_argument('--project', type=str, required=False, help='project wikidata entity. Can be wikidata id, wikidata url, wikidata name')
@@ -58,6 +58,7 @@ modelwiki = Model_wiki()
 city = args.city
 dry_run = args.dry_run
 city_wdid = args.city
+building_wdid = args.building
 # --- move to method
 
 if city_wdid is not None: city_wdid = modelwiki.wikidata_input2id(city_wdid.city)
@@ -93,16 +94,18 @@ elif args.wikidata is not None:
 else:    
     # create new building in wikidata
 
+    if building_wdid is not None:
+        building_wdid = modelwiki.wikidata_input2id(str(building_wdid).strip()) 
 
     street_wdid = modelwiki.wikidata_input2id(str(args.street).strip())    
     if city_wdid is None: 
-        city_wdid = Model_wiki.get_settlement_for_object(street_wdid)
+        city_wdid = modelwiki.get_settlement_for_object(street_wdid)
         if city_wdid is None: raise ValueError(f'can not find city for https://www.wikidata.org/wiki/{building_wikidata}') 
     assert city_wdid is not None   
     buildings = list()
     building = {
             "housenumber": str(args.housenumber),
-            "building": args.building,
+            "building": building_wdid,
             "street_wikidata":street_wdid ,
             "latlonstr": args.coords,
             "coord_source": args.coord_source,
@@ -114,8 +117,6 @@ else:
     if args.year_url: building['year_url'] = args.year_url            
     if args.district: building['district_wikidata'] = modelwiki.wikidata_input2id(str(args.district).strip())
     if args.project: building['project'] = modelwiki.wikidata_input2id(str(args.project).strip())
-            
-
 
     buildings.append(building)
     del building

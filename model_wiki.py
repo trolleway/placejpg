@@ -1188,10 +1188,12 @@ class Model_wiki:
         streetname = street_wd['labels']['en']
         cityname = city_wd['labels']['en']
         catname = f'{streetname}, {cityname}'
+        uppercat = self.get_category_object_in_location('Q79007',city_wikidata,verbose=True)
         content = """{{Wikidata infobox}}
         {{GeoGroup}}
-        [[Category:Streets in %cityname%]]
+        [[Category:%uppercat%]]
         """
+        content = content.replace('%uppercat%',uppercat)
         content = content.replace('%cityname%',cityname)
         if not self.is_category_exists(catname):
             self.create_category(catname,content)

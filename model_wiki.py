@@ -1748,7 +1748,7 @@ class Model_wiki:
 
         return None
 
-    def append_image_descripts_claim(self, commonsfilename, entity_list, dry_run):
+    def append_image_descripts_claim(self, commonsfilename, entity_list, dry_run=False):
 
         assert isinstance(entity_list, list)
         assert len(entity_list) > 0

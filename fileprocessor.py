@@ -76,7 +76,7 @@ class Fileprocessor:
 
         return destination
 
-    def input2filelist(self, filepath):
+    def input2filelist(self, filepath,mode=None):
         if os.path.isfile(filepath):
             files = [filepath]
             assert os.path.isfile(filepath)
@@ -85,8 +85,11 @@ class Fileprocessor:
         elif os.path.isdir(filepath):
             files = os.listdir(filepath)
             files = [os.path.join(filepath, x) for x in files]
+            folder_keywords = self.folder_keywords
+            if mode=='replace_duplicates':
+                while 'commons_duplicates' in folder_keywords: folder_keywords.remove('commons_duplicates') 
             files = list(
-                filter(lambda name: not any(keyword in name for keyword in self.folder_keywords), files))
+                filter(lambda name: not any(keyword in name for keyword in folder_keywords), files))
 
             uploaded_folder_path = os.path.join(filepath, 'commons_uploaded')
         else:
@@ -101,7 +104,7 @@ class Fileprocessor:
 
         return wikidata
 
-    def upload_file(self, filepath, commons_name, description, verify_description=True,ignore_warning=False):
+    def upload_file(self, filepath, commons_name, description, verify_description=False,ignore_warning=False):
         # The site object for Wikimedia Commons
         site = pywikibot.Site("commons", "commons")
 
@@ -1767,6 +1770,73 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
 
         self.write_iptc(filename, caption, keywords)
         # processed_files.append(filename)
+    
+    def replace_duplicated(self,filepath:str):
+        """
+        for folder with commons_dublicated subfolder:
+        upload files using new filenames and new descriptions, taken from .desccription files
+        append to description template {{duplicate}} with link to old file on commons
+        """
+        from model_wiki import Model_wiki
+        modelwiki = Model_wiki()
+        filepath = os.path.join(filepath,'commons_duplicates')
+        if not os.path.exists(filepath):
+            print(filepath.ljust(50)+' '+' not exist')
+            quit()
+        assert os.path.exists(filepath)
+        files, uploaded_folder_path = self.input2filelist(filepath,mode='replace_duplicates')
+        files_filtered = list()
+        total_files = 0
+        for filename in files:
+            print(filename)
+            if 'commons_uploaded' in filename:
+                continue
+            if filename.endswith('.description'):
+                files_filtered.append(filename)
+                total_files = total_files + 1
+        files = files_filtered
+        del files_filtered
+        import pickle
+        for filename in files:
+            if 'commons_uploaded' in filename:
+                continue
+            file = open(filename, 'rb')
+            photo_duplicate_desc = pickle.load(file)
+            file.close()
+            #photo_duplicate_desc={'old_filename':old_filename,'desc':texts["text"],'new_name':texts["name"],'wikidata_list':wikidata_list,'need_create_categories':texts['need_create_categories']}
+            
+
+
+            upload_messages = self.upload_file(
+                    photo_duplicate_desc['filename'], photo_duplicate_desc['new_name'], photo_duplicate_desc['desc'], ignore_warning=True
+                )
+
+            print(upload_messages)
+
+            self.logger.info('append claims')
+            claims_append_result = modelwiki.append_image_descripts_claim(
+                photo_duplicate_desc['new_name'], photo_duplicate_desc['wikidata_list'])
+            
+            # CREATE CATEGORY PAGES
+            if len(photo_duplicate_desc['need_create_categories'])>0:
+                for ctd in photo_duplicate_desc['need_create_categories']:
+                    if not modelwiki.is_category_exists(ctd['name']):
+                        self.logger.info()
+                    modelwiki.create_category(ctd['name'], ctd['content'])
+                    
+
+            # move uploaded file to subfolder
+            
+            self.move_file_to_uploaded_dir(filename, uploaded_folder_path)
+
+            #add duplicate template to previous uploaded photo
+            print('add to old file:')
+            print(photo_duplicate_desc['old_filename'])
+            desc='{{Duplicate|%newcommonsname%|Replace Panoramio import with original file from photographer (me) with better name and categories}}'
+            desc=desc.replace('%newcommonsname%',photo_duplicate_desc['new_name'])
+            #desc=desc+"\n"+photo_duplicate_desc['desc']
+            print(desc)
+
 
     def process_and_upload_files(self, filepath, desc_dict):
         from model_wiki import Model_wiki
@@ -1967,10 +2037,25 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             if claims_append_result is None:
                 # UPLOAD FAILED
                 if 'Uploaded file is a duplicate of' in upload_messages:
+                    old_filename = self.get_old_filename_from_overwrite_error(upload_messages)
                     uploaded_folder_path_dublicate = uploaded_folder_path.replace(
                         'commons_uploaded', 'commons_duplicates')
                     self.move_file_to_uploaded_dir(
                         filename, uploaded_folder_path_dublicate)
+                    
+                    # write description to text file for panoramio-replace process
+                    import pickle
+                    photo_duplicate_desc={'old_filename':old_filename,
+                                          'desc':texts["text"],
+                                          'filename':os.path.join(uploaded_folder_path_dublicate,os.path.basename(filename)),
+                                          'new_name':texts["name"],
+                                          'wikidata_list':wikidata_list,
+                                          'need_create_categories':texts['need_create_categories']}
+                    photo_duplicate_desc_filename = os.path.join(uploaded_folder_path_dublicate,os.path.splitext(os.path.basename(filename))[0]+'.description')
+                    file = open(photo_duplicate_desc_filename, 'wb')
+                    pickle.dump(photo_duplicate_desc, file)
+                    file.close()
+
                 # Continue to next file
                 continue
             # CREATE CATEGORY PAGES
@@ -2047,7 +2132,30 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             print(cmd)
             with open("queue.sh", "a") as file_object:
                 file_object.write(cmd+"\n")
+    def get_old_filename_from_overwrite_error(self,upload_message:str)->str:
+        '''
+        from 'We got the following warning(s): duplicate: Uploaded file is a duplicate of ['Krasnogorsk-2013_-_panoramio_(320).jpg'].'
+        return Krasnogorsk-2013_-_panoramio_(320).jpg
+        
+        '''
+
+        import re
+        test_str = upload_message
+        regex = r"\['(.*?)'\]"
+        matches = re.finditer(regex, test_str, re.MULTILINE)
+
+        for matchNum, match in enumerate(matches, start=1):
+            
+            #print ("Match {matchNum} was found at {start}-{end}: {match}".format(matchNum = matchNum, start = match.start(), end = match.end(), match = match.group()))
+            
+            for groupNum in range(0, len(match.groups())):
+                groupNum = groupNum + 1
                 
+                #print ("Group {groupNum} found at {start}-{end}: {group}".format(groupNum = groupNum, start = match.start(groupNum), end = match.end(groupNum), group = match.group(groupNum)))
+
+                return match.group(groupNum)
+        
+
     def convert_to_webm(self,filename)->str:
         # convert video to webm vp9. files not overwriten
         filename_dst = filename.replace('.mp4', '.webm').replace('.MP4', '.webm')

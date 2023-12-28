@@ -912,15 +912,15 @@ class Fileprocessor:
     def get_date_information_part(self, dt_obj, taken_on_location):
         st = ''
         st += (
-            """|source={{own}}
-|author={{Creator:""" + self.photographer+"""}}
-|date="""
+            """|date="""
             + "{{Taken on|"
             + dt_obj.isoformat()
             + "|location="
             + taken_on_location
             + "|source=EXIF}}"
             + "\n"
+            +"""|source={{own}}
+|author={{Creator:""" + self.photographer+"""}}"""
         )
         return st
 
@@ -1409,7 +1409,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
         lensmodel_dict = {
                     'OLYMPUS M.12-40mm F2.8': 'Olympus M.Zuiko Digital ED 12-40mm f/2.8 PRO',
                     'smc PENTAX-DA 35mm F2.4 AL': 'SMC Pentax-DA 35mm F2.4',
-                    'smc PENTAX-DA 14mm F2.8 EDIF': 'SMC PENTAX DA 14 mm f/2.8 ED IF',
+                    'smc PENTAX-DA 14mm F2.8 EDIF': 'SMC Pentax DA 14 mm f/2.8 ED IF',
                 }
         lens = None
         if image_exif.get("make") is not None and image_exif.get("model") is not None:
@@ -1828,6 +1828,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             # move uploaded file to subfolder
             
             self.move_file_to_uploaded_dir(filename, uploaded_folder_path)
+            self.move_file_to_uploaded_dir(photo_duplicate_desc['filename'], uploaded_folder_path)
 
             #add duplicate template to previous uploaded photo
             print('add to old file:')
@@ -1836,6 +1837,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             desc=desc.replace('%newcommonsname%',photo_duplicate_desc['new_name'])
             #desc=desc+"\n"+photo_duplicate_desc['desc']
             print(desc)
+            modelwiki.file_add_duplicate_template('File:'+photo_duplicate_desc['old_filename'],new_filename=photo_duplicate_desc['new_name'])
 
 
     def process_and_upload_files(self, filepath, desc_dict):

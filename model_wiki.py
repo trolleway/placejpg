@@ -852,6 +852,22 @@ class Model_wiki:
 
         return object_wd[0]['id']
 
+    def file_add_duplicate_template(self, pagename,new_filename):
+        assert pagename
+        texts = dict()
+        site = pywikibot.Site("commons", "commons")
+        site.login()
+        site.get_tokens("csrf")  # preload csrf token
+        pagename = self.page_name_canonical(pagename)
+        page = pywikibot.Page(site, title=pagename)
+
+        texts[0] = page.text
+		
+        message = '{{Duplicate|'+new_filename+'|Replace Panoramio import with original file from photographer (me) with better name and categories}}'
+        texts[1]=message+"\n"+page.text
+        page.text = texts[1]
+        page.save('add {{duplicate}} template')
+
     def get_heritage_types(self, country='RU') -> list:
         template = '''
         SELECT ?item ?label ?_image WHERE {

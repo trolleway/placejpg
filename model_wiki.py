@@ -608,13 +608,9 @@ class Model_wiki:
 
             if "levels_url" in data:
                 wd_object["claims"]["P1101"]["references"][0]["P854"] = data["levels_url"]
-        if 'building' in data and data['building'] == 'apartments':
-            wd_object["claims"]["P31"] = 'Q13402009'
-        if 'building' in data and data['building'] == 'house':
-            wd_object["claims"]["P31"] = 'Q3947'    
-        if 'building' in data and data['building'] in ('commercial', 'office'):
-            wd_object["claims"]["P31"] = 'Q1021645'
 
+        if 'building' in data and data['building'] is not None:
+            wd_object["claims"]["P31"] = data['building']
 
 
         if dry_mode:
@@ -1984,6 +1980,36 @@ class Model_wiki:
             commons_pagetext = "{{Wikidata infobox}}\n"+commons_pagetext
         page.text = commons_pagetext
         page.save('add {{Wikidata infobox}} template')
+
+    def download_from_commons(self,url,directory):
+        import requests
+        import os
+        # Set the headers and the base URL for the API request
+        headers = {
+            # 'Authorization': 'Bearer YOUR_ACCESS_TOKEN',
+            'User-Agent': 'YOUR_APP_NAME (YOUR_EMAIL_OR_CONTACT_PAGE)'
+        }
+        base_url = 'https://api.wikimedia.org/core/v1/commons/file/'
+
+        # Extract the filename from the URL
+        filename = url.split('/')[-1]
+
+        # Construct the full URL with the filename
+        url = base_url + filename
+
+        # Make the request and get the JSON response
+        response = requests.get(url, headers=headers).json()
+
+        # Get the file URL and the file extension from the response
+        file_url = response['preferred']['url']
+        file_ext = response['preferred']['file_ext']
+
+        # Download the file using requests
+        r = requests.get(file_url, allow_redirects=True)
+
+        # Save the file to the current working directory with the same name and extension
+        dest_path = os.path.join(directory, filename + '.' + file_ext)
+        open(dest_path, 'wb').write(r.content)
 
     def search_commonscat_by_2_wikidata(self, abstract_wdid, geo_wdid):
         if abstract_wdid==geo_wdid:

@@ -613,6 +613,8 @@ class Model_wiki:
             wd_object["claims"]["P31"] = data['building']
 
 
+
+
         if dry_mode:
             print(json.dumps(wd_object, indent=1))
             self.logger.info("dry mode, no creating wikidata entity")
@@ -620,6 +622,9 @@ class Model_wiki:
 
         new_item_id = self.create_wikidata_item(wd_object)
         print("created https://www.wikidata.org/wiki/" + new_item_id)
+        if data.get('category') is not None:
+            self.wikidata_add_commons_category(new_item_id, data.get('category'))
+        
         return new_item_id
 
     def get_territorial_entity(self, wd_record) -> dict:

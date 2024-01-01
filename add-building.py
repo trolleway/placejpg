@@ -44,6 +44,7 @@ parser.add_argument('--year_url', type=str, required=False, help='url for year r
 #parser.add_argument("--country", type=str,required=False, default='Russia', help='Country for {{Taken on}} template') too complex, not needed
 #parser.add_argument('--photos', type=str, required=False, help='Optional: call photo uploader , path to files dir ')
 parser.add_argument('--wikidata-only', action="store_const", const=True, required=False, help='Create only wikidata entity, do not create commons category ')
+parser.add_argument('--category', type=str, default=None, required=False, help='Commons category. If already exist - script will create wikidata entity and links with this category')
 
 parser.add_argument('--snow-fix', action="store_const", const=True, required=False, help='generate wikidata building name and description from LOCATED ON STREET attribure and exit')
 
@@ -114,7 +115,8 @@ else:
     if args.levels: building['levels'] = args.levels            
     if args.levels_url: building['levels_url'] = args.levels_url               
     if args.year: building['year'] = args.year            
-    if args.year_url: building['year_url'] = args.year_url            
+    if args.year_url: building['year_url'] = args.year_url     
+    if args.category: building['category'] = args.category.strip()         
     if args.district: building['district_wikidata'] = modelwiki.wikidata_input2id(str(args.district).strip())
     if args.project: building['project'] = modelwiki.wikidata_input2id(str(args.project).strip())
 
@@ -132,7 +134,7 @@ else:
         quit()
     for data in buildings:
         building_wikidata = modelwiki.create_wikidata_building(data, dry_mode=dry_run)
-        if not args.wikidata_only:
+        if not args.wikidata_only and args.category is None:
             category_name = modelwiki.create_building_category(
                 building_wikidata, city_wikidata=city_wdid, dry_mode=dry_run)
 

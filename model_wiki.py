@@ -140,6 +140,27 @@ class Model_wiki:
 
         self.page_template_taken_on(page, location, dry_run)
 
+    def category_add_template_wikidata_infobox(self,category:str):
+        if not category.startswith('Category:'):
+            category = 'Category:'+category
+        assert category
+        texts = dict()
+        site = pywikibot.Site("commons", "commons")
+        site.login()
+        site.get_tokens("csrf")  # preload csrf token
+        category = self.page_name_canonical(category)
+        page = pywikibot.Page(site, title=category)
+
+        texts[0] = page.text
+        if 'wikidata infobox' in texts[0].lower():
+            return True
+		
+        message = '{{Wikidata Infobox}}'
+        texts[1]=message+"\n"+page.text
+        page.text = texts[1]
+        page.save('add {{Wikidata Infobox}} template')
+
+
     def category_add_template_taken_on(self, categoryname, location, dry_run=True, interactive=False):
         assert categoryname
         total_files = 0
@@ -624,6 +645,7 @@ class Model_wiki:
         print("created https://www.wikidata.org/wiki/" + new_item_id)
         if data.get('category') is not None:
             self.wikidata_add_commons_category(new_item_id, data.get('category'))
+            self.category_add_template_wikidata_infobox(data.get('category'))
         
         return new_item_id
 

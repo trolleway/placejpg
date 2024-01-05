@@ -1097,11 +1097,13 @@ class Fileprocessor:
         objectname_long = {}
         objectnames_long = {}
 
+        #rewrite label if not extst
         for lang in self.langs_primary:
             if lang not in wd_record['labels']:
-                self.logger.error('object https://www.wikidata.org/wiki/' +
-                                 wd_record['id']+' must has name '+lang)
-                return None
+                wd_record['labels'][lang]=wd_record['labels']['en']
+                #self.logger.error('object https://www.wikidata.org/wiki/' +
+                #                 wd_record['id']+' must has name '+lang)
+                #return None
             objectnames[lang] = wd_record['labels'][lang]
             objectname_long[lang] = objectnames[lang]
 

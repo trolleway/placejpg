@@ -1211,6 +1211,7 @@ class Fileprocessor:
                          country=country,
                         )           
         cat_content='''{{Usercat}}
+{{GeoGroup}}
 [[Category:Photographs by '''+self.photographer+''']]
 [[Category:Photographs of '''+country+''' by photographer]]'''
         need_create_categories.append({'name':cat,'content':cat_content})

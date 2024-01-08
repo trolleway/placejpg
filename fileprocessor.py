@@ -1100,6 +1100,10 @@ class Fileprocessor:
         #rewrite label if not extst
         for lang in self.langs_primary:
             if lang not in wd_record['labels']:
+                if 'en' not in wd_record['labels']:
+                    self.logger.error('object https://www.wikidata.org/wiki/' +
+                    wd_record['id']+' must has name en')
+                return None
                 wd_record['labels'][lang]=wd_record['labels']['en']
                 #self.logger.error('object https://www.wikidata.org/wiki/' +
                 #                 wd_record['id']+' must has name '+lang)
@@ -1526,6 +1530,26 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
         return False
 
     def image2datetime(self, path):
+    
+        def get_datetime_from_string(s):
+            # find the substring that matches the format YYYYMMDD_HHMMSS
+            # assume it is always 15 characters long and starts with a digit
+
+            for i in range(len(s) - 15):
+                if s[i].isdigit():
+                    date_str = s[i:i+15]
+                    print('test '+date_str)
+                    try:
+                        datetime.strptime(date_str, "%Y%m%d_%H%M%S")
+                        # Valid date string
+                        break
+                    except ValueError:
+                        pass
+                        #go next char
+                    
+            # use datetime.strptime() to convert the substring to a datetime object
+            date_obj = datetime.strptime(date_str, '%Y%m%d_%H%M%S')
+            return date_obj
 
         with open(path, "rb") as image_file:
             if not path.lower().endswith('.stl'):
@@ -1553,9 +1577,9 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                 dt_obj = None
 
             if dt_obj is None:
-                #try:
-                dt_obj = datetime.strptime(os.path.basename(path)[
-                                           0:15], '%Y%m%d_%H%M%S')
+                dt_obj = get_datetime_from_string(os.path.basename(path))
+                
+               
                 #except:
                 #    print(f'file {path}: failed to get date, failed to read from start of filename')
                 #    quit()

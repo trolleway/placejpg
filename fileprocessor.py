@@ -561,10 +561,22 @@ class Fileprocessor:
         }
 
         if route is not None:
-            text = text + "[[Category:{transports} on route {route} in {city}]]".format(
+            cat="{transports} on route {route} in {city}".format(
                 transports=transports[vehicle],
                 route=route,
-                city=city_name_en) + "\n"
+                city=city_name_en)
+            cat_content='''
+{{GeoGroup}}
+[[Category:$vehicle routes designated $route|$city_name_en]]
+[[Category:$transports in $city_name_en by route|$route]]'''
+        cat_content=cat_content.replace('$vehicle',vehicle.title())
+        cat_content=cat_content.replace('$route',route)
+        cat_content=cat_content.replace('$transports',transports[vehicle])
+        cat_content=cat_content.replace('$city_name_en',city_name_en)
+        
+        need_create_categories.append({'name':cat,'content':cat_content})
+        categories.add(cat)
+        
         if 'system_wd' in locals():
             if vehicle not in train_synonims:
                 categories.add(system_wd['commons'])
@@ -2091,7 +2103,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             if len(texts['need_create_categories'])>0:
                 for ctd in texts['need_create_categories']:
                     if not modelwiki.is_category_exists(ctd['name']):
-                        self.logger.info()
+                        self.logger.info('creating category '+ctd['name'])
                     modelwiki.create_category(ctd['name'], ctd['content'])
                     
 

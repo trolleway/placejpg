@@ -539,6 +539,7 @@ class Fileprocessor:
         text += self.get_date_information_part(dt_obj, country)
         text += "}}\n"
         tech_description, tech_categories = self.get_tech_description(filename, geo_dict)
+        assert None not in tech_categories, 'None value in '+str(tech_categories)
         text +=tech_description+"\n"
         categories.update(tech_categories)
         
@@ -569,13 +570,13 @@ class Fileprocessor:
 {{GeoGroup}}
 [[Category:$vehicle routes designated $route|$city_name_en]]
 [[Category:$transports in $city_name_en by route|$route]]'''
-        cat_content=cat_content.replace('$vehicle',vehicle.title())
-        cat_content=cat_content.replace('$route',route)
-        cat_content=cat_content.replace('$transports',transports[vehicle])
-        cat_content=cat_content.replace('$city_name_en',city_name_en)
-        
-        need_create_categories.append({'name':cat,'content':cat_content})
-        categories.add(cat)
+            cat_content=cat_content.replace('$vehicle',vehicle.title())
+            cat_content=cat_content.replace('$route',route)
+            cat_content=cat_content.replace('$transports',transports[vehicle])
+            cat_content=cat_content.replace('$city_name_en',city_name_en)
+            
+            need_create_categories.append({'name':cat,'content':cat_content})
+            categories.add(cat)
         
         if 'system_wd' in locals():
             if vehicle not in train_synonims:
@@ -855,7 +856,10 @@ class Fileprocessor:
 
                     if 'commons' in wd_record and wd_record["commons"] is not None:
                        categories.add(wd_record['commons'])
+        categories.discard(None)
         for catname in categories:
+            
+            assert catname is not None, 'none value in categories:' + str(categories)+' '+filename
             catname = catname.replace('Category:', '')
             text += "[[Category:"+catname+"]]" + "\n"
 

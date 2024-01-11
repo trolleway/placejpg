@@ -875,14 +875,23 @@ class Model_wiki:
 
         return object_wd[0]['id']
 
-    def file_add_duplicate_template(self, pagename,new_filename):
-        assert pagename
+    def file_add_duplicate_template(self, pagename='',id='',new_filename=''):
+        '''
+        append {{Duplicate|new_filename|message}} to old commons file
+        pagename formats: File:photoname.jpg  or concept URL https://commons.wikimedia.org/entity/M56911766
+        '''
+        assert new_filename != ''
+        assert pagename != '' or id != ''
+        if id != '': assert id.startswith('M')
+        
         texts = dict()
         site = pywikibot.Site("commons", "commons")
         site.login()
         site.get_tokens("csrf")  # preload csrf token
-        pagename = self.page_name_canonical(pagename)
-        page = pywikibot.Page(site, title=pagename)
+        if pagename != '':
+            page = pywikibot.Page(site, title=pagename)
+        else:
+            page = pywikibot.Page(site,id) 
 
         texts[0] = page.text
 		
@@ -2037,6 +2046,19 @@ class Model_wiki:
         # Save the file to the current working directory with the same name and extension
         dest_path = os.path.join(directory, filename + '.' + file_ext)
         open(dest_path, 'wb').write(r.content)
+
+    def pagename_from_id(self,id:str)->str:
+        '''
+        id: digit
+        '''
+        if id.startswith('https://commons.wikimedia.org/entity/M'):
+            id=id.replace('https://commons.wikimedia.org/entity/M','')
+        if id.startswith('M'):
+            id=id.replace('M','')
+        site = pywikibot.Site('commons', 'commons') # create a Site object for Wikimedia Commons
+        pages = pagegenerators.PagesFromPageidGenerator([id], site) # create a page generator with the page ID
+        for page in pages: # iterate over the pages
+            return page.title() # print the full page title
 
     def search_commonscat_by_2_wikidata(self, abstract_wdid, geo_wdid):
         if abstract_wdid==geo_wdid:

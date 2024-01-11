@@ -891,11 +891,23 @@ class Fileprocessor:
 
         print(lst)
         return lst
+    
+    def get_replace_id_from_string(self, test_str: str) -> str:
+        '''
+        from string 12345_replaceM56911685.jpg returns M56911685
+        '''
+        import re
+        # cut to . symbol if extsts
+        test_str = test_str[0:test_str.index('.')]
 
+        lst = re.findall(r'(replaceM\d+)', test_str)
+        id=lst[0].replace('replace','')
+        return id
+    
     def get_wikidatalist_from_string(self, test_str: str) -> list:
-        # from string 2002_20031123__r32_colorgray_colorblue_wikidataQ12345_wikidataAntonovka.jpg  returns [Q12345]
+        ''' from string 2002_20031123__r32_colorgray_colorblue_wikidataQ12345_wikidataAntonovka.jpg  returns [Q12345]
         # 2002_20031123__r32_colorgray_colorblue.jpg
-
+        '''
         import re
         # cut to . symbol if extsts
         test_str = test_str[0:test_str.index('.')]
@@ -1818,7 +1830,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         """
         for folder with commons_dublicated subfolder:
         upload files using new filenames and new descriptions, taken from .desccription files
-        append to description template {{duplicate}} with link to old file on commons
+        append to old files description template {{duplicate}} with link to new file on commons
         """
         from model_wiki import Model_wiki
         modelwiki = Model_wiki()
@@ -1847,13 +1859,9 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             photo_duplicate_desc = pickle.load(file)
             file.close()
             #photo_duplicate_desc={'old_filename':old_filename,'desc':texts["text"],'new_name':texts["name"],'wikidata_list':wikidata_list,'need_create_categories':texts['need_create_categories']}
-            
-
-
             upload_messages = self.upload_file(
                     photo_duplicate_desc['filename'], photo_duplicate_desc['new_name'], photo_duplicate_desc['desc'], ignore_warning=True
                 )
-
             print(upload_messages)
 
             self.logger.info('append claims')
@@ -1876,10 +1884,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             #add duplicate template to previous uploaded photo
             print('add to old file:')
             print(photo_duplicate_desc['old_filename'])
-            desc='{{Duplicate|%newcommonsname%|Replace Panoramio import with original file from photographer (me) with better name and categories}}'
-            desc=desc.replace('%newcommonsname%',photo_duplicate_desc['new_name'])
-            #desc=desc+"\n"+photo_duplicate_desc['desc']
-            print(desc)
+
             modelwiki.file_add_duplicate_template('File:'+photo_duplicate_desc['old_filename'],new_filename=photo_duplicate_desc['new_name'])
 
 
@@ -1923,12 +1928,16 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         total_files = 0
         for filename in files:
             print(filename)
+
             if 'commons_uploaded' in filename:
                 continue
+            
             if self.check_exif_valid(filename) and self.check_extension_valid(filename):
                 files_filtered.append(filename)
                 total_files = total_files + 1
-
+            else:
+                self.logger.info(filename+' invalid')
+            
         progressbar_on = False
         if total_files > 1 and 'progress' in desc_dict:
             progressbar_on = True
@@ -1978,6 +1987,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     quick=desc_dict['later']
                 )
                 if texts is None: continue
+                print('7')
                 wikidata=texts['wikidata'] #if wikidata taken from gpkg file
                 wikidata_list = list()
                 wikidata_list.append(wikidata)
@@ -2100,9 +2110,19 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     file = open(photo_duplicate_desc_filename, 'wb')
                     pickle.dump(photo_duplicate_desc, file)
                     file.close()
-
                 # Continue to next file
-                continue
+                #continue
+            else:
+                self.logger.info('check if replace old photo')
+                # REPLACE old panoramio photo. New photo uploaded, server not triggered at dublicate:
+                if '_replaceM' in filename:
+                    
+                    old_file_pageid = self.get_replace_id_from_string(filename)
+                    old_file_pagename = modelwiki.pagename_from_id(old_file_pageid)
+                    self.logger.info('add template for replace '+old_file_pagename)
+                    modelwiki.file_add_duplicate_template(pagename=old_file_pagename,new_filename=texts["name"])
+
+
             # CREATE CATEGORY PAGES
             if len(texts['need_create_categories'])>0:
                 for ctd in texts['need_create_categories']:
@@ -2122,11 +2142,11 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         if progressbar_on:
             pbar.close()
         if not dry_run:
-            print('uploaded: ')
+            self.logger.info('uploaded: ')
         else:
-            print('emulating upload. URL will be: ')
+            self.logger.info('emulating upload. URL will be: ')
 
-        print("\n".join(uploaded_paths))
+        self.logger.info("\n".join(uploaded_paths))
 
         # add to job queue if not uploading now
         if dry_run:

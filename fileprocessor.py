@@ -2068,9 +2068,15 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             print(texts["text"])
 
             if not dry_run:
-
+                if '_replace' in filename:
+                    ignore_warning=True
+                else:
+                    ignore_warning = False
                 upload_messages = self.upload_file(
-                    filename, texts["name"], texts["text"], verify_description=desc_dict['verify']
+                    filename, texts["name"], 
+                    texts["text"], 
+                    verify_description=desc_dict['verify'],
+                    ignore_warning = ignore_warning
                 )
 
                 print(upload_messages)

@@ -326,7 +326,11 @@ class Fileprocessor:
 
             matches = re.finditer(regex, test_str, re.MULTILINE)
             for match in matches:
-                route = match.group()[2:-1]
+                result = match.group()[2:-1]
+                if 'eplace' in result:
+                    continue
+                route = result
+                del result
             if route == 'z':
                 route = None
 
@@ -1440,6 +1444,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                     'Panasonic': 'Panasonic Lumix',
                     'Hmd global Nokia 5.3': 'Nokia 5.3',
                     'COOLPIX':'Coolpix',
+                    'Fujifilm FinePix REAL 3D W3':'Fujifilm FinePix Real 3D W3',
                 }
         lensmodel_dict = {
                     'OLYMPUS M.12-40mm F2.8': 'Olympus M.Zuiko Digital ED 12-40mm f/2.8 PRO',

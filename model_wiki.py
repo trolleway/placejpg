@@ -1916,27 +1916,38 @@ class Model_wiki:
         assert ('ru' in item.labels)
         assert 'P669' in item.claims, 'you should set P669 en at https://www.wikidata.org/wiki/'+wdid+''
         claims = item.claims.get("P669")
+
+        # GET BEST CLAIM 
+        best_claim=None
         for claim in claims:
-            # Print the street address value
-            # print(claim.getTarget().id)
-            street_id = claim.getTarget().id
-            try:
-                street_name_en = claim.getTarget().labels['en']
-            except:
-                raise ValueError(
-                    'you should set label en at https://www.wikidata.org/wiki/'+claim.getTarget().id+'')
-                quit()
-            street_name_ru = claim.getTarget().labels['ru']
+            if claim.rank=='preferred':
+                best_claim=claim
+                break
+        if best_claim is None:
+            best_claim=claims[0]
+        claim = best_claim
+        del best_claim
 
-            # Get the qualifiers of P670
-            qualifiers = claim.qualifiers.get("P670")
 
-            # Loop through the qualifiers
-            for qualifier in qualifiers:
-                # Print the postal code value
-                housenumber = qualifier.getTarget()
+        street_id = claim.getTarget().id
+        try:
+            street_name_en = claim.getTarget().labels['en']
+        except:
+            raise ValueError(
+                'you should set label en at https://www.wikidata.org/wiki/'+claim.getTarget().id+'')
+            quit()
+        street_name_ru = claim.getTarget().labels['ru']
 
-        print(street_name_en, street_name_ru, housenumber)
+        # Get the qualifiers of P670
+        qualifiers = claim.qualifiers.get("P670")
+
+        # Loop through the qualifiers
+        for qualifier in qualifiers:
+            # Print the postal code value
+            housenumber = qualifier.getTarget()
+
+        self.logger.info(f'{street_name_en} {street_name_ru} {housenumber}')
+
 
         entitynames = dict()
         labels = dict()

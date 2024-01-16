@@ -28,7 +28,7 @@ import placejpgconfig
 
 class Fileprocessor:
     logging.basicConfig(
-        level=logging.ERROR,
+        level=logging.INFO,
         format="%(asctime)s %(levelname)-8s %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
@@ -898,13 +898,13 @@ class Fileprocessor:
     
     def get_replace_id_from_string(self, test_str: str) -> str:
         '''
-        from string 12345_replaceM56911685.jpg returns M56911685
+        from string 12345_replace56911685.jpg returns M56911685
         '''
         import re
         # cut to . symbol if extsts
         test_str = test_str[0:test_str.index('.')]
 
-        lst = re.findall(r'(replaceM\d+)', test_str)
+        lst = re.findall(r'(replace\d+)', test_str)
         id=lst[0].replace('replace','')
         return id
     
@@ -2127,7 +2127,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             else:
                 self.logger.info('check if replace old photo')
                 # REPLACE old panoramio photo. New photo uploaded, server not triggered at dublicate:
-                if '_replaceM' in filename:
+                if '_replace' in filename:
                     
                     old_file_pageid = self.get_replace_id_from_string(filename)
                     old_file_pagename = modelwiki.pagename_from_id(old_file_pageid)

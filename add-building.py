@@ -24,7 +24,13 @@ parser = argparse.ArgumentParser(
     '''+ "\n expression for qgis \n"+sample_expression + "\\ \n\n   python3 add-building.py --building apartments --city Orekhovo-Zuevo --coord_source osm  --coords 55.80474,38.9689 --levels 3 --street Q122859896 --housenumber 9" + "python3 add-building.py --snow-fix --wikidata Q113682558 --city Torzhok"
 )
 
+"""
+Run docker with this script one-off, for call from QGIS action:
 
+docker run --rm -v "c:\trolleway\placejpg\:/opt/commons-uploader" -it placejpg:2023.11 ./add-building.py --help
+
+anyway qgis can not start docker run
+"""
 
 parser.add_argument('--wikidata', type=str, required=False, help='Wikidata object optional')
 parser.add_argument('--building', type=str, required=False,default=None, help='building type wkidata entity. Can be wikidata id, wikidata url, wikidata name')

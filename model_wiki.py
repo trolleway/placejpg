@@ -456,12 +456,7 @@ class Model_wiki:
     }
     """
         
-        lat=None
-        lon=None
-        lat, lon = self.location_string_parse(coords)
 
-        assert lat is not None
-        assert lon is not None
 
         city_wd = self.get_wikidata_simplified(city)
         street_type_wd = self.get_wikidata_simplified(street_type)
@@ -472,12 +467,30 @@ class Model_wiki:
             wd_object["labels"]["ru"] = name_ru
         wd_object["descriptions"]["ru"] = street_type_wd['labels']['ru'] + ' в ' + city_wd['labels']['ru']
 
-        wd_object["claims"]["P625"]["value"]["latitude"] = round(
-            float(lat), 5
-        )  # coords
-        wd_object["claims"]["P625"]["value"]["longitude"] = round(
-            float(lon), 5
-        )  # coords
+        # COORDINATES
+        if 'LINESTRING' in coords.upper():
+            #line with 3 points: write coordinates for start, middle, end of street
+            from model_geo import Model_Geo as Model_geo_ask
+            coords_list =  Model_geo_ask.extract_wktlinestring_to_points(coords)
+            assert len(coords_list) in (2,3)
+            
+            
+            
+        else: 
+            lat=None
+            lon=None
+            lat, lon = self.location_string_parse(coords)
+
+            assert lat is not None
+            assert lon is not None
+            
+            
+            wd_object["claims"]["P625"]["value"]["latitude"] = round(
+                float(lat), 5
+            )  # coords
+            wd_object["claims"]["P625"]["value"]["longitude"] = round(
+                float(lon), 5
+            )  # coords
 
         # State
         country_claim=self.get_best_claim(city,'P17')
@@ -492,7 +505,7 @@ class Model_wiki:
             return
 
         new_item_id = self.create_wikidata_item(wd_object)
-        self.logger.info(f'street object created: https://www.wikidata.org/wiki/{new_item_id}  Please set state and district.')
+        self.logger.info(f'street object created: https://www.wikidata.org/wiki/{new_item_id} ')
         return new_item_id
 
     def create_wikidata_building(self, data, dry_mode=False):
@@ -1289,6 +1302,9 @@ class Model_wiki:
         category_street +='|'+housenumber.zfill(2)
                
         category_name = building_dict_wd["labels"]["en"]
+        category_name = '{city} {street} {housenumber}'.format(city=city_dict_wd['labels']['en'],
+                                                       street=street_dict_wd['labels']['en'],
+                                                       housenumber=housenumber)
 
         
         year = ""
@@ -1334,7 +1350,15 @@ class Model_wiki:
 
 [[Category:%streetcategory%]]
 """
-
+        # CULTURAL HERITAGE RUSSIA
+        prop='P1483'
+        if prop in building_dict_wd["claims"]:
+            wlm_ru_code = self.get_best_claim(wikidata,prop)
+            wlm_district_wdid = self.get_best_claim(wikidata,'P131')
+            wlm_district_wd=self.get_wikidata_simplified(wlm_district_wdid)
+            wlm_district_category=wlm_district_wd['commons']
+            code += "{{Cultural Heritage Russia|id="+wlm_ru_code+"|category="+wlm_district_category+"}}" + "\n"
+            
         if year != "":
             code += "[[Category:Built in %city% in %year%]]" + "\n"
 
@@ -1346,8 +1370,13 @@ class Model_wiki:
 
         building_function='Buildings'
         for instance in building_dict_wd["claims"]["P31"]:
-            cat=self.get_category_object_in_location(instance['value'],street_dict_wd['id'],verbose=True) 
-            code += f"[[Category:{cat}]]" + "\n"
+            #if instance['value'] in ('Q1081138')
+            try:
+                cat=self.get_category_object_in_location(instance['value'],street_dict_wd['id'],verbose=True)
+                assert cat is not None 
+                code += f"[[Category:{cat}]]" + "\n"
+            except:
+                self.logger.info('no category found for '+self.get_wikidata_simplified(instance['value'])['labels']['en'])
 
         code = code.replace("%city%", city_dict_wd['labels']['en'])
         #code = code.replace("%city_loc%", city_ru)
@@ -1389,7 +1418,7 @@ class Model_wiki:
             
             
             del project_value
-
+        
         if dry_mode:
             print()
             print(category_name)

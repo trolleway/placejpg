@@ -185,7 +185,7 @@ class Filtrator:
         """
         files = sorted(files, key=lambda x: x.get('exif',0).get('datetime_original',0), reverse=False)
         for fi in files:
-            html+='''<tr><td><img src="{thumb}"></td><td>{id}</td><td>{categories}</td><td>{ts}<br>{model}</td></tr>'''.format(thumb=fi['thumbnail'],
+            html+='''<tr><td><img src="{thumb}"></td><td>_replace{id}</td><td>{categories}</td><td>{ts}<br>{model}</td></tr>'''.format(thumb=fi['thumbnail'],
                                                                                                                     id=fi['id'],
                                                                                                                     categories='</br>'.join(fi['categories']),
                                                                                                                     ts=fi['exif'].get('datetime_original',''),

@@ -22,6 +22,25 @@ class Model_Geo:
        
         return minx, miny, maxx, maxy
     
+    def extract_wktlinestring_to_points(self, wkt):
+        # Create a geometry object from the WKT string
+        geom = ogr.CreateGeometryFromWkt(wkt)
+        # Check if the geometry is a linestring
+        if geom.GetGeometryType() == ogr.wkbLineString:
+            # Get the number of points in the linestring
+            n = geom.GetPointCount()
+            # Initialize an empty list to store the coordinates
+            coords = []
+            # Loop through the points and append the coordinates to the list
+            for i in range(n):
+                x, y, z = geom.GetPoint(i)
+                coords.append((y, x))
+            # Return the list of coordinate pairs
+            return coords
+        else:
+            # Return None if the geometry is not a linestring
+            return None
+    
     def identify_deodata(self,lat,lon,filepath,fieldname)->str:
         srcds = gdal.OpenEx(filepath,gdal.OF_READONLY)
         srclayer = srcds.GetLayer()

@@ -559,12 +559,11 @@ class Model_wiki:
         wd_object = json.loads(wikidata_template)
         wd_object["labels"]["ru"] = data["street_name_ru"] + \
             " " + data["housenumber"]
-        wd_object["labels"]["en"] = (
-            city_wd['labels']['en'] + ' '
-            + data["street_name_en"]
-            + " "
-            + translit(data["housenumber"], "ru", reversed=True)
-        )
+        wd_object["labels"]["en"] = self.address_international(
+        city=city_wd['labels']['en'],
+        street=data["street_name_en"], 
+        housenumber=data["housenumber"]).strip()
+
         wd_object["descriptions"]["ru"] = "Здание в " + city_wd['labels']['ru']
         wd_object["descriptions"]["en"] = "Building in " + city_wd['labels']['en']
         wd_object["aliases"] = {"ru": list()}
@@ -1272,6 +1271,17 @@ class Model_wiki:
 
         return catname
         
+    def address_international(self,city:str,street:str, housenumber:str)->str:
+        """
+        from Riga, Gertrudes street, 25 return "Riga Gertrudes street 25" with house number translit from ru to lat 
+        """
+        
+        result = '{city} {street} {housenumber}'.format(city=city,
+                                                       street=street,
+                                                       housenumber=translit(housenumber,"ru",reversed=True,
+                ))
+        return result 
+                
     def create_building_category(self, wikidata:str, city_wikidata:str, dry_mode=False ) -> str:
         """
         Create wikimedia commons category for wikidata building entity
@@ -1301,10 +1311,10 @@ class Model_wiki:
         category_street = street_dict_wd['commons']     
         category_street +='|'+housenumber.zfill(2)
                
-        category_name = building_dict_wd["labels"]["en"]
-        category_name = '{city} {street} {housenumber}'.format(city=city_dict_wd['labels']['en'],
-                                                       street=street_dict_wd['labels']['en'],
-                                                       housenumber=housenumber)
+        category_name = self.address_international(city=city_dict_wd['labels']['en'],
+                                       street=street_dict_wd['labels']['en'],
+                                       housenumber=housenumber)
+
 
         
         year = ""
@@ -1696,12 +1706,9 @@ class Model_wiki:
                 "addr:housenumber:local": building_wd["claims"]["P669"][0]["qualifiers"][
                     "P670"
                 ][0]['datavalue']["value"],
-                "addr:housenumber:en": translit(
-                    building_wd["claims"]["P669"][0]["qualifiers"]["P670"][0]['datavalue']["value"],
-                    "ru",
-                    reversed=True,
-                ),
+                "addr:housenumber:en": building_wd["claims"]["P669"][0]["qualifiers"]["P670"][0]['datavalue']["value"],
             }
+            building_record["addr:housenumber:en"] = translit(building_record["addr:housenumber:en"],'ru',reversed=True)
             building_record['commons'] = building_wd["commons"]
         except:
             return None
@@ -1980,7 +1987,7 @@ class Model_wiki:
 
         entitynames = dict()
         labels = dict()
-        labels['en'] = street_name_en+' '+translit(housenumber,'ru',reversed=True)
+        labels['en'] = self.address_international(city='',street=street_name_en, housenumber=housenumber).strip()
         labels['ru'] = street_name_ru+' '+housenumber
         
         # move names to aliaces

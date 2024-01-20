@@ -1114,6 +1114,8 @@ class Fileprocessor:
         wd_record = modelwiki.get_wikidata_simplified(wikidata)
         
         if wd_record["commons"] is None: 
+            if wikidata_has_streetaddress:
+                Model_wiki_ask.create_building_category(wikidata,)
             self.logger.error('https://www.wikidata.org/wiki/' + \
             wikidata + ' must have commons')
             return None
@@ -1320,6 +1322,7 @@ class Fileprocessor:
             dt_obj.strftime("%Y-%m %s") + filename_extension
         )
         commons_filename = commons_filename.replace("/", " drob ")
+
 
         # add district name to file name
         if add_administrative_name:
@@ -1993,7 +1996,6 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     quick=desc_dict['later']
                 )
                 if texts is None: continue
-                print('7')
                 wikidata=texts['wikidata'] #if wikidata taken from gpkg file
                 wikidata_list = list()
                 wikidata_list.append(wikidata)

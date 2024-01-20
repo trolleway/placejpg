@@ -1448,6 +1448,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                     'Hmd global Nokia 5.3': 'Nokia 5.3',
                     'COOLPIX':'Coolpix',
                     'Fujifilm FinePix REAL 3D W3':'Fujifilm FinePix Real 3D W3',
+                    'Ricoh RICOH THETA S':'Ricoh Theta S'
                 }
         lensmodel_dict = {
                     'OLYMPUS M.12-40mm F2.8': 'Olympus M.Zuiko Digital ED 12-40mm f/2.8 PRO',
@@ -1479,6 +1480,8 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                         str(image_exif.get("'focallengthin35mmformat'"))
                 st += '}}' + "\n"
 
+
+                if image_exif.get('usepanoramaviewer')==True: st += "{{Pano360}}"+ "\n"
                 if image_exif.get("focallength", '') != "" and image_exif.get("focallength", '') != "" and int(image_exif.get("focallength", 0)) != 0:
                     categories.add(
                         'Lens focal length '+str(image_exif.get("focallength"))+' mm')

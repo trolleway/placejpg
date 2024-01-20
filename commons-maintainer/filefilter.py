@@ -205,5 +205,5 @@ class Filtrator:
 #args = parser.parse_args()
 
 processor = Filtrator()
-processor.print_cat('Saint_Petersburg_photographs_taken_on_2011-04-02')
+processor.print_cat('Moscow photographs taken on 2016-02-13')
 

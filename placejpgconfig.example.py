@@ -20,5 +20,5 @@ source = '{{own}}'
 
 # Languages for description
 langs_primary = ['en']
-langs_optional = ['de', 'fr', 'it', 'es', 'pt', 'uk', 'be', 'ja','ru']
+langs_optional = ['de', 'fr', 'it', 'es', 'pt', 'uk', 'be', 'ja','ru','eo']
 

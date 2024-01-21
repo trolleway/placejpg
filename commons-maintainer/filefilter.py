@@ -119,7 +119,11 @@ class Filtrator:
             os.makedirs(self.cachedir)
             
         url = FilePage.get_file_url()   
+        pageid = FilePage.pageid
+        ext = os.path.splitext(os.path.basename(urlparse(url).path))[1]
+        fn=os.path.splitext(os.path.basename(urlparse(url).path))[0]
         filepath = os.path.join(self.cachedir, os.path.basename(urlparse(url).path) )
+        filepath = os.path.join(self.cachedir,'_replace'+str(pageid)+'_'+fn+ext )
         if os.path.isfile(filepath):
             return filepath
         FilePage.download(filename=filepath)
@@ -167,6 +171,8 @@ class Filtrator:
             #ts_exif=self.get_ts_exif_from_page(page)
             exif = self.get_exif_from_page(page)
             print(page.title(),page.pageid,exif.get('datetime_original',''),exif.get('model',''))
+            local_filepath = self.dowload_or_cache_read(page)
+            
             #CATEGORIES TEXT
             c=''
             categories=list()
@@ -175,7 +181,14 @@ class Filtrator:
                     if not any(substring in line.strip() for substring in ['ISO','Uploaded','F-number','Lens','Panoramio files uploaded by Panoramio upload bot']):
                         c=line.strip().replace('[[Category:','')
                         categories.append(c)
-            files.append({'name':page.title(),'id':page.pageid,'categories':categories,'thumbnail':page.get_file_url(450,300), 'exif':exif})
+            files.append({'download_url':page.get_file_url(),
+                          'download_name':'_replace'+str(page.pageid)+'_'+page.title().replace('File:',''),
+                          'name':page.title(),
+                          'id':page.pageid,
+                          'categories':categories,
+                          'thumbnail':page.get_file_url(450,300),
+                          'locpath':local_filepath,
+                          'exif':exif})
 
         html="""<html>
         <head>
@@ -185,11 +198,13 @@ class Filtrator:
         """
         files = sorted(files, key=lambda x: x.get('exif',0).get('datetime_original',0), reverse=False)
         for fi in files:
-            html+='''<tr><td><img src="{thumb}"></td><td>_replace{id}</td><td>{categories}</td><td>{ts}<br>{model}</td></tr>'''.format(thumb=fi['thumbnail'],
+            html+='''<tr><td><a href="https://commons.wikimedia.org/entity/M{id}"><img src="{thumb}"></a></td><td>_replace{id}</td><td>{categories}</td><td>{ts}<br>{model}</br><a href="{download_url}" download="{download_name}">download</a></td></tr>'''.format(thumb=fi['thumbnail'],
                                                                                                                     id=fi['id'],
                                                                                                                     categories='</br>'.join(fi['categories']),
                                                                                                                     ts=fi['exif'].get('datetime_original',''),
-                                                                                                                    model = fi['exif'].get('model','')
+                                                                                                                    model = fi['exif'].get('model',''),
+                                                                                                                    download_url=fi['locpath'],
+                                                                                                                    download_name=fi['download_name'],
                                                                                                                     )+"\n"
 
         html+='</table></html>'
@@ -205,5 +220,5 @@ class Filtrator:
 #args = parser.parse_args()
 
 processor = Filtrator()
-processor.print_cat('Moscow photographs taken on 2016-02-13')
+processor.print_cat('Saint Petersburg photographs taken on 2011-04-02')
 

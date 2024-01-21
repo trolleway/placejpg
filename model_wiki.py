@@ -53,6 +53,8 @@ class Model_wiki:
 
     def reset_cache(self):
         os.unlink(self.wikidata_cache_filename)
+        self.wikidata_cache = self.wikidata_cache_load(
+            wikidata_cache_filename=self.wikidata_cache_filename)
 
     def replace_file_commons(self, pagename, filepath):
         assert pagename
@@ -2005,6 +2007,8 @@ class Model_wiki:
             labels=labels, summary="Set name from address P669+P670")
         item.editDescriptions(
             descriptions={"en": "Building in "+city_wd['labels']['en']}, summary="Edit description")
+        
+        self.reset_cache()
 
         return
 

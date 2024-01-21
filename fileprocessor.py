@@ -2165,55 +2165,11 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
 
         self.logger.info("\n".join(uploaded_paths))
 
-        # add to job queue if not uploading now
-        if dry_run:
-            if not desc_dict['later']:
-                add_queue = input("Add to queue? Y/N    ")
-            else:
-                add_queue = 'Y'
-
-            # make call string
-            if add_queue.upper() != 'Y':
-                print('not adding to queue')
-                return
-
-            if desc_dict['mode'] == 'object':
-                cmd = 'python3 upload.py '
-                cmd += wikidata + ' '
-                cmd += '"'+filepath + '" '
-
-            if desc_dict['mode'] == 'vehicle':
-                cmd = 'python3 vehicle-upload.py '
-                cmd += '"'+filepath + '" '
-                cmd += '--vehicle "' + desc_dict['vehicle'] + '" '
-                if desc_dict['system']:
-                    cmd += '--system "' + desc_dict['system'] + '" '
-                if desc_dict['city']:
-                    cmd += '--city "' + desc_dict['city'] + '" '
-                if desc_dict['model']:
-                    cmd += '--model "' + desc_dict['model'] + '" '
-                if desc_dict['street']:
-                    cmd += '--street "' + desc_dict['street'] + '" '
-                if desc_dict['number']:
-                    cmd += '--number "' + desc_dict['number'] + '" '
-                if desc_dict['route']:
-                    cmd += '--route "' + desc_dict['route'] + '" '
-                if desc_dict['line']:
-                    cmd += '--line "' + desc_dict['line'] + '" '
-                if desc_dict['facing']:
-                    cmd += '--facing "' + desc_dict['facing'] + '" '
-                if desc_dict['colors']:
-                    cmd += '--colors ' + ' '.join(desc_dict['colors']) + ' '
-
-            if desc_dict['country']:
-                cmd += '--country "' + desc_dict['country'] + '" '
-            if len(secondary_wikidata_ids) > 0:
-                cmd += '-s ' + ' '.join(secondary_wikidata_ids)
-
-            print('adding to queue')
-            print(cmd)
-            with open("queue.sh", "a") as file_object:
-                file_object.write(cmd+"\n")
+       
+                
+                
+                
+                
     def get_old_filename_from_overwrite_error(self,upload_message:str)->str:
         '''
         from 'We got the following warning(s): duplicate: Uploaded file is a duplicate of ['Krasnogorsk-2013_-_panoramio_(320).jpg'].'

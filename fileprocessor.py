@@ -1114,8 +1114,6 @@ class Fileprocessor:
         wd_record = modelwiki.get_wikidata_simplified(wikidata)
         
         if wd_record["commons"] is None: 
-            if wikidata_has_streetaddress:
-                Model_wiki_ask.create_building_category(wikidata,)
             self.logger.error('https://www.wikidata.org/wiki/' + \
             wikidata + ' must have commons')
             return None
@@ -2080,7 +2078,33 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
 
             if not dry_run:
                 if '_replace' in filename:
-                    ignore_warning=True
+                    #ignore_warning=True
+                    self.logger.info('replace process not implement, skip to next file')
+                    self.logger.info('You should manualy replace texts. Open https://commons.wikimedia.org/entity/M'+self.get_replace_id_from_string(filename))
+                    print('Texts for manual update')
+                    
+                    txt = "{{Rename|"+texts["name"]+"|2|More detailed object name, taken from wikidata}}"
+                    print(txt)
+                    print(texts["text"])
+                    input("Press Enter to continue...")
+                    # CREATE CATEGORY PAGES
+                    if len(texts['need_create_categories'])>0:
+                        for ctd in texts['need_create_categories']:
+                            if not modelwiki.is_category_exists(ctd['name']):
+                                self.logger.info('creating category '+ctd['name'])
+                            modelwiki.create_category(ctd['name'], ctd['content'])
+                            
+
+                    # move uploaded file to subfolder
+                    if not dry_run:
+                        self.move_file_to_uploaded_dir(
+                            filename, uploaded_folder_path)
+
+                    if progressbar_on:
+                        pbar.update(1)
+                
+                    
+                    continue
                 else:
                     ignore_warning = False
                 upload_messages = self.upload_file(

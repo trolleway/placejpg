@@ -160,7 +160,7 @@ class Filtrator:
         for page in gen1:
             if 'anoramio' not in page.title():
                 continue
-            if '{{Duplicate' in page.text:
+            if '{{Duplicate' in page.text or '{{Rename' in page.text:
                 continue
             
             #page.get_file_url(300,200)
@@ -220,5 +220,5 @@ class Filtrator:
 #args = parser.parse_args()
 
 processor = Filtrator()
-processor.print_cat('Saint Petersburg photographs taken on 2011-04-02')
+processor.print_cat('Saint Petersburg photographs taken on 2011-08-12')
 

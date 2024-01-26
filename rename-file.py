@@ -117,6 +117,7 @@ if __name__ == '__main__':
     
     verify=args.verify
     mode = 'change'
+    set_sds = True
     if mode=='change':
         if verify:
             print('prepend string')
@@ -125,7 +126,11 @@ if __name__ == '__main__':
             input()
         helper_renamer.prepend_text_page(pagename,rename_template_text)
     
-    
+    if set_sds:
+        entity_list = modelwiki.wikidata2instanceof_list(wikidata)
+        entity_list.append(wikidata)
+        modelwiki.append_image_descripts_claim(pagename,entity_list)
+        
 
     
         

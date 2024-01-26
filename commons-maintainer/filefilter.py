@@ -145,7 +145,7 @@ class Filtrator:
         exif = self.get_exif_from_file(local_filepath)
         return exif        
         
-    def print_cat(self,categoryname):
+    def print_cat(self,categoryname,filter_pending_rename:bool=True,filter_panoramio_name:bool=True):
         assert categoryname
         total_files = 0
         site = pywikibot.Site("commons", "commons")
@@ -158,9 +158,10 @@ class Filtrator:
         #gen2 = pagegenerators.PageTitleFilterPageGenerator(gen1,ignore_list=['Panoramio'])
         files=list()
         for page in gen1:
-            if 'anoramio' not in page.title():
+            if filter_panoramio_name and 'anoramio' not in page.title():
                 continue
-            if '{{Duplicate' in page.text or '{{Rename' in page.text:
+            if filter_pending_rename and '{{Rename' in page.text: continue
+            if '{{Duplicate' in page.text :
                 continue
             
             #page.get_file_url(300,200)
@@ -198,8 +199,9 @@ class Filtrator:
         """
         files = sorted(files, key=lambda x: x.get('exif',0).get('datetime_original',0), reverse=False)
         for fi in files:
-            html+='''<tr><td><a href="https://commons.wikimedia.org/entity/M{id}"><img src="{thumb}"></a></td><td>_replace{id}</td><td>{categories}</td><td>{ts}<br>{model}</br><a href="{download_url}" download="{download_name}">download</a></td></tr>'''.format(thumb=fi['thumbnail'],
+            html+='''<tr><td><a href="https://commons.wikimedia.org/entity/M{id}"><img src="{thumb}"><br>{name}</a></td><td>_replace{id}</td><td>{categories}</td><td>{ts}<br>{model}</br><a href="{download_url}" download="{download_name}">download</a></td></tr>'''.format(thumb=fi['thumbnail'],
                                                                                                                     id=fi['id'],
+                                                                                                                    name=fi['name'],
                                                                                                                     categories='</br>'.join(fi['categories']),
                                                                                                                     ts=fi['exif'].get('datetime_original',''),
                                                                                                                     model = fi['exif'].get('model',''),
@@ -220,5 +222,7 @@ class Filtrator:
 #args = parser.parse_args()
 
 processor = Filtrator()
-processor.print_cat('Saint Petersburg photographs taken on 2011-08-12')
+processor.print_cat('Leningrad Oblast photographs taken on 2011-08-13',
+                    filter_pending_rename=False,
+                    filter_panoramio_name=False)
 

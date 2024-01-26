@@ -1,4 +1,5 @@
 import pywikibot
+import pywikibot
 import json
 
 from exif import Image
@@ -41,7 +42,7 @@ class Fileprocessor:
     exiftool_path = "exiftool"
     
     # TIFF LARGER THAN THIS VALUE WILL BE COMPRESSED TO WEBP 
-    tiff2webp_min_size_mb = 25
+    tiff2webp_min_size_mb = 55
     
     chunk_size = 10240000
     # chunk_size = 0
@@ -1836,7 +1837,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         self.write_iptc(filename, caption, keywords)
         # processed_files.append(filename)
     
-    def replace_duplicated(self,filepath:str):
+    def deprecated_replace_duplicated(self,filepath:str):
         """
         for folder with commons_dublicated subfolder:
         upload files using new filenames and new descriptions, taken from .desccription files
@@ -2079,7 +2080,11 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             if not dry_run:
                 if '_replace' in filename:
                     #ignore_warning=True
-                    self.logger.info('replace process not implement, skip to next file')
+                    
+                    if '_reupload' in filename:
+                        self.logger.info('replace file..')
+                        modelwiki.replace_file_commons( modelwiki.pagename_from_id(self.get_replace_id_from_string(filename)),filename)
+
                     self.logger.info('You should manualy replace texts. Open https://commons.wikimedia.org/entity/M'+self.get_replace_id_from_string(filename))
                     print('Texts for manual update')
                     

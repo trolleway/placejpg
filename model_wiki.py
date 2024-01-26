@@ -66,7 +66,7 @@ class Model_wiki:
         # Replace the file
         file_page = pywikibot.FilePage(site, pagename)
 
-        file_page.upload(file=filepath, comment='Replacing file')
+        file_page.upload(source=filepath, comment='Replacing file',ignore_warnings=True, watch=True)
 
         return
 
@@ -1641,7 +1641,19 @@ class Model_wiki:
             self.create_page(pagename, content, 'create category')
         else:
             self.logger.info('page already exists '+pagename)
-
+    
+    def wikidata2instanceof_list(self,wdid)->list:
+        """
+        from wikidata id return list of instance of wikidata ids
+        """ 
+        claims_list=list()
+        wikidata = self.get_wikidata_simplified(wdid)
+        for instance in wikidata["claims"]["P31"]:
+            claims_list.append(instance['value'])
+            
+        return claims_list
+    
+    
     def is_category_exists(self, categoryname):
         if not categoryname.startswith('Category:'):
             categoryname = 'Category:'+categoryname
@@ -1834,7 +1846,7 @@ class Model_wiki:
 
         return None
 
-    def append_image_descripts_claim(self, commonsfilename, entity_list, dry_run=False):
+    def append_image_descripts_claim(self, commonsfilename, entity_list, dry_run=False)->bool:
 
         assert isinstance(entity_list, list)
         assert len(entity_list) > 0

@@ -2002,8 +2002,21 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 wikidata_list = list()
                 wikidata_list.append(wikidata)
                 wikidata_list += secondary_wikidata_ids
+
+                
+
                 #standalone_captions_dict = self.make_image_texts_standalone(
                 #    filename, wikidata, secondary_wikidata_ids)
+                
+                wikidata_list_upperlevel = list()
+                for wd in wikidata_list:
+                    entity_list = modelwiki.wikidata2instanceof_list(wd)
+                    if entity_list is not None:
+                        wikidata_list_upperlevel += entity_list
+                wikidata_list += wikidata_list_upperlevel
+                del wikidata_list_upperlevel
+                del entity_list
+
 
             elif desc_dict['mode'] == 'vehicle':
                 desc_dict['model'] = modelwiki.wikidata_input2id(
@@ -2077,6 +2090,18 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             print(texts["name"])
             print(texts["text"])
 
+            #remove duplicates
+            wikidata_list = list(dict.fromkeys(wikidata_list))
+            
+            #print wikidata entitines for append
+            templist=list()
+            for wdid in wikidata_list:
+                wd = modelwiki.get_wikidata_simplified(wdid)
+                templist.append('【'+wd['labels'].get('en','no en label')+'】')
+            print('-'.join(templist))
+            del templist
+
+                
             if not dry_run:
                 if '_replace' in filename:
                     #ignore_warning=True

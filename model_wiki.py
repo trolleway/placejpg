@@ -226,7 +226,7 @@ class Model_wiki:
         site = pywikibot.Site("wikidata", "wikidata")
         # create a new item
         new_item = pywikibot.ItemPage(site)
-        self.logger.info('created https://www.wikidata.org/wiki/'+str(new_item.getID()))
+
         # set the labels, descriptions and aliases from the wd_object
         try:
             new_item.editLabels(labels=wd_object["labels"], summary="Setting labels")
@@ -235,6 +235,7 @@ class Model_wiki:
         except:
             self.logger.warning('prorably this building already created in wikidata. merge not implement yet')
             pass
+        self.logger.info('created https://www.wikidata.org/wiki/'+str(new_item.getID()))
         # iterate over the claims in the wd_object
         for prop, value in wd_object["claims"].items():
             # create a claim object for the property
@@ -1275,10 +1276,15 @@ class Model_wiki:
         
     def address_international(self,city:str,street:str, housenumber:str)->str:
         """
-        from Riga, Gertrudes street, 25 return "Riga Gertrudes street 25" with house number translit from ru to lat 
+        from [Riga, Gertrudes street, 25] return "Gertrudes street 25, Riga" 
+        House number translitireted from RU to LAT 
         """
+        if city.strip() == '':
+            template = '{street} {housenumber}'
+        else:
+            template='{street} {housenumber}, {city}'
         
-        result = '{city} {street} {housenumber}'.format(city=city,
+        result = template.format(city=city,
                                                        street=street,
                                                        housenumber=translit(housenumber,"ru",reversed=True,
                 ))
@@ -1648,7 +1654,7 @@ class Model_wiki:
         """ 
         claims_list=list()
         wikidata = self.get_wikidata_simplified(wdid)
-        for instance in wikidata["claims"]["P31"]:
+        for instance in wikidata["claims"].get("P31",list()):
             claims_list.append(instance['value'])
             
         return claims_list

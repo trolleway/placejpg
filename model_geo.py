@@ -14,7 +14,7 @@ class Model_Geo:
     
     def make_search_rect(self,pointgeom):
         
-        delta = 0.0002
+        delta = 0.00002
         minx = pointgeom.GetX()-delta
         miny = pointgeom.GetY()-delta
         maxx = pointgeom.GetX()+delta

@@ -1272,16 +1272,12 @@ class Fileprocessor:
                 cat = modelwiki.get_category_object_in_location(
                     wdid, wikidata, verbose=True)
                 if cat is not None:
-                    text = text + "[[Category:" + cat + "]]" + "\n"
+                    categories.add(cat)
                 else:
                     wd_record = modelwiki.get_wikidata_simplified(wdid)
+                    if wd_record.get('commons',None) is not None:
+                        categories.add(wd_record["commons"])
 
-                    assert 'commons' in wd_record, 'https://www.wikidata.org/wiki/' + \
-                        wdid + ' must have commons'
-                    assert wd_record["commons"] is not None, 'https://www.wikidata.org/wiki/' + \
-                        wdid + ' must have commons'
-                    text = text + \
-                        "[[Category:" + wd_record["commons"] + "]]" + "\n"
                     
         for catname in categories:
             catname = catname.replace('Category:', '')
@@ -1486,7 +1482,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                         'Lens focal length '+str(image_exif.get("focallength"))+' mm')
 
                 if image_exif.get("iso", '') != "" and image_exif.get("iso", '') != "": 
-                    if int(image_exif.get("iso"))>49:
+                    if int(image_exif.get("iso",0))>49:
                         try:
                             categories.add(
                             'ISO speed rating '+str(round(float(str(image_exif.get("iso")))))+'')

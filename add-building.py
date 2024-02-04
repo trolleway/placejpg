@@ -143,6 +143,7 @@ else:
     if not validation_pass:
         print("street wikidata objects non valid")
         quit()
+    category_name = ''
     for data in buildings:
         building_wikidata = modelwiki.create_wikidata_building(data, dry_mode=dry_run)
         if not args.wikidata_only and args.category is None:
@@ -155,4 +156,5 @@ else:
         
     print('Created https://www.wikidata.org/wiki/'+building_wikidata)
     print(building_wikidata)
-    if not args.wikidata_only: print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))
+    if not args.wikidata_only and category_name!='': 
+        print('Created https://commons.wikimedia.org/wiki/Category:'+category_name.replace(' ','_'))

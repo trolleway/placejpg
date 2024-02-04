@@ -1482,12 +1482,15 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                         'Lens focal length '+str(image_exif.get("focallength"))+' mm')
 
                 if image_exif.get("iso", '') != "" and image_exif.get("iso", '') != "": 
-                    if int(image_exif.get("iso",0))>49:
-                        try:
-                            categories.add(
-                            'ISO speed rating '+str(round(float(str(image_exif.get("iso")))))+'')
-                        except:
-                            self.logger.info('ISO value is bad:'+str(image_exif.get("iso", '')))
+                    try:
+                        if int(image_exif.get("iso",0))>49:
+                            try:
+                                categories.add(
+                                'ISO speed rating '+str(round(float(str(image_exif.get("iso")))))+'')
+                            except:
+                                self.logger.info('ISO value is bad:'+str(image_exif.get("iso", '')))
+                    except:
+                        pass
 
                 for camerastring in cameramodels_dict.keys():
                     if camerastring in st:

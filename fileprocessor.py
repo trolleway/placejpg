@@ -1133,9 +1133,9 @@ class Fileprocessor:
         #rewrite label if not extst
         for lang in self.langs_primary:
             if lang not in wd_record['labels']:
-                if 'en' not in wd_record['labels']:
-                    self.logger.error('object https://www.wikidata.org/wiki/' +
-                    wd_record['id']+' must has name en')
+                
+                self.logger.error('object https://www.wikidata.org/wiki/' +
+                    wd_record['id']+' must has name '+lang)
                 return None
                 wd_record['labels'][lang]=wd_record['labels']['en']
                 #self.logger.error('object https://www.wikidata.org/wiki/' +
@@ -1992,7 +1992,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     filename=filename,
                     wikidata=wikidata,
                     country=desc_dict['country'],
-                    rail=desc_dict['rail'],
+                    rail=desc_dict.get('rail'),
                     secondary_wikidata_ids=secondary_wikidata_ids,
                     quick=desc_dict['later']
                 )

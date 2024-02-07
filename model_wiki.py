@@ -131,16 +131,18 @@ class Model_wiki:
         pagecode = pagecode.replace('[[commons:', '').replace(']]', '')
         return pagecode
 
-    def url_add_template_taken_on(self, pagename, location, dry_run=True):
+    def url_add_template_taken_on(self, pagename, location, dry_run=True,verbose=False):
         assert pagename
         location = location.title()
         site = pywikibot.Site("commons", "commons")
         site.login()
         site.get_tokens("csrf")  # preload csrf token
         pagename = self.page_name_canonical(pagename)
+        if not pagename.startswith('File:'): pagename='File:'+pagename
         page = pywikibot.Page(site, title=pagename)
 
-        self.page_template_taken_on(page, location, dry_run)
+
+        self.page_template_taken_on(page, location, dry_run, verbose)
 
     def category_add_template_wikidata_infobox(self,category:str):
         if not category.startswith('Category:'):
@@ -776,7 +778,7 @@ class Model_wiki:
             return False
         if '.ogg'.upper() in page.full_url().upper():
             return False
-
+        
         if '{{Information'.upper() not in texts[0].upper():
             self.logger.debug(
                 'template Information not exists in '+page.title())
@@ -851,7 +853,7 @@ class Model_wiki:
         if not dry_run and not interactive:
             page.text = texts[2]
             if page_not_need_change == False:
-                page.save('add {{Taken on location}} template')
+                page.save('set Taken on location for manual set list of images')
             self.create_category_taken_on_day(location, datestr)
         else:
             print('page not changing')
@@ -863,7 +865,7 @@ class Model_wiki:
 
             if answer in ["yes", "y", "1"]:
                 page.text = texts[2]
-                page.save('add {{Taken on location}} template')
+                page.save('set Taken on location with manual preview')
                 self.create_category_taken_on_day(location, datestr)
 
 

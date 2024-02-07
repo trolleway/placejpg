@@ -15,6 +15,7 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument('--pagename', type=str, required=False, help='Wikipedia filepage')
 parser.add_argument('--wikidata', type=str, required=False)
+parser.add_argument('--suffix', type=str, required=False,default='')
 parser.add_argument("--verify", action="store_const",
                     required=False, default=False, const=True)
 
@@ -81,6 +82,15 @@ class Helper_rename:
         text = new_text + "\n"+text
         return text
     
+    def append_suffix(self,fns,suffix):
+        if suffix=='':
+            return fns
+        assert fns.count('.')==1
+        fns=fns.replace('.','_'+suffix+'.')
+        return fns
+    
+
+    
     def prepend_text_page(self,pagename,rename_template_text):
         assert pagename
         # Login to your account
@@ -113,6 +123,8 @@ if __name__ == '__main__':
     wikidata= modelwiki.wikidata_input2id(args.wikidata)
     
     new_name = helper_renamer.generate_filename(pagename,wikidata)
+    suffix = args.suffix
+    new_name = helper_renamer.append_suffix(new_name,suffix)
     rename_template_text = helper_renamer.generate_rename_template(new_name)
     
     verify=args.verify

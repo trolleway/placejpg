@@ -131,7 +131,7 @@ class Model_wiki:
         pagecode = pagecode.replace('[[commons:', '').replace(']]', '')
         return pagecode
 
-    def url_add_template_taken_on(self, pagename, location, dry_run=True,verbose=False):
+    def url_add_template_taken_on(self, pagename, location, dry_run=True,verbose=False,interactive=False):
         assert pagename
         location = location.title()
         site = pywikibot.Site("commons", "commons")
@@ -142,7 +142,7 @@ class Model_wiki:
         page = pywikibot.Page(site, title=pagename)
 
 
-        self.page_template_taken_on(page, location, dry_run, verbose)
+        self.page_template_taken_on(page, location, dry_run, verbose,interactive)
 
     def category_add_template_wikidata_infobox(self,category:str):
         if not category.startswith('Category:'):
@@ -2009,8 +2009,16 @@ class Model_wiki:
 
         entitynames = dict()
         labels = dict()
-        labels['en'] = self.address_international(city='',street=street_name_en, housenumber=housenumber).strip()
-        labels['ru'] = street_name_ru+' '+housenumber
+        change_langs=dict()
+        new_label = self.address_international(city='',street=street_name_en, housenumber=housenumber).strip()
+        if new_label != item.labels.get('en',''):
+            labels['en'] = new_label
+            change_langs['en']=True
+        
+        new_label = street_name_ru+' '+housenumber
+        if new_label != item.labels.get('ru',''): 
+            labels['ru'] = new_label
+            change_langs['ru']=True
         
         # move names to aliaces
         aliases = item.aliases
@@ -2018,9 +2026,11 @@ class Model_wiki:
             aliases['ru'] = list()
         if 'en' not in aliases:
             aliases['en'] = list()
-        aliases['ru'].append(item.labels['ru'])
+        if change_langs.get('ru')==True:
+            aliases['ru'].append(item.labels['ru'])
         if 'en' in item.labels:
-            aliases['en'].append(item.labels['en'])
+            if change_langs.get('en')==True:
+                aliases['en'].append(item.labels['en'])
         item.editAliases(aliases=aliases, summary="Move name to alias")
         
         item.editLabels(
@@ -2088,35 +2098,7 @@ class Model_wiki:
         page.text = commons_pagetext
         page.save('add {{Wikidata infobox}} template')
 
-    def download_from_commons(self,url,directory):
-        import requests
-        import os
-        # Set the headers and the base URL for the API request
-        headers = {
-            # 'Authorization': 'Bearer YOUR_ACCESS_TOKEN',
-            'User-Agent': 'YOUR_APP_NAME (YOUR_EMAIL_OR_CONTACT_PAGE)'
-        }
-        base_url = 'https://api.wikimedia.org/core/v1/commons/file/'
 
-        # Extract the filename from the URL
-        filename = url.split('/')[-1]
-
-        # Construct the full URL with the filename
-        url = base_url + filename
-
-        # Make the request and get the JSON response
-        response = requests.get(url, headers=headers).json()
-
-        # Get the file URL and the file extension from the response
-        file_url = response['preferred']['url']
-        file_ext = response['preferred']['file_ext']
-
-        # Download the file using requests
-        r = requests.get(file_url, allow_redirects=True)
-
-        # Save the file to the current working directory with the same name and extension
-        dest_path = os.path.join(directory, filename + '.' + file_ext)
-        open(dest_path, 'wb').write(r.content)
 
     def pagename_from_id(self,id:str)->str:
         '''

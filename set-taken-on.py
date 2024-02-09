@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument('--pagename', type=str, required=True, help='Wikipedia filepage')
 parser.add_argument('--location', type=str, required=True)
-
+parser.add_argument('--interactive', type=bool, required=False,default=False)
 
 
 
@@ -28,6 +28,6 @@ if __name__ == '__main__':
 
     pagename=args.pagename
     
-    modelwiki.url_add_template_taken_on(pagename=pagename, location=args.location,verbose=True)
+    modelwiki.url_add_template_taken_on(pagename=pagename, location=args.location,verbose=True,interactive=args.interactive)
     
     

@@ -1949,7 +1949,7 @@ class Model_wiki:
 
     def wikidata_set_building_entity_name(self, wdid, city_wdid):
         '''
-        change names and aliaces of wikidata entity for building created by SNOW https://ru-monuments.toolforge.org/snow/index.php?id=6330122000
+        change names and aliaces of wikidata entity for building created by SNOW tool: https://ru-monuments.toolforge.org/snow/index.php?id=6330122000
 
         User should manually enter LOCATED ON STREET with HOUSE NUMBER
 
@@ -2011,11 +2011,13 @@ class Model_wiki:
         labels = dict()
         change_langs=dict()
         new_label = self.address_international(city='',street=street_name_en, housenumber=housenumber).strip()
+        if len(item.labels.get('en','')) < 50 and len(item.labels.get('en','')) > 6: new_label=new_label+', '+item.labels['en']
         if new_label != item.labels.get('en',''):
             labels['en'] = new_label
             change_langs['en']=True
         
         new_label = street_name_ru+' '+housenumber
+        if len(item.labels.get('ru','')) < 50 and len(item.labels.get('ru','')) > 6: new_label=new_label+', '+item.labels['ru']
         if new_label != item.labels.get('ru',''): 
             labels['ru'] = new_label
             change_langs['ru']=True

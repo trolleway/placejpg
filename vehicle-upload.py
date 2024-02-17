@@ -35,6 +35,8 @@ parser.add_argument('--digital_number', type=str, required=False,
                     help='optional digit vehicle number for Wikimedia Commons category. Example: 1468 from 2TE10M-1468 ')
 parser.add_argument('-ro', '--route', type=str,
                     required=False, help='vehicle route text')
+parser.add_argument('-op', '--operator', type=str,
+                    required=False, help='vehicle operator')
 parser.add_argument('--line', type=str, required=False,
                     help='railway line wikidata object for trains')
 parser.add_argument("--country", type=str, required=True,
@@ -66,6 +68,7 @@ desc_dict['city'] = args.city
 desc_dict['model'] = args.model
 desc_dict['street'] = args.street
 desc_dict['number'] = args.number
+desc_dict['operator'] = args.operator
 desc_dict['digital_number'] = args.digital_number
 desc_dict['route'] = args.route
 desc_dict['line'] = args.line

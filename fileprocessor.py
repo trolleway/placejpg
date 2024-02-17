@@ -257,7 +257,7 @@ class Fileprocessor:
             return street_wdid
 
 
-    def make_image_texts_vehicle(self, filename, vehicle, model, number, street=None, system=None,  route=None, country=None, line=None, facing=None, colors=None, secondary_wikidata_ids=None, digital_number=None) -> dict:
+    def make_image_texts_vehicle(self, filename, vehicle, model, number, street=None, system=None,  route=None, country=None, line=None, facing=None, colors=None, operator=None, secondary_wikidata_ids=None, digital_number=None) -> dict:
         assert os.path.isfile(filename)
 
         from model_wiki import Model_wiki as Model_wiki_ask
@@ -345,6 +345,13 @@ class Fileprocessor:
             matches = re.finditer(regex, test_str, re.MULTILINE)
             for match in matches:
                 digital_number = match.group()[2:-1]
+
+        # OPERATOR
+        if operator is not None:
+
+            operator_wd = modelwiki.get_wikidata_simplified(modelwiki.wikidata_input2id(operator))
+            wikidata_4_structured_data.add(operator_wd['id'])
+            
 
         # SYSTEM
         if system=='FROMFILENAME':
@@ -564,6 +571,16 @@ class Fileprocessor:
             'train': 'Rail vehicles',
             'locomotive': 'Rail vehicles',
             'auto': 'Automobiles'
+        }
+        transports_wikidata = {
+            'tram': 'Q3407658',
+            'trolleybus': 'Q5639',
+            'bus': 'Q5638',
+            'train': 'Q1414135',
+            'locomotive': 'Q93301',
+            'auto': 'Q1420'
+        
+        
         }
 
         if route is not None:

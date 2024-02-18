@@ -51,9 +51,10 @@ parser.add_argument('--levels', type=int, required=False, help='Building levels 
 parser.add_argument('--levels_url', type=str, required=False, help='url for building levels refrence')
 parser.add_argument('--year', type=int, required=False, help='year built')
 parser.add_argument('--year_url', type=str, required=False, help='url for year refrence')
+parser.add_argument('--architect', type=str, required=False, help='Architect. Can be wikidata id, wikidata url, wikidata name')
+parser.add_argument('--architecture', type=str, required=False, help='Architecture style. Can be wikidata id, wikidata url, wikidata name')
 
-#parser.add_argument("--country", type=str,required=False, default='Russia', help='Country for {{Taken on}} template') too complex, not needed
-#parser.add_argument('--photos', type=str, required=False, help='Optional: call photo uploader , path to files dir ')
+
 parser.add_argument('--wikidata-only', action="store_const", const=True, required=False, help='Create only wikidata entity, do not create commons category ')
 parser.add_argument('--category', type=str, default=None, required=False, help='Commons category. If already exist - script will create wikidata entity and links with this category')
 
@@ -130,6 +131,8 @@ else:
     if args.category: building['category'] = args.category.strip()         
     if args.district: building['district_wikidata'] = modelwiki.wikidata_input2id(str(args.district).strip())
     if args.project: building['project'] = modelwiki.wikidata_input2id(str(args.project).strip())
+    if args.architect: building['architect'] = modelwiki.wikidata_input2id(str(args.architect).strip())
+    if args.architecture: building['architecture'] = modelwiki.wikidata_input2id(str(args.architecture).strip())
 
     buildings.append(building)
     del building

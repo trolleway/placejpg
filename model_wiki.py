@@ -649,6 +649,11 @@ class Model_wiki:
 
         if 'building' in data and data['building'] is not None:
             wd_object["claims"]["P31"] = data['building']
+        if 'architect' in data and data['architect'] is not None:
+            wd_object["claims"]["P84"] = data['architect']
+        if 'architecture' in data and data['architecture'] is not None:
+            if data['architecture']=='Q34636': data['architecture']='Q1295040' # art noveau --> art noveau architecture
+            wd_object["claims"]["P149"] = data['architecture']
 
 
 
@@ -1314,6 +1319,23 @@ class Model_wiki:
             + " must have P669 street name and housenumber"
         )
         # retrive category name for street
+        #in saint petersburg one building trasitionaly may has 2 or 4 street addresses in located in street crossing
+        #cycle for all streets
+        
+        category_streets=list()
+
+        for street_counter in range(0,len(building_dict_wd['claims']['P669'])):
+            street_dict_wd = self.get_wikidata_simplified(building_dict_wd['claims']['P669'][street_counter]['value'])
+            housenumber = building_dict_wd["claims"]["P669"][street_counter]['qualifiers']['P670'][0]["datavalue"]["value"]
+            assert street_dict_wd['commons'] is not None
+            
+            category_street = street_dict_wd['commons']     
+            category_street +='|'+housenumber.zfill(2)
+            category_streets.append(category_street)
+            del category_street
+            del housenumber
+            del street_dict_wd
+        #get one prefered street for category name
 
         street_dict_wd = self.get_wikidata_simplified(building_dict_wd['claims']['P669'][0]['value'])
         housenumber = building_dict_wd["claims"]["P669"][0]['qualifiers']['P670'][0]["datavalue"]["value"]
@@ -1324,7 +1346,7 @@ class Model_wiki:
         category_name = self.address_international(city=city_dict_wd['labels']['en'],
                                        street=street_dict_wd['labels']['en'],
                                        housenumber=housenumber)
-
+        del category_street
 
         
         year = ""
@@ -1368,7 +1390,6 @@ class Model_wiki:
 {{Wikidata infobox}}
 {{Building address|Country=RU|City=%city%|Street name=%street%|House number=%housenumber%}}
 
-[[Category:%streetcategory%]]
 """
         # CULTURAL HERITAGE RUSSIA
         prop='P1483'
@@ -1400,11 +1421,15 @@ class Model_wiki:
 
         code = code.replace("%city%", city_dict_wd['labels']['en'])
         #code = code.replace("%city_loc%", city_ru)
-        code = code.replace("%streetcategory%", category_street)
         code = code.replace("%street%", street_dict_wd["labels"]["en"])
         code = code.replace("%year%", year)
         code = code.replace("%housenumber%", housenumber)
         code = code.replace("%decade%", decade)
+        
+        for category_street in category_streets:
+            code += "[[Category:%cat%]]".replace('%cat%',category_street) + "\n"
+        
+        
         if levels > 0 and levels < 21:
             code = code.replace("%levelstr%", str(num2words(levels).capitalize()))
         elif levels > 20:
@@ -1413,21 +1438,36 @@ class Model_wiki:
 
 
 
+        # architector
+        prop='P84'
+        if prop in building_dict_wd["claims"]:
+            architector_value = self.get_best_claim(wikidata,prop)
+            category = self.get_category_object_in_location(architector_value,street_dict_wd['id'])
+            if category is not None:
+                code += "\n[[Category:"+category+"]]"
+            else:
+                category = self.get_wikidata_simplified(architector_value)["commons"]
+                code += "\n[[Category:"+category+"]]"
+            del category
+            del architector_value
             
         # architectural style
         prop='P149'
         if prop in building_dict_wd["claims"]:
             style_value = self.get_best_claim(wikidata,prop)
             category = self.get_category_object_in_location(style_value,street_dict_wd['id'])
-            assert category is not None, f'wrong architecture style: https://www.wikidata.org/wiki/{wikidata}#{prop}'
-            code += "\n[[Category:"+category+"]]"
+            if category is not None:
+                code += "\n[[Category:"+category+"]]"
+            else:
+                category = self.get_wikidata_simplified(style_value)["commons"]
+                code += "\n[[Category:"+category+"]]"
+            del category
             del style_value
             
         # project
         prop='P144'
         if prop in building_dict_wd["claims"]:
             project_value = self.get_best_claim(wikidata,prop)
-
             category = self.get_category_object_in_location(project_value,street_dict_wd['id'],verbose=True)
             if category is not None:
                 code += "\n[[Category:"+category+"]]"
@@ -1435,8 +1475,6 @@ class Model_wiki:
                 category = self.get_wikidata_simplified(project_value)["commons"]
                 code += "\n[[Category:"+category+"]]"
             del category
-            
-            
             del project_value
         
         if dry_mode:

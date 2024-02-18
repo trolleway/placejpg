@@ -685,6 +685,10 @@ class Fileprocessor:
             str(' '.join(list(wikidata_4_structured_data)))
 
         # locale.setlocale(locale.LC_ALL, 'en_GB')
+        if vehicle == 'tram':
+            catname = "Railway photographs taken on "+dt_obj.strftime("%Y-%m-%d")
+            categories.add(catname)
+
         if vehicle in train_synonims:
             catname = "Railway photographs taken on " + \
                 dt_obj.strftime("%Y-%m-%d")
@@ -699,13 +703,7 @@ class Fileprocessor:
                     "%Y")[0:3]+'|'+dt_obj.strftime("%Y")[-1:]+'|'+dt_obj.strftime("%m")+'|'+country+'}}'
                 modelwiki.create_category(catname, category_content)
 
-        if vehicle == 'tram':
-            text += "[[Category:Railway photographs taken on " + \
-                dt_obj.strftime("%Y-%m-%d")+"]]" + "\n"
-            if isinstance(country, str):
-                text += "[[Category:" + \
-                    dt_obj.strftime("%B %Y") + \
-                    " in tram transport in "+country+"]]" + "\n"
+
 
         
                 

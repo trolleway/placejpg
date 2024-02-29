@@ -222,7 +222,7 @@ class Filtrator:
 #args = parser.parse_args()
 
 processor = Filtrator()
-processor.print_cat('Saint Petersburg photographs taken on 2011-10-01',
+processor.print_cat('Saint Petersburg photographs taken on 2016-03-27',
                     filter_pending_rename=False,
                     filter_panoramio_name=False)
 

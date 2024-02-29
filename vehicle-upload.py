@@ -37,6 +37,8 @@ parser.add_argument('-ro', '--route', type=str,
                     required=False, help='vehicle route text')
 parser.add_argument('-op', '--operator', type=str,
                     required=False, help='vehicle operator')
+parser.add_argument('-opc', '--operator-vehicle-category', type=str,
+                    required=False, help='commons category for vehicle operator like Operatorname buses')
 parser.add_argument('--line', type=str, required=False,
                     help='railway line wikidata object for trains')
 parser.add_argument("--country", type=str, required=True,
@@ -69,6 +71,7 @@ desc_dict['model'] = args.model
 desc_dict['street'] = args.street
 desc_dict['number'] = args.number
 desc_dict['operator'] = args.operator
+desc_dict['operator_vehicle_category'] = args.operator_vehicle_category
 desc_dict['digital_number'] = args.digital_number
 desc_dict['route'] = args.route
 desc_dict['line'] = args.line

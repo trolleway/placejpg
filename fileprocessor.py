@@ -257,7 +257,7 @@ class Fileprocessor:
             return street_wdid
 
 
-    def make_image_texts_vehicle(self, filename, vehicle, model, number, street=None, system=None,  route=None, country=None, line=None, facing=None, colors=None, operator=None, secondary_wikidata_ids=None, digital_number=None) -> dict:
+    def make_image_texts_vehicle(self, filename, vehicle, model, number, street=None, system=None,  route=None, country=None, line=None, facing=None, colors=None, operator=None, operator_vehicle_category=None, secondary_wikidata_ids=None, digital_number=None) -> dict:
         assert os.path.isfile(filename)
 
         from model_wiki import Model_wiki as Model_wiki_ask
@@ -351,7 +351,10 @@ class Fileprocessor:
 
             operator_wd = modelwiki.get_wikidata_simplified(modelwiki.wikidata_input2id(operator))
             wikidata_4_structured_data.add(operator_wd['id'])
-            
+        # OPERATOR VEHICLE CATEGORY
+        if operator_vehicle_category is not None:
+            categories.add(operator_vehicle_category.replace('Category:',''))
+
 
         # SYSTEM
         if system=='FROMFILENAME':
@@ -2055,6 +2058,8 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     route=desc_dict.get('route', None),
                     country=desc_dict.get('country', None),
                     line=desc_dict.get('line', None),
+                    operator=desc_dict.get('operator', None),
+                    operator_vehicle_category=desc_dict.get('operator_vehicle_category', None),
                     facing=desc_dict.get('facing', None),
                     colors=desc_dict.get('colors', None),
                     secondary_wikidata_ids=secondary_wikidata_ids

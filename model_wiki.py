@@ -1477,6 +1477,15 @@ class Model_wiki:
             del category
             del project_value
         
+        # part of
+        prop='P361'
+        if prop in building_dict_wd["claims"]:
+            partof_value = self.get_best_claim(wikidata,prop)
+            category = self.get_wikidata_simplified(partof_value)["commons"]
+            code += "\n[[Category:"+category+"]]"
+            del category
+            del partof_value         
+        
         if dry_mode:
             print()
             print(category_name)

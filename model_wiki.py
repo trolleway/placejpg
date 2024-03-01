@@ -2091,7 +2091,10 @@ class Model_wiki:
 
         return
 
-
+    def filter_buildings_from_wikidata_ids(ids: list)-> list:
+        '''
+        check if some of wikidata ids are buildings and return it ids
+        '''
     def create_wikidata_object_for_bylocation_category(self, category, wikidata1, wikidata2):
         assert category.startswith(
             'Category:'), 'category should start with Category:  only'

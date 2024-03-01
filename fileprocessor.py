@@ -1260,7 +1260,11 @@ class Fileprocessor:
         del tech_description
         categories.update(tech_categories)
 
+        # USERCAT BY THEME
+        usercat_categories = set()
+        
         # PHOTOS OF USER IN COUNTRY
+        CategoryUserInCountry = ''
         cat = 'Photographs by {photographer}/{country}'
         cat = cat.format(photographer=self.photographer,
                          country=country,
@@ -1270,9 +1274,30 @@ class Fileprocessor:
 [[Category:Photographs by '''+self.photographer+''']]
 [[Category:Photographs of '''+country+''' by photographer]]'''
         need_create_categories.append({'name':cat,'content':cat_content})
-        categories.add(cat)
+        CategoryUserInCountry = cat
         
-
+        #check is any wikidata object is building and it has architecture style with commons category
+        prop='P149' #architecture style
+        temp_wikidata_list = list()
+        temp_wikidata_list = secondary_wikidata_ids+[wikidata]
+        for wdid in temp_wikidata_list:
+            wd=modelwiki.get_wikidata_simplified(wdid)
+            if prop in wd['claims']:
+                for claim in wd['claims'][prop]:
+                    cat_for_claim=''
+                    cat_for_claim = modelwiki.get_wikidata_simplified(claim['value'])['commons']    
+                    cat_for_claim = f'{CategoryUserInCountry}/{cat_for_claim}'
+                    cat_content='''{{Usercat}}
+{{GeoGroup}}
+[[Category:'''+CategoryUserInCountry+''']]'''
+                    need_create_categories.append({'name':cat_for_claim,'content':cat_content})
+                    usercat_categories.add(cat_for_claim)
+        if len(usercat_categories)==0:
+            usercat_categories.add(CategoryUserInCountry)
+        
+        categories.update(usercat_categories)
+        # END USERCAT BY THEME
+        
         if rail:
             text += "[[Category:Railway photographs taken on " + \
                 dt_obj.strftime("%Y-%m-%d")+"]]" + "\n"

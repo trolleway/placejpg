@@ -1296,7 +1296,30 @@ class Fileprocessor:
                     need_create_categories.append({'name':cat_for_claim,'content':cat_content})
                     usercat_categories.add(cat_for_claim)
                     del cat_for_claim
-                    
+        
+        # SUBCLASS OF ARCHITECTURAL ELEMENT
+        temp_wikidata_list = list()
+        temp_wikidata_list = secondary_wikidata_ids+[wikidata]
+        for wdid in temp_wikidata_list:
+            if modelwiki.is_subclass_of(wdid,'Q391414'):
+                wd=modelwiki.get_wikidata_simplified(wdid)    
+                cat_for_claim=''
+                cat_for_claim = f'{CategoryUserInCountry}/Architectural elements'
+                cat_content='''{{Usercat}}
+{{GeoGroup}}
+[[Category:'''+CategoryUser+'''/Architectural elements]]
+[[Category:'''+CategoryUserInCountry+''']]'''
+                need_create_categories.append({'name':cat_for_claim,'content':cat_content})
+                usercat_categories.add(cat_for_claim)
+                
+                cat_for_claim = f'{CategoryUser}/Architectural elements'
+                cat_content='''{{Usercat}}
+{{GeoGroup}}
+[[Category:'''+CategoryUser+''']]
+'''
+                need_create_categories.append({'name':cat_for_claim,'content':cat_content})                  
+                del cat_for_claim
+                
         # BUILING DATE START
         temp_wikidata_list = list()
         temp_wikidata_list = secondary_wikidata_ids+[wikidata]
@@ -2019,9 +2042,9 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         files_filtered = list()
         # count for progressbar
         total_files = 0
-        for filename in files:
-            print(filename)
-
+        pbar = tqdm(files)
+        for filename in pbar:
+            pbar.set_description(filename)
             if 'commons_uploaded' in filename:
                 continue
             
@@ -2030,7 +2053,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 total_files = total_files + 1
             else:
                 self.logger.info(filename+' invalid')
-            
+    
         progressbar_on = False
         if total_files > 1 and 'progress' in desc_dict:
             progressbar_on = True

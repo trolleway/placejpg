@@ -32,7 +32,8 @@ parser.add_argument('-s', "--secondary-objects", type=str, nargs='+', required=F
                     help='secondary wikidata objects, used in category calc with country')
 parser.add_argument("--rail", action="store_const", required=False, default=False, const=True,
                     help='add to https://commons.wikimedia.org/wiki/Category:Railway_photographs_by_date')
-
+parser.add_argument("--progress", action="store_const", required=False, default=False, const=True,
+                    help='display progressbar')
 args = parser.parse_args()
 
 desc_dict = dict()
@@ -43,6 +44,6 @@ desc_dict['secondary_objects'] = args.secondary_objects
 desc_dict['rail'] = args.rail
 desc_dict['later'] = args.later
 desc_dict['dry_run'] = args.dry_run
-
+desc_dict['progress'] = args.progress
 
 fileprocessor.process_and_upload_files(args.filepath, desc_dict)

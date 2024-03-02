@@ -2156,7 +2156,7 @@ class Model_wiki:
         # construct the SPARQL query using the wikidata id
         query = f"""
         ASK {{
-            wd:{wikidata_id} wdt:P31/wdt:P279* wd:{class_wdid}. # объект является экземпляром здания или его подкласса
+            wd:{wikidata_id} wdt:P31*/wdt:P279* wd:{class_wdid}. # объект является экземпляром здания или его подкласса
         }}
         """
         # define the endpoint and the headers for the Wikidata query service

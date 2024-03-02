@@ -2091,10 +2091,7 @@ class Model_wiki:
 
         return
 
-    def filter_buildings_from_wikidata_ids(ids: list)-> list:
-        '''
-        check if some of wikidata ids are buildings and return it ids
-        '''
+
     def create_wikidata_object_for_bylocation_category(self, category, wikidata1, wikidata2):
         assert category.startswith(
             'Category:'), 'category should start with Category:  only'
@@ -2150,7 +2147,34 @@ class Model_wiki:
         page.text = commons_pagetext
         page.save('add {{Wikidata infobox}} template')
 
-
+    
+    def is_subclass_of_building(self, wikidata_id:str)-> bool:
+        return self.is_subclass_of(wikidata_id,'Q41176')
+    
+    def is_subclass_of(self,wikidata_id:str,class_wdid:str)-> bool:
+        import requests
+        # construct the SPARQL query using the wikidata id
+        query = f"""
+        ASK {{
+            wd:{wikidata_id} wdt:P31/wdt:P279* wd:{class_wdid}. # объект является экземпляром здания или его подкласса
+        }}
+        """
+        # define the endpoint and the headers for the Wikidata query service
+        endpoint = "https://query.wikidata.org/sparql"
+        headers = {"Accept": "application/json"}
+        # make a GET request with the query as a parameter
+        response = requests.get(endpoint, params={"query": query}, headers=headers)
+        # check if the response is successful
+        if response.status_code == 200:
+            # parse the JSON response and get the boolean value
+            data = response.json()
+            result = data["boolean"]
+            # return the result
+            return result
+        else:
+            # handle the error
+            print(f"Error: {response.status_code}")
+            return None
 
     def pagename_from_id(self,id:str)->str:
         '''

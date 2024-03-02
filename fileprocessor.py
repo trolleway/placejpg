@@ -1265,16 +1265,19 @@ class Fileprocessor:
         
         # PHOTOS OF USER IN COUNTRY
         CategoryUserInCountry = ''
+        CategoryUser = 'Photographs by '+self.photographer
         cat = 'Photographs by {photographer}/{country}'
         cat = cat.format(photographer=self.photographer,
                          country=country,
                         )           
         cat_content='''{{Usercat}}
 {{GeoGroup}}
-[[Category:Photographs by '''+self.photographer+''']]
+[[Category:'''+CategoryUser+''']]
 [[Category:Photographs of '''+country+''' by photographer]]'''
         need_create_categories.append({'name':cat,'content':cat_content})
         CategoryUserInCountry = cat
+        
+        # PHOTOS OF USER IN COUNTRY WITH ARCHITECTURE STYLE
         
         #check is any wikidata object is building and it has architecture style with commons category
         prop='P149' #architecture style
@@ -1292,6 +1295,43 @@ class Fileprocessor:
 [[Category:'''+CategoryUserInCountry+''']]'''
                     need_create_categories.append({'name':cat_for_claim,'content':cat_content})
                     usercat_categories.add(cat_for_claim)
+                    del cat_for_claim
+                    
+        # BUILING DATE START
+        temp_wikidata_list = list()
+        temp_wikidata_list = secondary_wikidata_ids+[wikidata]
+        for wdid in temp_wikidata_list:
+            if modelwiki.is_subclass_of_building(wdid):
+                wd=modelwiki.get_wikidata_simplified(wdid)
+                prop=''
+                if 'P1619' in wd['claims']: 
+                    prop='P1619' #date of official opening
+                elif  'P571' in wd['claims']:
+                    prop='P571' #date of official opening
+                else:
+                    continue
+                for claim in wd['claims'][prop]:
+                    decade=claim['value'][:3]+'0'
+                    cat_for_claim = f'{CategoryUserInCountry}/{decade}s architecture'
+                    cat_content='''{{Usercat}}
+{{GeoGroup}}
+[[Category:'''+CategoryUserInCountry+''']]
+[[Category:'''+CategoryUser+'/'+decade+'''s architecture]]
+'''
+                    need_create_categories.append({'name':cat_for_claim,'content':cat_content})
+                    usercat_categories.add(cat_for_claim)
+                    
+                    cat_for_claim = f'{CategoryUser}/{decade}s architecture'
+                    cat_content='''{{Usercat}}
+{{GeoGroup}}
+[[Category:'''+CategoryUser+''']]
+'''
+                    need_create_categories.append({'name':cat_for_claim,'content':cat_content})                  
+                    del cat_for_claim
+                        
+        
+        # END OF USERCAT CHECKS
+        # when not found any special user categories: use CategoryUserInCountry       
         if len(usercat_categories)==0:
             usercat_categories.add(CategoryUserInCountry)
         

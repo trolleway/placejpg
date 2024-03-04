@@ -206,7 +206,7 @@ class Fileprocessor:
         object_wd = json.loads(response.stdout.decode())
         return object_wd['labels']
     
-    def get_place_from_input(self,filename:str,street:str,geo_dict:dict)->str:
+    def get_place_from_input(self,filename:str,street:str,geo_dict:dict,override_key='placeQ',geodata_attribute='wikidata')->str:
             '''
             return wikidata id of photo place
             diffirent input variants accepted:
@@ -224,7 +224,7 @@ class Fileprocessor:
             modelwiki = Model_wiki_ask()
             
             # take place from filename if present
-            if 'placeQ' in os.path.basename(filename):
+            if override_key in os.path.basename(filename):
                 street_wdid = self.get_placewikidatalist_from_string(
                     os.path.basename(filename))[0]
             elif os.path.isfile(street):
@@ -241,7 +241,7 @@ class Fileprocessor:
                 else:
                     lat=geo_dict.get("lat")
                     lon=geo_dict.get("lon")
-                street_wdid = modelgeo.identify_deodata(lat, lon, regions_filepath, 'wikidata')
+                street_wdid = modelgeo.identify_deodata(lat, lon, regions_filepath, geodata_attribute)
                 if street_wdid is None:
                     msg = f'file:{regions_filepath} https://geohack.toolforge.org/geohack.php?params={lat};{lon}_type:camera'
                     self.logger.error(filename.ljust(
@@ -303,6 +303,14 @@ class Fileprocessor:
 
             wikidata_4_structured_data.add(city_wd['id'])
         
+        # Optionaly obtain country from gpkg file if country parameter is path to vector file (.gpkg)
+        if os.path.isfile(country):
+            country = self.get_place_from_input(filename,country,geo_dict,override_key='_location',geodata_attribute='name:en')
+            if country is None:
+                #place should taken from gpkg, but not found
+                return None  
+
+                
         # TAKEN ON LOCATION
         # search filename for pattern "_locationMoscow-Oblast"
         import re
@@ -1021,82 +1029,8 @@ class Fileprocessor:
 
         return text,categories
 
-    def make_image_texts_standalone(self, filename, wikidata, secondary_wikidata_ids) -> dict:
-        from model_wiki import Model_wiki as Model_wiki_ask
-        modelwiki = Model_wiki_ask()
 
-        # Optionaly obtain wikidata from gpkg file if wikidata parameter is path to vector file (.gpkg)
-        if os.path.isfile(wikidata):
-            street=wikidata
-            geo_dict = self.image2coords(filename)
-            wikidata = self.get_place_from_input(filename,street,geo_dict)
-            del geo_dict
-            del street
 
-        wd_record = modelwiki.get_wikidata_simplified(wikidata)
-
-        instance_of_data = list()
-        for i in wd_record['claims']['P31']:
-            instance_of_data.append(
-                modelwiki.get_wikidata_simplified(i['value']))
-
-        objectnames = {}
-        #TODO switch from hardcoded names to config
-        assert 'en' in wd_record['labels'], 'object https://www.wikidata.org/wiki/' + \
-            wd_record['id']+' must has name en'
-        objectnames['en'] = wd_record['labels']["en"]
-        objectnames['ru'] = wd_record['labels']["ru"]
-
-        objectname_long_ru = ''
-        objectname_long_en = ''
-        if len(instance_of_data) > 0:
-            objectname_long_ru = ', '.join(
-                d['labels']['ru'] for d in instance_of_data) + ' '+wd_record['labels']["ru"]
-            objectname_long_en = ', '.join(
-                d['labels']['en'] for d in instance_of_data) + ' '+wd_record['labels']["en"]
-
-        commons_filename = self.commons_filename(
-            filename, objectnames, wikidata, dt_obj=self.image2datetime(filename))
-
-        objects_wikidata = list()
-        for obj_wdid in secondary_wikidata_ids:
-            obj_wdid = self.take_user_wikidata_id(obj_wdid)
-            obj_wd = modelwiki.get_wikidata_simplified(obj_wdid)
-            objects_wikidata.append(obj_wd)
-        for obj_wd in objects_wikidata:
-            try:
-                objectname_long_ru = objectname_long_ru + \
-                    ', ' + obj_wd['labels']['ru']
-                objectname_long_en = objectname_long_en + \
-                    ', ' + obj_wd['labels']['en']
-            except:
-                raise ValueError('object https://www.wikidata.org/wiki/' +
-                                 obj_wd['id']+' must has name ru and name en')
-
-        j = {'new_filename': commons_filename,
-             'ru': objectname_long_ru, 'en': objectname_long_en}
-        return j
-
-    def copy_image4standalone(self, filename, new_filename):
-        images_dir = '2standalone'
-        if not os.path.isdir(images_dir):
-            os.makedirs(images_dir)
-        new_filename = os.path.join(images_dir, new_filename)
-        shutil.copy2(filename, new_filename)
-
-    def create_json4standalone(self, filename, commons_filename, text_ru, text_en):
-        images_dir = '2standalone'
-        if not os.path.isdir(images_dir):
-            os.makedirs(images_dir)
-        new_filename = os.path.join(images_dir, commons_filename)
-        j = dict()
-        j['caption'] = text_ru
-        j['caption_en'] = text_en
-        j['hotlink_commons'] = 'https://commons.wikimedia.org/wiki/File:' + \
-            commons_filename
-        json_filename = os.path.splitext(new_filename)[0]+'.json'
-        with open(json_filename, 'w') as fp:
-            json.dump(j, fp)
 
     def make_image_texts_simple(
         self, filename, wikidata, country='', rail='', secondary_wikidata_ids=list(), quick=False
@@ -1129,7 +1063,14 @@ class Fileprocessor:
             if wikidata is None:
                 #place should taken from gpkg, but not found
                 return None
-       
+
+        # Optionaly obtain country from gpkg file if country parameter is path to vector file (.gpkg)
+        if os.path.isfile(country):
+            country = self.get_place_from_input(filename,country,geo_dict,override_key='_location',geodata_attribute='name:en')
+            if country is None:
+                #place should taken from gpkg, but not found
+                return None   
+                
         wd_record = modelwiki.get_wikidata_simplified(wikidata)
         
         if wd_record["commons"] is None: 
@@ -1324,7 +1265,8 @@ class Fileprocessor:
         temp_wikidata_list = list()
         temp_wikidata_list = secondary_wikidata_ids+[wikidata]
         for wdid in temp_wikidata_list:
-            if modelwiki.is_subclass_of_building(wdid):
+            # is this building but not transport infrastructure (station)
+            if modelwiki.is_subclass_of_building(wdid) and not modelwiki.is_subclass_of(wdid,'Q376799'):
                 wd=modelwiki.get_wikidata_simplified(wdid)
                 prop=''
                 if 'P1619' in wd['claims']: 
@@ -1668,7 +1610,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
     def check_extension_valid(self, filepath) -> bool:
         ext = os.path.splitext(filepath)[1].lower()[1:]
         allowed = ['tiff', 'tif', 'png', 'gif', 'jpg', 'jpeg', 'webp', 'xcf', 'mid', 'ogg', 'ogv',
-                   'svg', 'djvu', 'stl', 'oga', 'flac', 'opus', 'wav', 'webm','mp4', 'mp3', 'midi', 'mpg', 'mpeg']
+                   'svg', 'djvu', 'stl', 'oga', 'flac', 'opus', 'wav', 'webm','mp4','mov', 'mp3', 'midi', 'mpg', 'mpeg']
         if ext in allowed:
             return True
         return False
@@ -1706,7 +1648,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                 except:
                     dt_obj = None
                     cmd = [self.exiftool_path, path, "-datetimeoriginal", "-csv"]
-                    if path.lower().endswith('.mp4'):
+                    if path.lower().endswith(('.mp4','.mov')):
                         cmd = [self.exiftool_path, path, "-createdate", "-csv"]
                         self.logger.debug('video')
 
@@ -2109,10 +2051,6 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 wikidata_list += secondary_wikidata_ids
 
                 
-
-                #standalone_captions_dict = self.make_image_texts_standalone(
-                #    filename, wikidata, secondary_wikidata_ids)
-                
                 wikidata_list_upperlevel = list()
                 for wd in wikidata_list:
                     entity_list = modelwiki.wikidata2instanceof_list(wd)
@@ -2182,16 +2120,16 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 filename = filename_webp
                 texts["name"] = texts["name"].replace('.tif', '.webp')
                 
-            if filename.lower().endswith('.mp4'):
+            if filename.lower().endswith(('.mp4','.mov')):
                 video_converted_filename=self.convert_to_webm(filename)
-            if filename.lower().endswith('.mp4') and os.path.isfile(video_converted_filename):
+            if filename.lower().endswith(('.mp4','.mov')) and os.path.isfile(video_converted_filename):
                 print(
                     'found mp4 and webm file with same name. upload webm with fileinfo from mp4')
                 if not dry_run:
                     self.move_file_to_uploaded_dir(
                         filename, uploaded_folder_path)
                 filename = video_converted_filename
-                texts["name"] = texts["name"].replace('.mp4', '.webm').replace('.MP4', '.webm')        
+                texts["name"] = texts["name"].replace('.mp4', '.webm').replace('.MP4', '.webm').replace('.MOV', '.webm').replace('.mov', '.webm')         
                 
 
             print(texts["name"])
@@ -2357,7 +2295,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
 
     def convert_to_webm(self,filename)->str:
         # convert video to webm vp9. files not overwriten
-        filename_dst = filename.replace('.mp4', '.webm').replace('.MP4', '.webm')
+        filename_dst = filename.replace('.mp4', '.webm').replace('.MP4', '.webm').replace('.MOV', '.webm').replace('.mov', '.webm')  
         if os.path.isfile(filename_dst): return filename_dst
 
         cmd = ['ffmpeg', '-i',filename, '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '30', '-pass', '1', '-row-mt', '1', '-an', '-f', 'webm', '-y', '/dev/null']

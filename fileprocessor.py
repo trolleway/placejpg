@@ -224,7 +224,10 @@ class Fileprocessor:
             modelwiki = Model_wiki_ask()
             
             # take place from filename if present
-            if override_key in os.path.basename(filename):
+            #print(os.path.basename(filename))
+            #print(override_key in os.path.basename(filename))
+            if os.path.basename(filename).find(override_key)>0:
+                #print('signal')
                 street_wdid = self.get_placewikidatalist_from_string(
                     os.path.basename(filename))[0]
             elif os.path.isfile(street):
@@ -968,6 +971,19 @@ class Fileprocessor:
 
         return lst
 
+    def get_prefixpart_from_string(self, test_str: str) -> list:
+        # from string 2002_20031123__r32_colorgray_colorblue_prefixCity-Name_wikidataAntonovka.jpg  returns 'City Name'
+        # 2002_20031123__r32_colorgray_colorblue_prefixttttt343_placeQ12345_wikidataAntonovka.jpg
+
+        import re
+        # cut to . symbol if extsts
+        test_str = test_str[0:test_str.index('.')]
+        regex = r"prefix(.*?)[_.]\w*?"
+        findings = re.findall(regex, test_str)
+        if len(findings)==0: return None
+        
+        return findings[0]
+        
     def get_date_information_part(self, dt_obj, taken_on_location):
         st = ''
         st += (
@@ -2131,9 +2147,12 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 filename = video_converted_filename
                 texts["name"] = texts["name"].replace('.mp4', '.webm').replace('.MP4', '.webm').replace('.MOV', '.webm').replace('.mov', '.webm')         
                 
-
+            prefix = self.get_prefixpart_from_string(filename)
+            if prefix is not None:
+                texts["name"] = prefix+'_'+texts["name"]
             print(texts["name"])
             print(texts["text"])
+            
 
             #remove duplicates
             wikidata_list = list(dict.fromkeys(wikidata_list))

@@ -224,10 +224,7 @@ class Fileprocessor:
             modelwiki = Model_wiki_ask()
             
             # take place from filename if present
-            #print(os.path.basename(filename))
-            #print(override_key in os.path.basename(filename))
             if os.path.basename(filename).find(override_key)>0:
-                #print('signal')
                 street_wdid = self.get_placewikidatalist_from_string(
                     os.path.basename(filename))[0]
             elif os.path.isfile(street):

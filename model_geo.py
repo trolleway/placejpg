@@ -1,6 +1,6 @@
 
 from osgeo import ogr, gdal, osr
-import logging,pprint
+import logging,pprint,os
 
 class Model_Geo:
     logging.basicConfig(
@@ -11,6 +11,8 @@ class Model_Geo:
     logger = logging.getLogger(__name__)
     pp = pprint.PrettyPrinter(indent=4)
     gdal.UseExceptions()
+    
+    not_found_geodata = 'not_found.geojson'
     
     def make_search_rect(self,pointgeom):
         
@@ -67,4 +69,32 @@ class Model_Geo:
                 return None
             del srclayer
             del srcds
-            return val            
+            return val   
+        
+    def save_not_found_geom(self,lat,lon,filepath):
+        
+        if not os.path.isfile(self.not_found_geodata): 
+            driver = ogr.GetDriverByName("GeoJSON")
+            ds = driver.CreateDataSource(self.not_found_geodata)
+            layer = ds.CreateLayer("not_found", geom_type=ogr.wkbPoint)
+            layerDefn = layer.GetLayerDefn()
+            filenameField = ogr.FieldDefn("filename", ogr.OFTString)
+            layer.CreateField(filenameField)
+        else:
+            driver = ogr.GetDriverByName("GeoJSON")
+
+            ds = driver.Open(self.not_found_geodata, 1) # 0 means read-only. 1 means writeable.
+            #ds = gdal.Open(self.not_found_geodata,gdal.OF_UPDATE)
+            layer = ds.GetLayer()
+        
+        featureDefn = layer.GetLayerDefn()
+        feature = ogr.Feature(featureDefn)
+        point = ogr.Geometry(ogr.wkbPoint)
+        point.AddPoint(lon, lat)
+        feature.SetGeometry(point)
+        feature.SetField("filename", filepath)
+        layer.CreateFeature(feature)
+        feature = None
+        
+        layer=None
+        ds = None

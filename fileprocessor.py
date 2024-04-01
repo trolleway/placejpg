@@ -246,6 +246,7 @@ class Fileprocessor:
                     msg = f'file:{regions_filepath} https://geohack.toolforge.org/geohack.php?params={lat};{lon}_type:camera'
                     self.logger.error(filename.ljust(
                         40) + ' not found location in '+msg+'')
+                    modelgeo.save_not_found_geom(lat,lon,filename)
                     return None
                 #street_wd = modelwiki.get_wikidata_simplified(street_wdid)
             else:

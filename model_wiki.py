@@ -199,7 +199,7 @@ class Model_wiki:
         for page in gen2:
 
             self.page_template_taken_on(
-                page, location, dry_run, interactive, verbose=False)
+                page, location, dry_run, interactive, verbose=False, message=f'Set taken on location={location} for files in category {categoryname}')
             pbar.update(1)
         pbar.close()
 
@@ -771,7 +771,7 @@ class Model_wiki:
             self.wikidata_cache, self.wikidata_cache_filename)
         return object_record
 
-    def page_template_taken_on(self, page, location, dry_run=True, interactive=False, verbose=True):
+    def page_template_taken_on(self, page, location, dry_run=True, interactive=False, verbose=True,message='set Taken on location for manual set list of images'):
         assert page
         texts = dict()
         page_not_need_change = False
@@ -858,7 +858,7 @@ class Model_wiki:
         if not dry_run and not interactive:
             page.text = texts[2]
             if page_not_need_change == False:
-                page.save('set Taken on location for manual set list of images')
+                page.save(message)
             self.create_category_taken_on_day(location, datestr)
         else:
             print('page not changing')
@@ -870,7 +870,7 @@ class Model_wiki:
 
             if answer in ["yes", "y", "1"]:
                 page.text = texts[2]
-                page.save('set Taken on location with manual preview')
+                page.save(message+' with manual preview')
                 self.create_category_taken_on_day(location, datestr)
 
 

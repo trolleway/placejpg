@@ -41,9 +41,12 @@ class Model_Geo:
             # Return None if the geometry is not a linestring
             return None
     
-    def identify_deodata(self,lat,lon,filepath,fieldname)->str:
+    def identify_deodata(self,lat,lon,filepath,fieldname='',layer=None)->str:
         srcds = gdal.OpenEx(filepath,gdal.OF_READONLY)
-        srclayer = srcds.GetLayer()
+        if layer is None:
+            srclayer = srcds.GetLayer()
+        else:
+            srclayer = srcds.GetLayerByName(layer)
         
         point_geom = ogr.Geometry(ogr.wkbPoint)
         point_geom.AddPoint(lon, lat)

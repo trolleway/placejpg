@@ -206,7 +206,7 @@ class Fileprocessor:
         object_wd = json.loads(response.stdout.decode())
         return object_wd['labels']
     
-    def get_place_from_input(self,filename:str,street:str,geo_dict:dict,override_key='placeQ',geodata_attribute='wikidata')->str:
+    def get_place_from_input(self,filename:str,street:str,geo_dict:dict,override_key='placeQ',geodata_attribute='wikidata',layer=None)->str:
             '''
             return wikidata id of photo place
             diffirent input variants accepted:
@@ -241,7 +241,7 @@ class Fileprocessor:
                 else:
                     lat=geo_dict.get("lat")
                     lon=geo_dict.get("lon")
-                street_wdid = modelgeo.identify_deodata(lat, lon, regions_filepath, geodata_attribute)
+                street_wdid = modelgeo.identify_deodata(lat, lon, regions_filepath, layer=layer, fieldname=geodata_attribute)
                 if street_wdid is None:
                     msg = f'file:{regions_filepath} https://geohack.toolforge.org/geohack.php?params={lat};{lon}_type:camera'
                     self.logger.error(filename.ljust(
@@ -396,8 +396,7 @@ class Fileprocessor:
                 city_name_en = None
                 city_name_ru = None
 
-        elif system is None:
-
+        if system is None or (city_name_en is None or city_name_ru is None):
             city_wd = modelwiki.get_territorial_entity(street_wd)
             try:
                 city_name_en = city_wd['labels']['en']
@@ -407,6 +406,8 @@ class Fileprocessor:
                                  city_wd['id']+' must has name ru and name en')
             if city_wd['id'] not in wikidata_4_structured_data:
                 wikidata_4_structured_data.add(city_wd['id'])
+        
+        assert city_name_en is not None
 
         # LINE
         line_wdid = None
@@ -774,13 +775,7 @@ class Fileprocessor:
                     transports=transports_color[vehicle].lower(),
                     colorname=colorname)
 
-        # vehicle to wikidata
-            vehicles_wikidata = {"trolleybus": "Q5639", "bus": "Q5638",
-                                 "tram": "Q3407658", "auto": "Q1420", "locomotive": "Q93301", "train": "Q870"}
-            if vehicle in vehicles_wikidata:
-                wikidata_4_structured_data.add(vehicles_wikidata[vehicle])
-            if vehicle in train_synonims:
-                wikidata_4_structured_data.add(vehicles_wikidata['train'])
+
 
         # number
         has_category_for_this_vehicle = False
@@ -893,6 +888,22 @@ class Fileprocessor:
             assert catname is not None, 'none value in categories:' + str(categories)+' '+filename
             catname = catname.replace('Category:', '')
             text += "[[Category:"+catname+"]]" + "\n"
+        
+        #optional add city to SDC by coordinate
+
+        city_wdid = None
+        if os.path.isfile('building-generator.gpkg'):
+            city_wdid = self.get_place_from_input(filename,'building-generator.gpkg',geo_dict,layer='cities',override_key='_city',geodata_attribute='wikidata') or ''
+            if city_wdid is not None: wikidata_4_structured_data.add(city_wdid)
+            
+        # add transport type to SDC
+        # vehicle to wikidata
+        vehicles_wikidata = {"trolleybus": "Q5639", "bus": "Q5638",
+                             "tram": "Q3407658", "auto": "Q1420", "locomotive": "Q93301", "train": "Q870"}
+        if vehicle in vehicles_wikidata:
+            wikidata_4_structured_data.add(vehicles_wikidata[vehicle])
+        if vehicle in train_synonims:
+            wikidata_4_structured_data.add(vehicles_wikidata['train'])
 
         assert None not in wikidata_4_structured_data, 'empty value added to structured data set:' + \
             str(' '.join(list(wikidata_4_structured_data)))
@@ -968,18 +979,7 @@ class Fileprocessor:
 
         return lst
 
-    def get_prefixpart_from_string(self, test_str: str) -> list:
-        # from string 2002_20031123__r32_colorgray_colorblue_prefixCity-Name_wikidataAntonovka.jpg  returns 'City Name'
-        # 2002_20031123__r32_colorgray_colorblue_prefixttttt343_placeQ12345_wikidataAntonovka.jpg
 
-        import re
-        # cut to . symbol if extsts
-        test_str = test_str[0:test_str.index('.')]
-        regex = r"prefix(.*?)[_.]\w*?"
-        findings = re.findall(regex, test_str)
-        if len(findings)==0: return None
-        
-        return findings[0]
         
     def get_date_information_part(self, dt_obj, taken_on_location):
         st = ''
@@ -1083,6 +1083,11 @@ class Fileprocessor:
             if country is None:
                 #place should taken from gpkg, but not found
                 return None   
+        
+        # Optionaly obtain prefix from gpkg file
+        prefix = ''
+        if os.path.isfile('prefixes.gpkg'):
+            prefix = self.get_place_from_input(filename,'prefixes.gpkg',geo_dict,override_key='_prefix',geodata_attribute='name:en') or ''
                 
         wd_record = modelwiki.get_wikidata_simplified(wikidata)
         
@@ -1345,7 +1350,7 @@ class Fileprocessor:
             text += "[[Category:"+catname+"]]" + "\n"
 
         commons_filename = self.commons_filename(
-            filename, objectnames, wikidata, dt_obj, add_administrative_name=False)
+            filename, objectnames, wikidata, dt_obj, add_administrative_name=False, prefix=prefix)
 
         return {"name": commons_filename, 
                 "text": text, 
@@ -1354,7 +1359,7 @@ class Fileprocessor:
                 "need_create_categories":need_create_categories,
                 "wikidata":wikidata}
 
-    def commons_filename(self, filename, objectnames, wikidata, dt_obj, add_administrative_name=True) -> str:
+    def commons_filename(self, filename, objectnames, wikidata, dt_obj, add_administrative_name=True, prefix='') -> str:
         # file name on commons
 
         from model_wiki import Model_wiki as Model_wiki_ask
@@ -1372,9 +1377,14 @@ class Fileprocessor:
                 + " "
                 + building_info["addr:housenumber:en"]
             )
+        commons_filename = ''
+        
+        if prefix != '': commons_filename = f"{prefix}_"
+
+        
 
         commons_filename = (
-            objectnames['en'] + " " +
+            commons_filename + objectnames['en'] + " " +
             dt_obj.strftime("%Y-%m %s") + filename_extension
         )
         commons_filename = commons_filename.replace("/", " drob ")
@@ -1389,6 +1399,7 @@ class Fileprocessor:
             except:
                 pass
 
+        
         return commons_filename
 
     def take_user_wikidata_id(self, wdid) -> str:
@@ -1966,7 +1977,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             print(filepath.ljust(50)+' '+' not exist')
             quit()
         assert os.path.exists(filepath)
-        assert desc_dict['mode'] in ['object', 'vehicle', 'building']
+        assert desc_dict['mode'] in ['object', 'vehicle']
 
         assert 'country' in desc_dict
 
@@ -2144,9 +2155,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 filename = video_converted_filename
                 texts["name"] = texts["name"].replace('.mp4', '.webm').replace('.MP4', '.webm').replace('.MOV', '.webm').replace('.mov', '.webm')         
                 
-            prefix = self.get_prefixpart_from_string(filename)
-            if prefix is not None:
-                texts["name"] = prefix+'_'+texts["name"]
+
             print(texts["name"])
             print(texts["text"])
             

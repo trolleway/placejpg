@@ -13,7 +13,12 @@ from urllib.parse import urlparse
 parser = argparse.ArgumentParser(
     description=" ")
 
-parser.add_argument('--pagename', type=str, required=True, help='Wikipedia filepage')
+group = parser.add_mutually_exclusive_group()
+
+group.add_argument('--pagename', type=str, required=False, help='Wikipedia filepage')
+group.add_argument('--category', type=str, required=False, help='Wikipedia filepage')
+
+
 parser.add_argument('--location', type=str, required=True)
 parser.add_argument('--interactive', type=bool, required=False,default=False)
 
@@ -26,8 +31,14 @@ if __name__ == '__main__':
     modelwiki = Model_wiki()
 
 
-    pagename=args.pagename
+    if args.pagename:
+        modelwiki.url_add_template_taken_on(pagename=args.pagename, location=args.location,verbose=True,interactive=args.interactive)
+    elif args.category:
+        modelwiki.category_add_template_taken_on(categoryname=args.category, location=args.location,dry_run=False,interactive=args.interactive)
+        
     
-    modelwiki.url_add_template_taken_on(pagename=pagename, location=args.location,verbose=True,interactive=args.interactive)
+    
+    
+    
     
     

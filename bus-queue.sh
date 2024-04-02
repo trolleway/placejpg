@@ -148,6 +148,7 @@ python3 vehicle-upload.py -v bus --system Q4304026  --model Q123508034#   i/_bus
 python3 vehicle-upload.py -v bus --system $mosbus  --model $MAZ203   i/_buses/moscow/avtoline_MAZ203 --country Moscow --number BEFORE_UNDERSCORE  --operator-vehicle-category "Avtoline buses in Moscow"  --progress --street trolleybus.gpkg 
 
 #rare
+python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz5293   i/_buses/moscow/mgt_liaz5293 --country Moscow --number BEFORE_UNDERSCORE   --progress  --operator-vehicle-category "Mosgortrans buses" --street trolleybus.gpkg 
 #python3 vehicle-upload.py -v bus --system $mosbus  --model $VDL_Citea_SLE_120   i/_buses/moscow/VDL_Citea_SLE_120 --country Moscow --number BEFORE_UNDERSCORE    --progress --street trolleybus.gpkg 
 #python3 vehicle-upload.py -v bus --system $mosbus  --model $Volzanin528501   i/_buses/moscow/mgt_Volzanin528501 --country Moscow --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 

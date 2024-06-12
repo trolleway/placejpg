@@ -16,6 +16,8 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--pagename', type=str, required=False, help='Wikipedia filepage')
 parser.add_argument('--wikidata', type=str, required=False)
 parser.add_argument('--suffix', type=str, required=False,default='')
+parser.add_argument('--prefix', type=str, required=False,default='')
+parser.add_argument('--rationale', type=int, required=False,default=2,help='1.	At the original uploader’s request, 2 .	To change from a meaningless or ambiguous name to a name that describes what the image particularly displays 3 obvious errors 4  harmonize the names of a set of images 5 violation of Commons’ policies and guidelines 6 Non-controversial maintenance and bug fixes')
 parser.add_argument("--verify", action="store_const",
                     required=False, default=False, const=True)
 
@@ -71,8 +73,10 @@ class Helper_rename:
                 filename, objectnames, wikidata, dt_obj,add_administrative_name=False)
         return commons_filename
     
-    def generate_rename_template(self,new_name:str)->str:
-        text='{{Rename|1='+new_name+'|2=2|3=human-readable name from wikidata name}}'
+    def generate_rename_template(self,new_name:str,rationale:int)->str:
+        assert rationale >= 0 
+        assert rationale <=6
+        text='{{Rename|1='+new_name+'|2='+str(rationale)+'|3=human-readable name from wikidata name}}'
         return text
     
     def prepend_text(self,text,new_text,check='')->str:
@@ -89,6 +93,13 @@ class Helper_rename:
         fns=fns.replace('.','_'+suffix+'.')
         return fns
     
+    def append_prefix(self,fns,prefix):
+        if prefix=='':
+            return fns
+        assert fns.count('.')==1
+        fns = f'{prefix}_{fns}'
+
+        return fns    
 
     
     def prepend_text_page(self,pagename,rename_template_text):
@@ -124,8 +135,10 @@ if __name__ == '__main__':
     
     new_name = helper_renamer.generate_filename(pagename,wikidata)
     suffix = args.suffix
+    prefix = args.prefix
+    new_name = helper_renamer.append_prefix(new_name,prefix)
     new_name = helper_renamer.append_suffix(new_name,suffix)
-    rename_template_text = helper_renamer.generate_rename_template(new_name)
+    rename_template_text = helper_renamer.generate_rename_template(new_name,rationale=args.rationale)
     
     verify=args.verify
     mode = 'change'

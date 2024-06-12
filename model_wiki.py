@@ -23,6 +23,8 @@ import re
 import traceback
 from tqdm import tqdm
 
+import traceback
+
 
 from fileprocessor import Fileprocessor
 
@@ -698,14 +700,21 @@ class Model_wiki:
         
     def get_wikidata_simplified(self, entity_id) -> dict:
         assert entity_id is not None
+        assert str(entity_id) != ''
         # get all claims of this wikidata objects
         if entity_id in self.wikidata_cache['entities_simplified']:
             return self.wikidata_cache['entities_simplified'][entity_id]
 
         site = pywikibot.Site("wikidata", "wikidata")
-        entity = pywikibot.ItemPage(site, entity_id)
-        entity.get()
-
+        try:
+            entity = pywikibot.ItemPage(site, entity_id)
+            entity.get()
+        except:
+            traceback.print_exc()
+            self.logger.error('invalid wikidata entity. Open it in browser and try to fix. https://www.wikidata.org/wiki/' +
+                             entity_id)
+            quit()
+             
         object_record = {'labels': {}}
 
         labels_pywikibot = entity.labels.toJSON()
@@ -1239,7 +1248,36 @@ class Model_wiki:
             print('invalid date: '+text)
             return False
         return text
-    
+        
+
+    def create_category_by_wikidata(self,street_wikidata:str)-> str:
+        if street_wikidata is None:
+            return None
+            
+        street_wd = self.get_wikidata_simplified(street_wikidata)
+        city_wikidata = street_wd['claims']['P131'][0]['value']
+        city_wd = self.get_wikidata_simplified(city_wikidata)
+
+                
+        # MAKE CATEGORY NAME
+        streetname = street_wd['labels']['en']
+        cityname = city_wd['labels']['en']
+        catname = f'{streetname}'
+        uppercat = self.get_category_object_in_location(street_wd['claims']['P31'][0]['value'],city_wikidata,verbose=True)
+        content = """{{Wikidata infobox}}
+        {{GeoGroup}}
+        [[Category:%uppercat%]]
+        """
+        content = content.replace('%uppercat%',uppercat)
+        content = content.replace('%cityname%',cityname)
+        if not self.is_category_exists(catname):
+            self.create_category(catname,content)
+            self.wikidata_add_commons_category(street_wikidata,catname)
+        else:
+            print('category already exists')
+
+        return catname
+        
     def create_street_category(self,street_wikidata:str, city_wikidata:str=None)-> str:
         if street_wikidata is None:
             return None
@@ -1901,6 +1939,9 @@ class Model_wiki:
 
         return None
 
+
+
+        
     def append_image_descripts_claim(self, commonsfilename, entity_list, dry_run=False)->bool:
 
         assert isinstance(entity_list, list)
@@ -2262,3 +2303,17 @@ class Model_wiki:
         self.wikidata_cache_save(
             self.wikidata_cache, self.wikidata_cache_filename)
         return None
+        
+    def print_category_filenames(self,categoryname, start:int=None,total:int=None):
+        """ print list of files in category to terminal for bash pipelines"""
+        
+        site = pywikibot.Site("commons", "commons")
+        site.login()
+        site.get_tokens("csrf")  # preload csrf token
+        category = pywikibot.Category(site, categoryname)
+        
+
+        gen1 = pagegenerators.CategorizedPageGenerator(
+            category, recurse=0, start=start, total=total, content=False, namespaces=None)
+        for page in gen1:
+            print(page.title().replace('File:',''))

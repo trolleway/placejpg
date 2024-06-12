@@ -267,9 +267,9 @@ class Fileprocessor:
         need_create_categories = list()
 
         vehicle_names = {'ru': {'tram': 'трамвай', 'trolleybus': 'троллейбус',
-                                'bus': 'автобус', 'train': 'поезд', 'locomotive': 'локомотив', 'auto': 'автомобиль', 'plane': 'самолёт'}}
+                                'bus': 'автобус', 'train': 'поезд', 'locomotive': 'локомотив', 'auto': 'автомобиль', 'plane': 'самолёт','metro':'метропоезд'}}
         wikidata_4_structured_data = set()
-        train_synonims = ['train', 'locomotive', 'emu', 'dmu']
+        train_synonims = ['train', 'locomotive', 'emu', 'dmu','metro']
 
         # assert facing in ('Left','Right',None)
 
@@ -574,6 +574,7 @@ class Fileprocessor:
             'trolleybus': 'Trolleybuses',
             'bus': 'Buses',
             'train': 'Rail vehicles',
+            'metro': 'Rail vehicles',
             'locomotive': 'Locomotives',
             'auto': 'Automobiles'
         }
@@ -582,6 +583,7 @@ class Fileprocessor:
             'trolleybus': 'Trolleybuses',
             'bus': 'Buses',
             'train': 'Rail vehicles',
+            'metro': 'Rail vehicles',
             'locomotive': 'Rail vehicles',
             'auto': 'Automobiles'
         }
@@ -590,6 +592,7 @@ class Fileprocessor:
             'trolleybus': 'Q5639',
             'bus': 'Q5638',
             'train': 'Q1414135',
+            'subway':'Q1414135',
             'locomotive': 'Q93301',
             'auto': 'Q1420'
         
@@ -999,7 +1002,7 @@ class Fileprocessor:
 
     def get_tech_description(self, filename, geo_dict):
         text = ''
-        if 'stitch' in filename:
+        if 'stitch' in filename or 'pano' in filename.lower():
             text = text + "{{Panorama}}" + "\n"
 
         if geo_dict is not None:
@@ -1037,7 +1040,7 @@ class Fileprocessor:
 
         if 'ShiftN' in filename:
             categories.add('Corrected with ShiftN')
-        if 'stitch' in filename:
+        if 'stitch' in filename or 'pano' in filename.lower():
             categories.add('Photographs by ' + self.photographer + '/Stitched panoramics')
         categories.add('Uploaded with Placejpg')
 
@@ -2163,6 +2166,8 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
 
             #remove duplicates
             wikidata_list = list(dict.fromkeys(wikidata_list))
+            while("" in wikidata_list):
+                wikidata_list.remove("")
             
             #print wikidata entitines for append
             templist=list()

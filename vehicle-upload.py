@@ -20,7 +20,7 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument("filepath")
 parser.add_argument('-v', '--vehicle', type=str, required=True, choices=[
-                    'tram', 'trolleybus', 'bus', 'train', 'locomotive', 'station', 'auto'])
+                    'tram', 'trolleybus', 'bus', 'train', 'locomotive', 'station', 'auto','metro'])
 parser.add_argument('-sys', '--system', type=str, required=False,
                     help='wikidata id or wikidata name of transport system. Not applied to "auto" ')
 parser.add_argument('-c', '--city', type=str, required=False,

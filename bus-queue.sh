@@ -30,6 +30,7 @@ ktg=Q4220243
 svarzmaz6275=Q4402988
 svarzmaz6235=Q4402985
 admiral=Q97278541
+MAZ203T=Q4273304
 
 ikarus256=Q846220
 ikarus260=Q897765
@@ -41,6 +42,7 @@ liaz5292=Q4260755
 liaz5293=Q4260759
 liaz6212=Q4260761
 liaz6213=Q10995629
+liaz6274=Q55658359
 Volgabus5270=Q4123082
 Volzanin528501=Q125210480
 Volgabus6270=Q16631389
@@ -66,6 +68,7 @@ golaz6228_3axle=Q4141289
 PAZ3237=Q2043741
 FIAT_Ducato_244=Q125203938
 VDL_Citea_SLE_120=Q125210502
+YaAZ_5267=Q4535783
 
 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $ZIU9   i/_trolleybuses/moscow/ZIU9  --number BEFORE_UNDERSCORE --country Moscow  --progress --street trolleybus.gpkg 
@@ -114,9 +117,27 @@ python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $ktg   i/_trol
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model Q4535800   i/_trolleybuses/cities/$city/yatb1  --number BEFORE_UNDERSCORE --country "Saint Petersburg"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $admiral   i/_trolleybuses/cities/$city/admiral  --number BEFORE_UNDERSCORE --country "Saint Petersburg"  --progress --street trolleybus.gpkg 
 
-#vitebsk_troll
-city=vitebsk
-SYSTEM=$vitebsktroll
+
+SYSTEM=Q4078421 #barnaul_troll
+city=barnaul
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $vmz529800   i/_trolleybuses/$city/vmz529800  --number BEFORE_UNDERSCORE --country "Altai Krai"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $ZIU9   i/_trolleybuses/$city/ziu9  --number BEFORE_UNDERSCORE --country "Altai Krai"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $BKM201   i/_trolleybuses/$city/BKM201  --number BEFORE_UNDERSCORE --country "Altai Krai"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $vmz52980150   i/_trolleybuses/$city/vmz52980150  --number BEFORE_UNDERSCORE --country "Altai Krai"  --progress --street trolleybus.gpkg 
+
+
+
+SYSTEM=Q4402672 #ryazan_troll
+city=ryazan
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $VZTM5284   i/_trolleybuses/$city/pig  --number BEFORE_UNDERSCORE --country "Ryazan Oblast"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $MAZ203T   i/_trolleybuses/$city/MAZ203T  --number BEFORE_UNDERSCORE --country "Ryazan Oblast"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $ZIU9   i/_trolleybuses/$city/ZIU9  --number BEFORE_UNDERSCORE --country "Ryazan Oblast"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $vmz529800   i/_trolleybuses/$city/vmz529800  --number BEFORE_UNDERSCORE --country "Ryazan Oblast"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $vmz529801   i/_trolleybuses/$city/vmz529801  --number BEFORE_UNDERSCORE --country "Ryazan Oblast"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $vmz52980150   i/_trolleybuses/$city/vmz52980150  --number BEFORE_UNDERSCORE --country "Ryazan Oblast"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $admiral   i/_trolleybuses/$city/admiral  --number BEFORE_UNDERSCORE --country "Ryazan Oblast"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $trolza5265   i/_trolleybuses/$city/trolza5265  --number BEFORE_UNDERSCORE --country "Ryazan Oblast"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $trolza5265   i/_trolleybuses/$city/trolza5265  --number BEFORE_UNDERSCORE --country "Ryazan Oblast"  --progress --street trolleybus.gpkg 
 
 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $kamaz6292   i/_buses/moscow/kamaz6292 --country Moscow --number BEFORE_UNDERSCORE   --operator-vehicle-category "Mosgortrans buses" --progress --street trolleybus.gpkg 
@@ -124,22 +145,23 @@ python3 vehicle-upload.py -v bus --system $mosbus  --model $kamaz6292   i/_buses
 python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz5256   i/_buses/moscow/mgt_liaz5256 --country Moscow --number BEFORE_UNDERSCORE   --progress  --operator-vehicle-category "Mosgortrans buses" --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz6212   i/_buses/moscow/mgt_liaz6212 --country Moscow --number BEFORE_UNDERSCORE --operator-vehicle-category "Mosgortrans buses"   --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz6213   i/_buses/moscow/mgt_liaz6213 --country Moscow --number BEFORE_UNDERSCORE --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz6274   i/_buses/moscow/mgt_liaz6274 --country Moscow --number BEFORE_UNDERSCORE --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $MAZ103   i/_buses/moscow/mgt_maz103 --country Moscow --number BEFORE_UNDERSCORE --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $MAZ107   i/_buses/moscow/mgt_maz107 --country Moscow --number BEFORE_UNDERSCORE --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $golaz6228_3axle   i/_buses/moscow/mgt_golaz6228_3axle --country Moscow --number BEFORE_UNDERSCORE --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $PAZ3237   i/_buses/moscow/mgt_PAZ3237 --country Moscow --number BEFORE_UNDERSCORE --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $ikarus260   i/_buses/moscow/mgt_ikarus260 --country Moscow --number BEFORE_UNDERSCORE    --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $ikarus280   i/_buses/moscow/mgt_ikarus280 --country Moscow --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mosgortrans buses" --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v bus --system $mosbus  --model $ikarus280   i/_buses/moscow/ikarus280 --country Moscow --number BEFORE_UNDERSCORE   --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $ikarus435   i/_buses/moscow/mgt_ikarus435 --country Moscow --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $ikarus415   i/_buses/moscow/mgt_ikarus415 --country Moscow --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $FIAT_Ducato_244   i/_buses/moscow/mgt_FIAT_Ducato_244 --country Moscow --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $MercedesBenz0325   i/_buses/moscow/mgt_MercedesBenz0325 --country Moscow --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $Volgabus6270   i/_buses/moscow/mgt_Volgabus6270 --country Moscow --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 
+python3 vehicle-upload.py -v bus --system $mosbus  --model $Volgabus5270   i/_buses/moscow/mgt_Volgabus5270 --country Moscow --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $nefaz529940   i/_buses/moscow/mgt_nefaz529940 --country Moscow --number BEFORE_UNDERSCORE   --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
-python3 vehicle-upload.py -v bus --system $mosbus  --model Q2529337#maz-103   i/_buses/moscow/maz-103 --country Moscow --number BEFORE_UNDERSCORE   --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model Q2529337#maz-206   i/_buses/moscow/maz-206 --country Moscow --number BEFORE_UNDERSCORE   --progress --street trolleybus.gpkg 
-python3 vehicle-upload.py -v bus --system $mosbus  --model Q55658359#liaz6274   i/_buses/moscow_liaz-6274 --country Moscow --number BEFORE_UNDERSCORE   --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz5292   i/_buses/moscow/mgt_liaz5292 --country Moscow --number BEFORE_UNDERSCORE    --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz5292   i/_buses/moscow/tmp20_liaz5292 --country Moscow --number BEFORE_UNDERSCORE  --operator-vehicle-category "TMP20 buses"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $MAN_LIONCOACH_R07   i/_buses/moscow/MAN_LIONCOACH_R07 --country Moscow --number BEFORE_UNDERSCORE   --progress --street trolleybus.gpkg 
@@ -149,8 +171,14 @@ python3 vehicle-upload.py -v bus --system $mosbus  --model $MAZ203   i/_buses/mo
 
 #rare
 python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz5293   i/_buses/moscow/mgt_liaz5293 --country Moscow --number BEFORE_UNDERSCORE   --progress  --operator-vehicle-category "Mosgortrans buses" --street trolleybus.gpkg 
+python3 vehicle-upload.py -v bus --system $mosbus  --model $YaAZ_5267   i/_buses/moscow/mgt_YaAZ_5267 --country Moscow --number BEFORE_UNDERSCORE   --progress  --operator-vehicle-category "Mosgortrans buses" --street trolleybus.gpkg 
 #python3 vehicle-upload.py -v bus --system $mosbus  --model $VDL_Citea_SLE_120   i/_buses/moscow/VDL_Citea_SLE_120 --country Moscow --number BEFORE_UNDERSCORE    --progress --street trolleybus.gpkg 
 #python3 vehicle-upload.py -v bus --system $mosbus  --model $Volzanin528501   i/_buses/moscow/mgt_Volzanin528501 --country Moscow --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
+
+
+SYSTEM=Q16271701
+city=ryazan
+python3 vehicle-upload.py -v bus --system $SYSTEM  --model $liaz5292   i/_buses/ryazan/liaz5292 --country "Ryazan Oblast" --number BEFORE_UNDERSCORE   --progress --street trolleybus.gpkg 
 
 
 python3 vehicle-upload.py -v bus --system $spbbus  --model Q124130334#SetraS215HD   i/_buses/spb/SetraS215HD --country "Saint Petersburg" --number BEFORE_UNDERSCORE   --progress --street trolleybus.gpkg 
@@ -185,3 +213,12 @@ python3 vehicle-upload.py -v bus --system $vitebskbus  --model $MAZ105  i/_buses
 vyborgbus=Q4128546
 city=Vyborg
 python3 vehicle-upload.py -v bus --system $vyborgbus --city $city --model $ScaniaOmniLink  i/_buses/vyborg/ScaniaOmniLink --country "Leningrad Oblast" --number BEFORE_UNDERSCORE   --progress --street trolleybus.gpkg 
+
+
+
+moscoblbus=Q125810299
+city="Moscow Oblast"
+
+
+python3 vehicle-upload.py -v bus --system $moscoblbus --city "Q1697" --model $liaz5292  i/_buses/mostransavto/liaz5292 --country "Moscow Oblast" --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mostransavto"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v bus --system $moscoblbus --city "Q1697" --model $NEFAZ5299  i/_buses/mostransavto/NEFAZ5299 --country "Moscow Oblast" --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mostransavto"  --progress --street trolleybus.gpkg 

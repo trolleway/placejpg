@@ -234,12 +234,13 @@ class Model_wiki:
         # set the labels, descriptions and aliases from the wd_object
         try:
             new_item.editLabels(labels=wd_object["labels"], summary="Setting labels")
+            self.logger.info('created wikidata entity: '+str(new_item.getID()))
             new_item.editDescriptions(descriptions=wd_object["descriptions"], summary="Setting descriptions")
             new_item.editAliases(aliases=wd_object["aliases"], summary="Setting aliases")
         except:
             self.logger.warning('prorably this building already created in wikidata. merge not implement yet')
             pass
-        self.logger.info('created https://www.wikidata.org/wiki/'+str(new_item.getID()))
+        
         # iterate over the claims in the wd_object
         for prop, value in wd_object["claims"].items():
             # create a claim object for the property
@@ -1999,6 +2000,102 @@ class Model_wiki:
                         "mainsnak": {
                             "snaktype": "value",
                             "property": "P180",
+                            "datavalue": {
+                                "type": "wikibase-entityid",
+                                "value": {
+                                    "numeric-id": entity.replace("Q", ""),
+                                    "id": entity,
+                                },
+                            },
+                        },
+                        "type": "statement",
+                        "rank": "normal",
+                    }
+                ]
+            }
+
+            csrf_token = site.tokens["csrf"]
+            payload = {
+                "action": "wbeditentity",
+                "format": "json",
+                "id": media_identifier,
+                "data": json.dumps(statement_json, separators=(",", ":")),
+                "token": csrf_token,
+                "summary": "adding depicts statement",
+                # in case you're using a bot account (which you should)
+                "bot": False,
+            }
+
+            request = site.simple_request(**payload)
+            try:
+                request.submit()
+            except pywikibot.data.api.APIError as e:
+                print("Got an error from the API, the following request were made:")
+                print(request)
+                print("Error: {}".format(e))
+
+        return True
+        
+    def append_location_of_creation(self, commonsfilename, entity, dry_run=False)->bool:
+        if entity=='': return True
+        entity_list = list()
+        entity_list.append(entity)
+
+        assert isinstance(entity_list, list)
+        assert len(entity_list) > 0
+        if dry_run:
+            print('simulate add entities')
+            self.pp.pprint(entity_list)
+            return
+        from fileprocessor import Fileprocessor
+        fileprocessor = Fileprocessor()
+        commonsfilename = fileprocessor.prepare_commonsfilename(
+            commonsfilename)
+
+        site = pywikibot.Site("commons", "commons")
+        site.login()
+        site.get_tokens("csrf")  # preload csrf token
+        page = pywikibot.Page(site, title=commonsfilename, ns=6)
+        media_identifier = "M{}".format(page.pageid)
+
+        # fetch exist structured data
+
+        request = site.simple_request(
+            action="wbgetentities", ids=media_identifier)
+        try:
+            raw = request.submit()
+        except:
+            self.logger.error(traceback.format_exc())
+            return None
+
+        existing_data = None
+        if raw.get("entities").get(media_identifier).get("pageid"):
+            existing_data = raw.get("entities").get(media_identifier)
+
+        try:
+            depicts = existing_data.get("statements").get("P1071")
+        except:
+            depicts = None
+        for entity in entity_list:
+            if depicts is not None:
+                # Q80151 (hat)
+                if any(
+                    statement["mainsnak"]["datavalue"]["value"]["id"] == entity
+                    for statement in depicts
+                ):
+                    print(
+                        "There already exists a statement claiming that this media depicts a "
+                        + entity
+                        + " continue to next entity"
+                    )
+                    continue
+
+            statement_json = {
+                "claims": [
+                    {
+                        "mainsnak": {
+                            "snaktype": "value",
+                            "property": "P1071",
                             "datavalue": {
                                 "type": "wikibase-entityid",
                                 "value": {

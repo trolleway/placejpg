@@ -44,8 +44,8 @@ class Fileprocessor:
     # TIFF LARGER THAN THIS VALUE WILL BE COMPRESSED TO WEBP 
     tiff2webp_min_size_mb = 55
     
+    # Size of chunk for all uploads to wikimedia engine
     chunk_size = 10240000
-    # chunk_size = 0
     
     photographer = placejpgconfig.photographer
     folder_keywords = ['commons_uploaded', 'commons_duplicates']
@@ -265,6 +265,7 @@ class Fileprocessor:
         modelwiki = Model_wiki_ask()
         categories = set()
         need_create_categories = list()
+        location_of_creation = ''
 
         vehicle_names = {'ru': {'tram': 'трамвай', 'trolleybus': 'троллейбус',
                                 'bus': 'автобус', 'train': 'поезд', 'locomotive': 'локомотив', 'auto': 'автомобиль', 'plane': 'самолёт','metro':'метропоезд'}}
@@ -520,9 +521,14 @@ class Fileprocessor:
 
         text = ''
 
-        text = """== {{int:filedesc}} ==
-{{Information
-|description="""
+        if vehicle in ('bus','trolleybus'):
+            text = """== {{int:filedesc}} ==
+    {{Bus-Information
+    |description="""
+        else:
+            text = """== {{int:filedesc}} ==
+    {{Information
+    |description="""
         captions = dict()
         assert 'en' in street_names,  'https://www.wikidata.org/wiki/' + \
             street_wdid + ' must have english name'
@@ -917,6 +923,7 @@ class Fileprocessor:
                 "country":country,
                 'captions': captions,
                 'need_create_categories':need_create_categories,
+                'location_of_creation':street_wdid,
                 "dt_obj": dt_obj}
 
     def get_colorlist_from_string(self, test_str: str) -> list:
@@ -1059,6 +1066,8 @@ class Fileprocessor:
         modelwiki = Model_wiki_ask()
 
         need_create_categories = list()
+        wikidata_4_structured_data = set()
+        location_of_creation = ''
 
         assert os.path.isfile(filename), 'not found '+filename
 
@@ -1076,6 +1085,7 @@ class Fileprocessor:
         if os.path.isfile(wikidata):
             street=wikidata
             wikidata = self.get_place_from_input(filename,street,geo_dict)
+            location_of_creation = wikidata
             del street
             if wikidata is None:
                 #place should taken from gpkg, but not found
@@ -1128,6 +1138,7 @@ class Fileprocessor:
         for lang in self.langs_optional:
             if lang in wd_record['labels']:
                 objectnames[lang] = wd_record['labels'][lang]
+
 
         # BUILD DESCRIPTION FROM 'INSTANCE OF' NAMES
         #  
@@ -1352,6 +1363,12 @@ class Fileprocessor:
         for catname in categories:
             catname = catname.replace('Category:', '')
             text += "[[Category:"+catname+"]]" + "\n"
+        
+        # COPY INSTANCE_OF FROM MAIN OBJECT TO STRUCTURED DATA
+        if len(instance_of_data) > 0:
+            for element in instance_of_data:  
+                wikidata_4_structured_data.add(element['id'])
+        
 
         commons_filename = self.commons_filename(
             filename, objectnames, wikidata, dt_obj, add_administrative_name=False, prefix=prefix)
@@ -1360,6 +1377,8 @@ class Fileprocessor:
                 "text": text, 
                 "dt_obj": dt_obj,
                 "country":country,
+                "structured_data_on_commons": list(wikidata_4_structured_data),
+                "location_of_creation":location_of_creation,
                 "need_create_categories":need_create_categories,
                 "wikidata":wikidata}
 
@@ -1785,88 +1804,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 else:
                     print(prop, statement.target)
 
-    def append_image_descripts_claim(self, commonsfilename, entity_list, dry_run):
-        warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)
-        assert isinstance(entity_list, list)
-        assert len(entity_list) > 0
-        if dry_run:
-            print('simulate add entities')
-            self.pp.pprint(entity_list)
-            return
-        commonsfilename = self.prepare_commonsfilename(commonsfilename)
-
-        site = pywikibot.Site("commons", "commons")
-        site.login()
-        site.get_tokens("csrf")  # preload csrf token
-        page = pywikibot.Page(site, title=commonsfilename, ns=6)
-        media_identifier = "M{}".format(page.pageid)
-
-        # fetch exist structured data
-
-        request = site.simple_request(
-            action="wbgetentities", ids=media_identifier)
-        raw = request.submit()
-        existing_data = None
-        if raw.get("entities").get(media_identifier).get("pageid"):
-            existing_data = raw.get("entities").get(media_identifier)
-
-        try:
-            depicts = existing_data.get("statements").get("P180")
-        except:
-            depicts = None
-        for entity in entity_list:
-            if depicts is not None:
-                # Q80151 (hat)
-                if any(
-                    statement["mainsnak"]["datavalue"]["value"]["id"] == entity
-                    for statement in depicts
-                ):
-                    print(
-                        "There already exists a statement claiming that this media depicts a "
-                        + entity
-                        + " continue to next entity"
-                    )
-                    continue
-
-            statement_json = {
-                "claims": [
-                    {
-                        "mainsnak": {
-                            "snaktype": "value",
-                            "property": "P180",
-                            "datavalue": {
-                                "type": "wikibase-entityid",
-                                "value": {
-                                    "numeric-id": entity.replace("Q", ""),
-                                    "id": entity,
-                                },
-                            },
-                        },
-                        "type": "statement",
-                        "rank": "normal",
-                    }
-                ]
-            }
-
-            csrf_token = site.tokens["csrf"]
-            payload = {
-                "action": "wbeditentity",
-                "format": "json",
-                "id": media_identifier,
-                "data": json.dumps(statement_json, separators=(",", ":")),
-                "token": csrf_token,
-                "summary": "adding depicts statement",
-                # in case you're using a bot account (which you should)
-                "bot": False,
-            }
-
-            request = site.simple_request(**payload)
-            try:
-                request.submit()
-            except pywikibot.data.api.APIError as e:
-                print("Got an error from the API, the following request were made:")
-                print(request)
-                print("Error: {}".format(e))
+    
 
     def commons2stock_dev(self, url, city_wdid, images_dir='stocks', dry_run=False, date=None):
 
@@ -1981,6 +1919,8 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             print(filepath.ljust(50)+' '+' not exist')
             quit()
         assert os.path.exists(filepath)
+        #asap quicker check if directory is empty
+        if os.listdir(filepath) == []: quit()
         assert desc_dict['mode'] in ['object', 'vehicle']
 
         assert 'country' in desc_dict
@@ -2225,8 +2165,11 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
 
 
             self.logger.info('append claims')
+            
             claims_append_result = modelwiki.append_image_descripts_claim(
-                texts["name"], wikidata_list, dry_run)
+                texts["name"], wikidata_list, dry_run)            
+            claims_append_result = modelwiki.append_location_of_creation(
+                texts["name"], texts["location_of_creation"], dry_run)
             if not dry_run:
                 modelwiki.create_category_taken_on_day(
                     texts['country'].title(), texts['dt_obj'].strftime("%Y-%m-%d"))

@@ -11,6 +11,7 @@ vitebskbus=Q16271696
 
 ZIU9=Q198271
 ZIU6205=Q2424761
+trolza527500=Q3498797
 trolza5275optima=Q4463694
 trolza5265=Q3498832
 trolza6206=Q4463696
@@ -88,6 +89,7 @@ python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $BKM321   i/
 #moscow-rare
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $VZTM5284   i/_trolleybuses/moscow/rare/VZTM5284  --number BEFORE_UNDERSCORE --country Moscow  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $ktg   i/_trolleybuses/moscow/ktg  --number BEFORE_UNDERSCORE --country Moscow  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $trolza527500   i/_trolleybuses/moscow/rare/trolza527500  --number BEFORE_UNDERSCORE --country Moscow  --progress --street trolleybus.gpkg 
 
 
 

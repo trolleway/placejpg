@@ -474,6 +474,9 @@ class Model_wiki:
         if name_ru is not None:
             wd_object["labels"]["ru"] = name_ru
         wd_object["descriptions"]["ru"] = street_type_wd['labels']['ru'] + ' в ' + city_wd['labels']['ru']
+        wd_object["aliases"] = {"ru": list(), "en":list()}
+        wd_object["aliases"]["ru"].append(name_ru + ', ' + city_wd['labels']['ru'])
+        wd_object["aliases"]["en"].append(name_en + ', ' + city_wd['labels']['en'])
 
         # COORDINATES
         if 'LINESTRING' in coords.upper():

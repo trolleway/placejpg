@@ -25,6 +25,7 @@ parser.add_argument('--country', type=str, required=False, help='Country name st
 parser.add_argument('--named_after', type=str, required=False, help='Named after string or wikidata link')
 parser.add_argument('-c','--coords', type=str, required='wikidata' in sys.argv, help='WKT linestring or latlong string in EPSG:4326. Separators: " ", | ,')
 parser.add_argument('--wikidata-only', action="store_const", const=True, required=False, help='Create only wikidata entity, do not create commons category ')
+parser.add_argument('--catname', required=False, default=None, help='commons category for this street if exist')
 
 #parser.add_argument('--wikidata-only', action="store_const", const=True, required=False, help='Create only wikidata entity, do not create commons category ')
 #required='wikidata' not in sys.argv
@@ -38,6 +39,7 @@ processor = trolleway_commons.CommonsOps()
 modelwiki = Model_wiki()
 street_wdid = args.wikidata
 coords = args.coords
+catname = str(args.catname)
 
 city = args.city
 dry_mode = args.dry_run
@@ -56,9 +58,12 @@ if street_wdid is None:
                                                    country=country_wdid, 
                                                    coords=coords,
                                                    dry_mode=dry_mode)
-    if not args.wikidata_only:
+    if not args.wikidata_only and args.catname is None:
         street_category_result = modelwiki.create_street_category(street_wdid, city_wdid)
         print(street_category_result)
+    else:
+        if args.catname is not None and modelwiki.is_category_exists(catname):
+            modelwiki.wikidata_add_commons_category(street_wdid,catname)
 
 elif street_wdid is not None:
     # create street category

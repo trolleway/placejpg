@@ -521,7 +521,7 @@ class Fileprocessor:
 
         text = ''
 
-        if vehicle in ('bus','trolleybus'):
+        if vehicle in ('bus','trolleybus','tram'):
             text = """== {{int:filedesc}} ==
     {{Bus-Information
     |description="""
@@ -552,13 +552,20 @@ class Fileprocessor:
                 modelwiki.get_wikidata_simplified(line_wdid)['labels']['ru']
         text += "{{ru|1=" + captions['ru'] + '}}'+"\n"
 
-        if model is not None:
-            text += " {{on Wikidata|" + model_wdid.split('#')[0] + "}}\n"
-        text += " {{on Wikidata|" + street_wdid + "}}\n"
+        if vehicle in ('bus','trolleybus','tram'):
+            text += " {{#property:P180|from=M{{PAGEID}} }} \n"
+        else:
+            if model is not None:
+                text += " {{on Wikidata|" + model_wdid.split('#')[0] + "}}\n"
+                    
+            text += " {{on Wikidata|" + street_wdid + "}}\n"
 
         if type(secondary_wikidata_ids) == list and len(secondary_wikidata_ids) > 0:
             for wdid in secondary_wikidata_ids:
-                text += " {{on Wikidata|" + wdid + "}}\n"
+                if vehicle in ('bus','trolleybus','tram'):
+                    pass
+                else:
+                    text += " {{on Wikidata|" + wdid + "}}\n"
                 heritage_id = None
                 heritage_id = modelwiki.get_heritage_id(wdid)
                 if heritage_id is not None:
@@ -567,6 +574,23 @@ class Fileprocessor:
                     if today.strftime('%Y-%m') == '2023-09':
                         text += "{{Wiki Loves Monuments 2023|1=ru}}"
         text += "\n"
+        
+        if vehicle in ('bus','trolleybus','tram') and model is not None:
+            text += "|Body={{on Wikidata|" + model_wdid.split('#')[0] + "}}\n"        
+        if vehicle in ('bus','trolleybus','tram') and model is not None:
+            text += "|Place={{#invoke:Information|SDC_Location|icon=true}} {{#if:{{#property:P1071|from=M{{PAGEID}} }}|(<small>{{#invoke:PropertyChain|PropertyChain|qID={{#invoke:WikidataIB |followQid |props=P1071}}|pID=P131|endpID=P17}}</small>)}}\n"
+        if vehicle in ('bus','trolleybus','tram') and operator is not None:
+            text += "|Operator={{on Wikidata|" + operator_wd + "}}\n"
+
+
+        if vehicle in ('bus','trolleybus','tram'):
+            text += "|number_plate=\n"
+            text += "|depot=\n"
+            if number is not None:
+                text += "|fleet_number="+str(number)+"\n"
+            text += "|Chassis=\n"
+            text += "|Model_Year=\n"
+    
         text += self.get_date_information_part(dt_obj, country)
         text += "}}\n"
         tech_description, tech_categories = self.get_tech_description(filename, geo_dict)
@@ -1009,7 +1033,8 @@ class Fileprocessor:
 
     def get_tech_description(self, filename, geo_dict):
         text = ''
-        if 'stitch' in filename or 'pano' in filename.lower():
+        #if 'stitch' in filename or 'pano' in filename.lower():
+        if any(substring in filename.lower() for substring in ('stitch','pano','photosphere')):
             text = text + "{{Panorama}}" + "\n"
 
         if geo_dict is not None:
@@ -1382,7 +1407,7 @@ class Fileprocessor:
                 "need_create_categories":need_create_categories,
                 "wikidata":wikidata}
 
-    def commons_filename(self, filename, objectnames, wikidata, dt_obj, add_administrative_name=True, prefix='') -> str:
+    def commons_filename(self, filename, objectnames, wikidata, dt_obj, add_administrative_name=True, prefix='', suffix='') -> str:
         # file name on commons
 
         from model_wiki import Model_wiki as Model_wiki_ask
@@ -1400,15 +1425,18 @@ class Fileprocessor:
                 + " "
                 + building_info["addr:housenumber:en"]
             )
+
         commons_filename = ''
         
-        if prefix != '': commons_filename = f"{prefix}_"
+        if prefix != '':
+            if prefix not in objectnames['en']:
+                commons_filename = f"{prefix}_"
 
+        if suffix != '':  suffix =   '_'+suffix+'_'
         
-
         commons_filename = (
             commons_filename + objectnames['en'] + " " +
-            dt_obj.strftime("%Y-%m %s") + filename_extension
+            dt_obj.strftime("%Y-%m %s") + suffix + filename_extension
         )
         commons_filename = commons_filename.replace("/", " drob ")
 

@@ -96,7 +96,7 @@ class Helper_rename:
     def append_prefix(self,fns,prefix):
         if prefix=='':
             return fns
-        assert fns.count('.')==1
+        assert fns.count('.')==1, 'invalid text: '+fns
         fns = f'{prefix}_{fns}'
 
         return fns    

@@ -54,7 +54,10 @@ class Model_wiki:
             wikidata_cache_filename=self.wikidata_cache_filename)
 
     def reset_cache(self):
-        os.unlink(self.wikidata_cache_filename)
+        try:
+            os.unlink(self.wikidata_cache_filename)
+        except:
+            pass
         self.wikidata_cache = self.wikidata_cache_load(
             wikidata_cache_filename=self.wikidata_cache_filename)
 
@@ -234,7 +237,7 @@ class Model_wiki:
         # set the labels, descriptions and aliases from the wd_object
         try:
             new_item.editLabels(labels=wd_object["labels"], summary="Setting labels")
-            self.logger.info('created wikidata entity: '+str(new_item.getID()))
+            self.logger.info('created wikidata entity: '+str(new_item.getID()) + '    _place'+str(new_item.getID()))
             new_item.editDescriptions(descriptions=wd_object["descriptions"], summary="Setting descriptions")
             new_item.editAliases(aliases=wd_object["aliases"], summary="Setting aliases")
         except:
@@ -518,7 +521,59 @@ class Model_wiki:
         new_item_id = self.create_wikidata_item(wd_object)
         self.logger.info(f'street object created: https://www.wikidata.org/wiki/{new_item_id} ')
         return new_item_id
+        
+    def wikidata_set_coords(self,wdid,coords):
+        site = pywikibot.Site('wikidata', 'wikidata')
+        repo = site.data_repository()
+        item = pywikibot.ItemPage(site, wdid)
+        item.get() # load the item data
+        claims = item.claims # get the claims dictionary
+        
+        if "P625" in claims:
+            print('no overwrite coordinates')
+            return None
+        
+        lat=None
+        lon=None
+        lat, lon = self.location_string_parse(coords)
 
+        assert lat is not None
+        assert lon is not None
+            
+        coordinateclaim  = pywikibot.Claim(repo, 'P625') #Adding coordinate location (P625)
+        coordinate = pywikibot.Coordinate(lat=lat, lon=lon, precision=0.0001, site=site) #With location markes
+        coordinateclaim.setTarget(coordinate)
+        print('Adding coordinate claim')
+        item.addClaim(coordinateclaim, summary='Adding coordinate claim')
+
+    def wikidata_set_address(self,building_wdid,street_wdid,housenumber):
+        
+        # Create a site object for wikidata
+        site = pywikibot.Site('wikidata', 'wikidata')
+        repo = site.data_repository()
+        # Create an item object from the item ID
+        item = pywikibot.ItemPage(site, building_wdid)
+
+        item.get() # load the item data
+        claims = item.claims # get the claims dictionary
+        #CLAIM
+        claim = pywikibot.Claim(repo, 'P669') #located_on_street
+        target = pywikibot.ItemPage(repo, street_wdid)
+        claim.setTarget(target)  # Set the target value in the local object.
+        
+        item.addClaim(claim, summary="Adding machine readable address for files names generation")
+        #QUALIFIER
+        qualifier = pywikibot.Claim(repo, 'P670')
+        qualifier.setTarget(housenumber)
+        claim.addQualifier(qualifier, summary='Adding a housenumber for files names generation')
+        del claim
+        del target
+
+      
+        self.reset_cache()
+    
+    
+    
     def create_wikidata_building(self, data, dry_mode=False):
         assert "street_wikidata" in data
 
@@ -671,6 +726,7 @@ class Model_wiki:
 
         new_item_id = self.create_wikidata_item(wd_object)
         print("created https://www.wikidata.org/wiki/" + new_item_id)
+        print("created _place" + new_item_id)
         if data.get('category') is not None:
             self.wikidata_add_commons_category(new_item_id, data.get('category'))
             self.category_add_template_wikidata_infobox(data.get('category'))
@@ -2135,7 +2191,7 @@ class Model_wiki:
 
         return True
 
-    def wikidata_set_building_entity_name(self, wdid, city_wdid):
+    def wikidata_set_building_entity_name(self, wdid, city_wdid,skip_en):
         '''
         change names and aliaces of wikidata entity for building created by SNOW tool: https://ru-monuments.toolforge.org/snow/index.php?id=6330122000
 
@@ -2159,7 +2215,6 @@ class Model_wiki:
         
         city_wd = self.get_wikidata_simplified(city_wdid)
 
-        assert ('ru' in item.labels)
         assert 'P669' in item.claims, 'you should set P669 en at https://www.wikidata.org/wiki/'+wdid+''
         claims = item.claims.get("P669")
 
@@ -2200,7 +2255,7 @@ class Model_wiki:
         change_langs=dict()
         new_label = self.address_international(city='',street=street_name_en, housenumber=housenumber).strip()
         if len(item.labels.get('en','')) < 50 and len(item.labels.get('en','')) > 6: new_label=new_label+', '+item.labels['en']
-        if new_label != item.labels.get('en',''):
+        if new_label != item.labels.get('en','') and not skip_en:
             labels['en'] = new_label
             change_langs['en']=True
         
@@ -2217,9 +2272,10 @@ class Model_wiki:
         if 'en' not in aliases:
             aliases['en'] = list()
         if change_langs.get('ru')==True:
-            aliases['ru'].append(item.labels['ru'])
+            if 'ru' in item.labels:
+                aliases['ru'].append(item.labels['ru'])
         if 'en' in item.labels:
-            if change_langs.get('en')==True:
+            if change_langs.get('en')==True and not skip_en and 'en' in item.labels:
                 aliases['en'].append(item.labels['en'])
         item.editAliases(aliases=aliases, summary="Move name to alias")
         

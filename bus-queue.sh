@@ -93,10 +93,11 @@ python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $trolza52750
 
 
 
-python3 vehicle-upload.py -v trolleybus --system $spbtroll  --model Q4463694#optima   i/_trolleybuses/cities/spb/optima  --number BEFORE_UNDERSCORE --country "Saint Petersburg"  --progress --street trolleybus.gpkg 
 
 SYSTEM=Q4174323 #ekaterinburg_troll
 city=ekaterinburg
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $BKM321   i/_trolleybuses/$city/BKM321  --number BEFORE_UNDERSCORE --country "Sverdlovsk Oblast"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $ZIU9   i/_trolleybuses/$city/ZIU9  --number BEFORE_UNDERSCORE --country "Sverdlovsk Oblast"  --progress --street trolleybus.gpkg 
 
 SYSTEM=Q4407766 #spb_troll
 city=spb

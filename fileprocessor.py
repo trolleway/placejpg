@@ -1100,7 +1100,9 @@ class Fileprocessor:
         # obtain exif
         if not quick:
             dt_obj = self.image2datetime(filename)
+            iptc_objectname = self.image2objectname(filename)
             geo_dict = self.image2coords(filename)
+            
         else:
             dt_obj = datetime.strptime(
                 '1970:01:01 00:00:00', "%Y:%m:%d %H:%M:%S")
@@ -1748,7 +1750,11 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
             if dt_obj is None:
                 return None
             return dt_obj
-
+            
+            
+    def image2objectname(self,path)->str:
+        return ''
+    
     def image2coords(self, path):
         exiftool_metadata = self.image2camera_params(path)
         try:
@@ -1986,11 +1992,12 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             if 'commons_uploaded' in filename:
                 continue
             
-            if self.check_exif_valid(filename) and self.check_extension_valid(filename):
-                files_filtered.append(filename)
-                total_files = total_files + 1
-            else:
-                self.logger.info(filename+' invalid')
+            if self.check_extension_valid(filename):
+                if self.check_exif_valid(filename) :
+                    files_filtered.append(filename)
+                    total_files = total_files + 1
+                else:
+                    self.logger.info(filename+' invalid')
     
         progressbar_on = False
         if total_files > 1 and 'progress' in desc_dict:

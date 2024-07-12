@@ -64,8 +64,21 @@ if street_wdid is None:
     else:
         if args.catname is not None and modelwiki.is_category_exists(catname):
             modelwiki.wikidata_add_commons_category(street_wdid,catname)
+            modelwiki.category_add_template_wikidata_infobox(catname)
 
 elif street_wdid is not None:
-    # create street category
-    street_category_result = modelwiki.create_street_category(street_wdid, city_wdid)
-    print(street_category_result)
+    
+    street_wd = modelwiki.get_wikidata_simplified(street_wdid)
+    # SET COORDINATES
+    modelwiki.wikidata_set_coords(street_wdid,coords=coords)
+    
+    if street_wd['commons'] is None:
+        # create street category
+        street_category_result = modelwiki.create_street_category(street_wdid, city_wdid)
+        print(street_category_result)
+    else:
+        print('wikidata entity already has commons category')
+    #add wikidata infobox if needed
+    if args.catname is not None and modelwiki.is_category_exists(catname):
+        modelwiki.category_add_template_wikidata_infobox(catname)
+    

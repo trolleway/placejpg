@@ -53,6 +53,7 @@ parser.add_argument('--year', type=int, required=False, help='year built')
 parser.add_argument('--year_url', type=str, required=False, help='url for year refrence')
 parser.add_argument('--architect', type=str, required=False, help='Architect. Can be wikidata id, wikidata url, wikidata name')
 parser.add_argument('--architecture', type=str, required=False, help='Architecture style. Can be wikidata id, wikidata url, wikidata name')
+parser.add_argument('--skip-en', action="store_const", const=True, required=False, help='do not change english label')
 
 
 parser.add_argument('--wikidata-only', action="store_const", const=True, required=False, help='Create only wikidata entity, do not create commons category ')
@@ -81,8 +82,11 @@ if args.snow_fix is not None:
     building_wikidata = modelwiki.wikidata_input2id(args.wikidata)
     if city_wdid is None: city_wdid = modelwiki.get_settlement_for_object(building_wikidata)
     if city_wdid is None: raise ValueError(f'can not find city for https://www.wikidata.org/wiki/{building_wikidata}')
-    
-    modelwiki.wikidata_set_building_entity_name(building_wikidata,city_wdid=city_wdid)
+    if args.street is not None and args.housenumber is not None: 
+        street_wdid = modelwiki.wikidata_input2id(args.street)
+        modelwiki.wikidata_set_address(building_wikidata,street_wdid,housenumber=args.housenumber)
+        
+    modelwiki.wikidata_set_building_entity_name(building_wikidata,city_wdid=city_wdid,skip_en=args.skip_en)
     quit()
     
 elif args.wikidata is not None:

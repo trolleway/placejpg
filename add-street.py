@@ -71,7 +71,7 @@ elif street_wdid is not None:
     street_wd = modelwiki.get_wikidata_simplified(street_wdid)
     # SET COORDINATES
     modelwiki.wikidata_set_coords(street_wdid,coords=coords)
-    
+    # CREATE CATEGORY IF NOT EXIST
     if street_wd['commons'] is None:
         # create street category
         street_category_result = modelwiki.create_street_category(street_wdid, city_wdid)

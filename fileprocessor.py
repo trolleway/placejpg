@@ -592,6 +592,7 @@ class Fileprocessor:
             text += "|Model_Year=\n"
     
         text += self.get_date_information_part(dt_obj, country)
+        text += self.get_source_information_part(filename)
         text += "}}\n"
         tech_description, tech_categories = self.get_tech_description(filename, geo_dict)
         assert None not in tech_categories, 'None value in '+str(tech_categories)
@@ -1013,6 +1014,33 @@ class Fileprocessor:
                 ' get instead of wikidata id'
 
         return lst
+        
+    def get_mapillary_from_string(self, test_str: str) -> list:
+        # from string aaaa_mapillarykey123456_mapillaryuservasya.jpg  returns [123456,vasya]
+        # 2002_20031123__r32_colorgray_colorblue.jpg
+        
+        if 'mapillarykey' not in test_str and 'mapillaryuser' not in test_str: return None,None
+
+        import re
+        # cut to . symbol if extsts
+        test_str = test_str[0:test_str.index('.')]
+
+        lst = re.findall(r'(mapillarykey\d+)', test_str)
+
+        lst2 = list()
+        for line in lst:
+            lst2.append(line[12:])
+        mapillarykey=str(lst2)
+        
+        test_str = test_str[0:test_str.index('.')]
+        lst = re.findall(r'(mapillaryuser\d+)', test_str)
+
+        lst2 = list()
+        for line in lst:
+            lst2.append(line[13:])
+        mapillaryuser=str(lst2)
+
+        return mapillarykey,mapillaryuser
 
 
         
@@ -1026,12 +1054,22 @@ class Fileprocessor:
             + taken_on_location
             + "|source=EXIF}}"
             + "\n"
-            +"""|source={{own}}
-|author={{Creator:""" + self.photographer+"""}}"""
+            
         )
-        return st
+        return st 
+        
+    def get_source_information_part(self, filename):
+        mapillarykey,mapillaryuser=self.get_mapillary_from_string(filename)
+        if mapillarykey is None and mapillaryuser is None:
+            text = "\n" +"|source={{own}}\n|author={{Creator:" + self.photographer+"}}"
+        else:
+            #text = f"\n"
+            text = "\n" +"""|source= {{Mapillary-source|key="""+mapillarykey+"""}}|author= [http://www.mapillary.com/profile/"""+mapillaryuser+' '+mapillaryuser+'] @ Mapillary.com'
+        
+        return text
 
     def get_tech_description(self, filename, geo_dict):
+        mapillarykey,mapillaryuser=self.get_mapillary_from_string(filename)
         text = ''
         #if 'stitch' in filename or 'pano' in filename.lower():
         if any(substring in filename.lower() for substring in ('stitch','pano','photosphere')):
@@ -1062,10 +1100,10 @@ class Fileprocessor:
         camera_text, camera_categories = self.get_camera_text(filename)
         text += camera_text
 
-        text = (
-            text
-            + '== {{int:license-header}} =='+"\n"+placejpgconfig.license+"\n\n"
-        )
+        if mapillarykey is None and mapillaryuser is None:
+            text = (text + '== {{int:license-header}} =='+"\n"+placejpgconfig.license+"\n\n" )
+        else:
+            text = (text + '== {{int:license-header}} =='+"\n"+'{{cc-by-sa-4.0|'+mapillaryuser+'}}'+"\n\n" )
         categories = set()
         categories.update(camera_categories)
 
@@ -1248,6 +1286,7 @@ class Fileprocessor:
                 
 
         st += self.get_date_information_part(dt_obj, country)
+        st += self.get_source_information_part(filename)
         st += "}}\n"
 
         text += st

@@ -168,7 +168,23 @@ class Model_wiki:
         texts[1]=message+"\n"+page.text
         page.text = texts[1]
         page.save('add {{Wikidata Infobox}} template')
+    
+    def category_dev(self, categoryname,start=None,total=None)->list:
+        counter = 0
+        site = pywikibot.Site("commons", "commons")
+        cat = pywikibot.Category(site, categoryname)
+        subcats_obj = pagegenerators.SubCategoriesPageGenerator(category=cat,recurse=False, start=start, total=total, content=True)
+        #subcats_obj = cat.subcategories(recurse=False)
+        print('===categories witout wikidata ibfobox===')
+        for subcat in subcats_obj:
+            
+            counter = counter+1
+            if 'wikidata infobox' in str(subcat.text).lower(): 
+                continue
+            else:
+                print(str(counter)+'  '+subcat.title().replace('Category:',''))
 
+        
 
     def category_add_template_taken_on(self, categoryname, location, dry_run=True, interactive=False):
         assert categoryname

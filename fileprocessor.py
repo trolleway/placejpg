@@ -1792,6 +1792,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
             
             
     def image2objectname(self,path)->str:
+
         return ''
     
     def image2coords(self, path):
@@ -1934,7 +1935,6 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         filepath = os.path.join(filepath,'commons_duplicates')
         if not os.path.exists(filepath):
             print(filepath.ljust(50)+' '+' not exist')
-            quit()
         assert os.path.exists(filepath)
         files, uploaded_folder_path = self.input2filelist(filepath,mode='replace_duplicates')
         files_filtered = list()
@@ -2086,6 +2086,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     secondary_wikidata_ids=secondary_wikidata_ids,
                     quick=desc_dict['later']
                 )
+                
                 if texts is None: continue
                 wikidata=texts['wikidata'] #if wikidata taken from gpkg file
                 wikidata_list = list()
@@ -2191,7 +2192,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             print('-'.join(templist))
             del templist
 
-                
+  
             if not dry_run:
                 if '_replace' in filename:
                     #ignore_warning=True

@@ -1962,6 +1962,7 @@ class Model_wiki:
             geoobject_wd = self.get_wikidata_simplified(upper_wdid)
             
 
+
     def get_category_object_in_location(self, object_wdid, location_wdid, order: str = None, verbose=False) -> str:
         object_wdid = self.normalize_wdid(object_wdid)
         cache_key = str(object_wdid)+'/'+location_wdid

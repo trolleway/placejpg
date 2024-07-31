@@ -258,7 +258,7 @@ class Fileprocessor:
             return street_wdid
 
 
-    def make_image_texts_vehicle(self, filename, vehicle, model, number, street=None, system=None,  route=None, country=None, line=None, facing=None, colors=None, operator=None, operator_vehicle_category=None, secondary_wikidata_ids=None, digital_number=None) -> dict:
+    def make_image_texts_vehicle(self, filename, vehicle, model, number, street=None, system=None,  route=None, country=None, line=None, facing=None, colors=None, operator=None, operator_vehicle_category=None, secondary_wikidata_ids=None, digital_number=None, custom_categories=list(), suffix='', skip_unixtime=False) -> dict:
         assert os.path.isfile(filename)
 
         from model_wiki import Model_wiki as Model_wiki_ask
@@ -355,6 +355,10 @@ class Fileprocessor:
             matches = re.finditer(regex, test_str, re.MULTILINE)
             for match in matches:
                 digital_number = match.group()[2:-1]
+        
+        # LICENSE PLATE
+        license_plate=''
+        license_plate=self.get_licenceplate_from_string(filename)
 
         # OPERATOR
         if operator is not None:
@@ -445,6 +449,13 @@ class Fileprocessor:
         if 'en' in street_names:
             if street_names['en'] != '':
                 placenames['en'].append(street_names['en'])
+        
+        if suffix != '':
+            suffix=f' {suffix} '
+        if skip_unixtime:
+            timestamp_format=''
+        else:
+            timestamp_format='%s'
 
         if vehicle not in train_synonims:
             objectname_en = '{city} {transport} {number}'.format(
@@ -460,24 +471,31 @@ class Fileprocessor:
                 model=model_names.get('ru', model_names['en']),
                 number=number
             )
-            commons_filename = '{city} {transport} {number} {dt} {place} {model}{extension}'.format(
+            if license_plate != '':
+                objectname_ru = ' '+objectname_ru
+            
+            commons_filename = '{city} {transport} {number} {dt} {timestamp} {place} {model}{suffix}{extension}'.format(
                 city=city_name_en,
                 transport=vehicle,
                 number=number,
-                dt=dt_obj.strftime("%Y-%m %s"),
+                dt=dt_obj.strftime("%Y-%m"),
+                timestamp = dt_obj.strftime(timestamp_format),
                 place=' '.join(placenames['en']),
                 model=model_names['en'],
+                suffix=suffix,
                 extension=filename_extension)
 
             # filename for Moscow Trolleybus
             if system_wdid == 'Q4304313':
-                commons_filename = '{city} {transport} {model} {number} {dt} {place}{extension}'.format(
+                commons_filename = '{city} {transport} {model} {number} {dt} {place}{suffix}{extension}'.format(
                     city=city_name_en,
                     transport=vehicle,
                     number=number,
-                    dt=dt_obj.strftime("%Y-%m %s"),
+                    dt=dt_obj.strftime("%Y-%m"),
+                    timestamp = dt_obj.strftime(timestamp_format),
                     place=' '.join(placenames['en']),
                     model=model_names['en'],
+                    suffix=suffix,
                     extension=filename_extension)
 
             # commons_filename = objectname_en + " " +dt_obj.strftime("%Y-%m %s") + model_names['en'] + ' '+ ' '.join(placenames['en'])+ ' ' + filename_extension
@@ -498,12 +516,13 @@ class Fileprocessor:
                 number_lat=number_lat,
                 place=' '.join(placenames['en'])
             )
-            commons_filename = '{system}{number_lat} {dt} {place} {timestamp}{extension}'.format(
+            commons_filename = '{system}{number_lat} {dt} {place} {timestamp}{suffix}{extension}'.format(
                 system=system_names['en']+' ',
                 number_lat=number_lat,
                 dt=dt_obj.strftime("%Y-%m"),
                 place=' '.join(placenames['en']),
                 timestamp=dt_obj.strftime("%s"),
+                suffix=suffix,
                 extension=filename_extension
             )
 
@@ -588,6 +607,8 @@ class Fileprocessor:
             text += "|depot=\n"
             if number is not None:
                 text += "|fleet_number="+str(number)+"\n"
+            if license_plate != '':
+                text += "|license_plate="+str(license_plate)+"\n"
             text += "|Chassis=\n"
             text += "|Model_Year=\n"
     
@@ -598,6 +619,12 @@ class Fileprocessor:
         assert None not in tech_categories, 'None value in '+str(tech_categories)
         text +=tech_description+"\n"
         categories.update(tech_categories)
+        if 'catid' in filename:
+            assert custom_categories is not None
+        if custom_categories is not None:
+            categories.update(custom_categories)
+        
+
         
 
         transports = {
@@ -645,6 +672,7 @@ class Fileprocessor:
             cat_content=cat_content.replace('$city_name_en',city_name_en)
             
             need_create_categories.append({'name':cat,'content':cat_content})
+
             categories.add(cat)
         
         if 'system_wd' in locals():
@@ -950,6 +978,18 @@ class Fileprocessor:
                 'need_create_categories':need_create_categories,
                 'location_of_creation':street_wdid,
                 "dt_obj": dt_obj}
+                
+    def get_suffix_from_string(self,test_str:str)->str:
+        if not('suffix' in test_str.lower()):
+            return ''
+            
+        import re
+        # cut to . symbol if extsts
+        test_str = test_str[0:test_str.index('.')]
+
+        lst = re.findall(r'(suffix\d+)', test_str)
+        suffix=lst[0].replace('suffix','')
+        return suffix
 
     def get_colorlist_from_string(self, test_str: str) -> list:
         # from string 2002_20031123__r32_colorgray_colorblue.jpg  returns [Gray,Blue]
@@ -967,8 +1007,28 @@ class Fileprocessor:
             if part.startswith('color'):
                 lst.append(part[5:].title())
 
-        print(lst)
         return lst
+        
+    def get_licenceplate_from_string(self, test_str: str) -> str:
+        # from string 2002_20031123_lpA 123 BC 99_.jpg  returns [A 123 BC 99]
+        
+        if '_lp' not in test_str: 
+            return ''
+
+        import re
+        # cut to . symbol if extsts
+        test_str = test_str[0:test_str.index('.')]
+
+        # split string by _
+        parts = re.split('_+', test_str)
+
+        lst = list()
+
+        for part in parts:
+            if part.startswith('lp'):
+                lst.append(part[2:].upper())
+             
+        return lst[0]
     
     def get_replace_id_from_string(self, test_str: str) -> str:
         '''
@@ -983,16 +1043,44 @@ class Fileprocessor:
         return id
     
     def get_wikidatalist_from_string(self, test_str: str) -> list:
-        ''' from string 2002_20031123__r32_colorgray_colorblue_wikidataQ12345_wikidataAntonovka.jpg  returns [Q12345]
+        ''' from string 2002_20031123__r32_colorgray_colorblue_Q12345_wikidataAntonovka.jpg  returns [Q12345]
         # 2002_20031123__r32_colorgray_colorblue.jpg
         '''
         import re
         # cut to . symbol if extsts
         test_str = test_str[0:test_str.index('.')]
-
         lst = re.findall(r'(Q\d+)', test_str)
-
         return lst
+    
+    def get_categorieslist_from_string(self, test_str: str) -> list:
+        '''
+        from string 2002_20031123__r32_colorgray_colorblue_Q12345_wikidataAntonovka_catid34567.jpg  reads [34567], and returns category names for this ids
+        '''
+        def get_categoriesid_from_string(test_str: str) -> list:
+            ''' from string 2002_20031123__r32_colorgray_colorblue_Q12345_wikidataAntonovka_catid34567.jpg  returns [34567]
+            # 2002_20031123__r32_colorgray_colorblue.jpg
+            '''
+            import re
+            # cut to . symbol if extsts
+            test_str = test_str[0:test_str.index('.')]
+            lst = re.findall(r'(catid\d+)', test_str)
+            return lst
+        
+        from model_wiki import Model_wiki as Model_wiki_ask
+        modelwiki = Model_wiki_ask()
+        
+        category_ids = get_categoriesid_from_string(test_str)
+        if not len(category_ids)>0:
+            return list()
+        else:
+            categories=list()
+            for category_id in category_ids:
+                category=modelwiki.pagename_from_id(category_id.replace('catid',''))
+                if category is not None:
+                    categories.append(category)
+            return categories
+       
+            
 
     def get_placewikidatalist_from_string(self, test_str: str) -> list:
         # from string 2002_20031123__r32_colorgray_colorblue_locationQ12345_wikidataAntonovka.jpg  returns [Q12345]
@@ -1120,7 +1208,7 @@ class Fileprocessor:
 
 
     def make_image_texts_simple(
-        self, filename, wikidata, country='', rail='', secondary_wikidata_ids=list(), quick=False
+        self, filename, wikidata, country='', rail='', secondary_wikidata_ids=list(), custom_categories=list(), suffix=''
     ) -> dict:
         # return file description texts
         # there is no excact 'city' in wikidata, use manual input cityname
@@ -1136,15 +1224,11 @@ class Fileprocessor:
 
         categories = set()
         # obtain exif
-        if not quick:
-            dt_obj = self.image2datetime(filename)
-            iptc_objectname = self.image2objectname(filename)
-            geo_dict = self.image2coords(filename)
+
+        dt_obj = self.image2datetime(filename)
+        iptc_objectname = self.image2objectname(filename)
+        geo_dict = self.image2coords(filename)
             
-        else:
-            dt_obj = datetime.strptime(
-                '1970:01:01 00:00:00', "%Y:%m:%d %H:%M:%S")
-            geo_dict = None
 
         # Optionaly obtain wikidata from gpkg file if wikidata parameter is path to vector file (.gpkg)
         if os.path.isfile(wikidata):
@@ -1291,12 +1375,9 @@ class Fileprocessor:
 
         text += st
 
-        if not quick:
-            tech_description, tech_categories = self.get_tech_description(filename, geo_dict)
-            text = text + tech_description
-        else:
-            tech_categories = set()
-            text = text + " >>>>> TECH TEMPLATES SKIPPED <<<<<<\n"
+        tech_description, tech_categories = self.get_tech_description(filename, geo_dict)
+        text = text + tech_description
+
         del tech_description
         categories.update(tech_categories)
 
@@ -1400,6 +1481,7 @@ class Fileprocessor:
             usercat_categories.add(CategoryUserInCountry)
         
         categories.update(usercat_categories)
+        categories.update(custom_categories)
         # END USERCAT BY THEME
         
         if rail:
@@ -1435,9 +1517,13 @@ class Fileprocessor:
             for element in instance_of_data:  
                 wikidata_4_structured_data.add(element['id'])
         
-
+        
+        if suffix == '':
+            skip_unixtime=False
+        else:
+            skip_unixtime=True
         commons_filename = self.commons_filename(
-            filename, objectnames, wikidata, dt_obj, add_administrative_name=False, prefix=prefix)
+            filename, objectnames, wikidata, dt_obj, add_administrative_name=False, prefix=prefix, suffix=suffix, skip_unixtime=skip_unixtime)
 
         return {"name": commons_filename, 
                 "text": text, 
@@ -1448,7 +1534,7 @@ class Fileprocessor:
                 "need_create_categories":need_create_categories,
                 "wikidata":wikidata}
 
-    def commons_filename(self, filename, objectnames, wikidata, dt_obj, add_administrative_name=True, prefix='', suffix='') -> str:
+    def commons_filename(self, filename, objectnames, wikidata, dt_obj, add_administrative_name=True, prefix='', suffix='', skip_unixtime=False) -> str:
         # file name on commons
 
         from model_wiki import Model_wiki as Model_wiki_ask
@@ -1473,11 +1559,17 @@ class Fileprocessor:
             if prefix not in objectnames['en']:
                 commons_filename = f"{prefix}_"
 
-        if suffix != '':  suffix =   '_'+suffix+'_'
+        if suffix != '':  suffix =   '_'+suffix
+        
+        if skip_unixtime:
+            time_suffix_format="%Y-%m"
+        else:
+            time_suffix_format="%Y-%m %s"
+        
         
         commons_filename = (
             commons_filename + objectnames['en'] + " " +
-            dt_obj.strftime("%Y-%m %s") + suffix + filename_extension
+            dt_obj.strftime(time_suffix_format) + suffix + filename_extension
         )
         commons_filename = commons_filename.replace("/", " drob ")
 
@@ -1764,7 +1856,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                 except:
                     dt_obj = None
                     cmd = [self.exiftool_path, path, "-datetimeoriginal", "-csv"]
-                    if path.lower().endswith(('.mp4','.mov')):
+                    if path.lower().endswith(('.mp4','.mov','.avi')):
                         cmd = [self.exiftool_path, path, "-createdate", "-csv"]
                         self.logger.debug('video')
 
@@ -1781,10 +1873,6 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
             if dt_obj is None:
                 dt_obj = get_datetime_from_string(os.path.basename(path))
                 
-               
-                #except:
-                #    print(f'file {path}: failed to get date, failed to read from start of filename')
-                #    quit()
 
             if dt_obj is None:
                 return None
@@ -2061,6 +2149,14 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             if secondary_wikidata_ids == [] and 'Q' in filename:
                 secondary_wikidata_ids = self.get_wikidatalist_from_string(
                     filename)
+            
+            # get custom categories without wikidata from filename
+            # i use it for film rolls
+            
+            custom_categories = list()
+            custom_categories = self.get_categorieslist_from_string(filename)
+            
+            suffix=self.get_suffix_from_string(filename)
 
             if desc_dict['mode'] == 'object':
                 if desc_dict['wikidata'] == 'FROMFILENAME':
@@ -2084,7 +2180,8 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     country=desc_dict['country'],
                     rail=desc_dict.get('rail'),
                     secondary_wikidata_ids=secondary_wikidata_ids,
-                    quick=desc_dict['later']
+                    custom_categories=custom_categories,
+                    suffix=suffix
                 )
                 
                 if texts is None: continue
@@ -2131,7 +2228,9 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     operator_vehicle_category=desc_dict.get('operator_vehicle_category', None),
                     facing=desc_dict.get('facing', None),
                     colors=desc_dict.get('colors', None),
-                    secondary_wikidata_ids=secondary_wikidata_ids
+                    secondary_wikidata_ids=secondary_wikidata_ids,
+                    custom_categories=custom_categories,
+                    suffix=suffix
                 )
                 if texts is None:
                     # invalid metadata for this file, continue to next file
@@ -2163,20 +2262,21 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 filename = filename_webp
                 texts["name"] = texts["name"].replace('.tif', '.webp')
                 
-            if filename.lower().endswith(('.mp4','.mov')):
+            if filename.lower().endswith(('.mp4','.mov','.avi')):
                 video_converted_filename=self.convert_to_webm(filename)
-            if filename.lower().endswith(('.mp4','.mov')) and os.path.isfile(video_converted_filename):
+            if filename.lower().endswith(('.mp4','.mov','.avi')) and os.path.isfile(video_converted_filename):
                 print(
                     'found mp4 and webm file with same name. upload webm with fileinfo from mp4')
                 if not dry_run:
                     self.move_file_to_uploaded_dir(
                         filename, uploaded_folder_path)
                 filename = video_converted_filename
-                texts["name"] = texts["name"].replace('.mp4', '.webm').replace('.MP4', '.webm').replace('.MOV', '.webm').replace('.mov', '.webm')         
+                texts["name"] = texts["name"].replace('.mp4', '.webm').replace('.MP4', '.webm').replace('.MOV', '.webm').replace('.mov', '.webm').replace('.avi', '.webm')          
                 
 
             print(texts["name"])
             print(texts["text"])
+            
             
 
             #remove duplicates

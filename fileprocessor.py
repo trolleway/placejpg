@@ -498,7 +498,7 @@ class Fileprocessor:
                     suffix=suffix,
                     extension=filename_extension)
 
-            # commons_filename = objectname_en + " " +dt_obj.strftime("%Y-%m %s") + model_names['en'] + ' '+ ' '.join(placenames['en'])+ ' ' + filename_extension
+            commons_filename = commons_filename.replace('  ',' ')
         elif vehicle in train_synonims:
             assert street_names is not None or line_names is not None
             if 'en' not in system_names:
@@ -670,10 +670,20 @@ class Fileprocessor:
             cat_content=cat_content.replace('$route',route)
             cat_content=cat_content.replace('$transports',transports[vehicle])
             cat_content=cat_content.replace('$city_name_en',city_name_en)
-            
             need_create_categories.append({'name':cat,'content':cat_content})
-
             categories.add(cat)
+            
+            cat = 'Category:$transports in $city_name_en by route'.replace('$transports',transports[vehicle]).replace('$city_name_en',city_name_en)
+            cat_content='''
+{{GeoGroup}}
+[[Category:$transports in $city_name_en]]'''    
+            cat_content=cat_content.replace('$vehicle',vehicle.title())
+            cat_content=cat_content.replace('$route',route)
+            cat_content=cat_content.replace('$transports',transports[vehicle])
+            cat_content=cat_content.replace('$city_name_en',city_name_en)
+            need_create_categories.append({'name':cat,'content':cat_content})
+            categories.add(cat)
+            
         
         if 'system_wd' in locals():
             if vehicle not in train_synonims:
@@ -842,7 +852,8 @@ class Fileprocessor:
 
         # number
         has_category_for_this_vehicle = False
-        if number is not None:
+        
+        if number is not None and number.isdigit():
             number_filtered = number
             if '-' in number_filtered:
                 number_filtered = number_filtered[number_filtered.index(
@@ -1646,11 +1657,9 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                 city, stop_on_error=True)
         city_wd = modelwiki.get_wikidata_simplified(city_wdid)
 
-        # get country, only actual values. key --all returns historical values
-        cmd = ['wd', 'claims', city_wdid, 'P17', '--json']
-        response = subprocess.run(cmd, capture_output=True)
-        country_json = json.loads(response.stdout.decode())
-        country_wdid = country_json[0]
+        # get country, only actual values.
+        
+        country_wdid = modelwiki.get_best_claim(city_wdid,'P17')
         country_wd = modelwiki.get_wikidata_simplified(country_wdid)
 
         try:
@@ -1673,9 +1682,10 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
         for obj_wd in objects_wikidata:
             keywords.append(obj_wd['labels']['en'])
-            aliases = obj_wd['aliases'].get('en', None)
-            if type(aliases) == list and len(aliases) > 0:
-                keywords += aliases
+            if 'aliaces' in obj_wd:
+                aliases = obj_wd['aliases'].get('en', None)
+                if type(aliases) == list and len(aliases) > 0:
+                    keywords += aliases
 
         keywords.append(city_wd['labels']['en'])
         keywords.append(city_wd['labels']['ru'])
@@ -1691,6 +1701,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
         cameramodels_dict = {
                     'Pentax corporation PENTAX K10D': 'Pentax K10D',
                     'Pentax PENTAX K-r': 'Pentax K-r',
+                    'Samsung techwin co. SAMSUNG GX10': 'Samsung GX10',
                     'Gopro HERO8 Black': 'GoPro Hero8 Black',
                     'Samsung SM-G7810': 'Samsung Galaxy S20 FE 5G',
                     'Olympus imaging corp.': 'Olympus',
@@ -1721,11 +1732,18 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                         lens = None
                 if lens is not None:
                     st += '|Lens = ' + image_exif.get("lensmodel")
+                    
+                def aperture2wikicommons(val:float)->str:
+                    val = round(float(val),1)
+                    if val.is_integer():
+                        return str(int(val))
+                    return str(val)
+                    
 
                 if image_exif.get("fnumber", '') != "" and image_exif.get("fnumber", '') != "" and int(image_exif.get("fnumber", 0)) != 0:
-                    st += '|Aperture = f/' + str(image_exif.get("fnumber"))
-                    categories.add(
-                        'F-number f/'+str(image_exif.get("fnumber"))[0:5])
+                    aperture_text=aperture2wikicommons(image_exif.get("fnumber"))
+                    st += '|Aperture = f/' + aperture_text
+                    categories.add('F-number f/'+aperture_text)
                 if image_exif.get("'focallengthin35mmformat'", '') != "" and image_exif.get("'focallengthin35mmformat'", '') != "":
                     st += '|Focal length 35mm = f/' + \
                         str(image_exif.get("'focallengthin35mmformat'"))
@@ -1735,7 +1753,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                 if image_exif.get('usepanoramaviewer')==True: st += "{{Pano360}}"+ "\n"
                 if image_exif.get("focallength", '') != "" and image_exif.get("focallength", '') != "" and int(image_exif.get("focallength", 0)) != 0:
                     categories.add(
-                        'Lens focal length '+str(image_exif.get("focallength"))+' mm')
+                        'Lens focal length '+str(round(float(image_exif.get("focallength",0))))+' mm')
 
                 if image_exif.get("iso", '') != "" and image_exif.get("iso", '') != "": 
                     try:

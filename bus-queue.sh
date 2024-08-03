@@ -69,6 +69,7 @@ NEFAZ5299=Q4318022
 PAZ3205=Q1997344
 GAZELLE=Q650464
 MercedesVario=Q1921351
+MercedesShpurbus=Q1921285
 nefaz529940=Q118270591
 kamaz6292=Q60851127
 golaz6228_3axle=Q4141289
@@ -79,6 +80,7 @@ VDL_Citea_SLE_120=Q125210502
 YaAZ_5267=Q4535783
 DaewooBS=Q12591646
 Bychok=Q4182156
+
 
 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $ZIU9   i/_trolleybuses/moscow/ZIU9  --number BEFORE_UNDERSCORE --country Moscow  --progress --street trolleybus.gpkg 
@@ -104,6 +106,10 @@ python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $BTZ52761   
 
 #vidnoye
 python3 vehicle-upload.py -v trolleybus --system $vidnoyetroll  --model $vmz529800   i/_trolleybuses/vidnoye/vmz529800  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $vidnoyetroll  --model $ZIU9   i/_trolleybuses/vidnoye/ZIU9  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+
+SYSTEM=Q4368068
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $ZIU9   i/_trolleybuses/podolsk/ZIU9  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 
 
 
@@ -142,6 +148,7 @@ python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $vmz529800   i
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $ZIU9   i/_trolleybuses/$city/ziu9  --number BEFORE_UNDERSCORE --country "Altai Krai"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $BKM201   i/_trolleybuses/$city/BKM201  --number BEFORE_UNDERSCORE --country "Altai Krai"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $vmz52980150   i/_trolleybuses/$city/vmz52980150  --number BEFORE_UNDERSCORE --country "Altai Krai"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $ST6217M   i/_trolleybuses/$city/ST6217M  --number BEFORE_UNDERSCORE --country "Altai Krai"  --progress --street trolleybus.gpkg 
 
 
 SYSTEM=Q4406433 #samara_troll
@@ -206,6 +213,10 @@ SYSTEM=Q16271701
 city=ryazan
 python3 vehicle-upload.py -v bus --system $SYSTEM  --model $liaz5292   i/_buses/ryazan/liaz5292 --country "Ryazan Oblast" --number BEFORE_UNDERSCORE   --progress --street trolleybus.gpkg 
 
+SYSTEM=Q128214955
+city=Vidnoe
+python3 vehicle-upload.py -v bus --system $SYSTEM  --model $liaz5256   i/_buses/$city/liaz5256 --country countries.gpkg --number BEFORE_UNDERSCORE   --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v bus --system $SYSTEM  --model $MercedesShpurbus   i/_buses/$city/MercedesShpurbus --country countries.gpkg --number BEFORE_UNDERSCORE   --progress --street trolleybus.gpkg 
 
 python3 vehicle-upload.py -v bus --system $spbbus  --model Q124130334#SetraS215HD   i/_buses/spb/SetraS215HD --country "Saint Petersburg" --number BEFORE_UNDERSCORE   --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $spbbus  --model $liaz6213  i/_buses/spb/Passazhiravtotrans_liaz6213  --operator-vehicle-category "Passazhiravtotrans" --country "Saint Petersburg" --number BEFORE_UNDERSCORE   --progress --street trolleybus.gpkg 
@@ -260,3 +271,8 @@ python3 vehicle-upload.py -v bus --system $nakhodkabus  --model $DaewooBS   i/_b
 city=Samara
 SYSTEM=Q4406397
 python3 vehicle-upload.py -v bus --system $SYSTEM  --model $PAZ3205   i/_buses/$city/PAZ3205 --number BEFORE_UNDERSCORE  --country countries.gpkg  --progress --street trolleybus.gpkg
+
+
+city=Barnaul
+SYSTEM=Q4078392
+python3 vehicle-upload.py -v bus --system $SYSTEM  --model $ScaniaOmniLink   i/_buses/$city/ScaniaOmniLink --number BEFORE_UNDERSCORE  --country countries.gpkg  --progress --street trolleybus.gpkg

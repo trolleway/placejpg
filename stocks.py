@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument("filepath", help='file or directory with jpg or tiff images')
 parser.add_argument("wikidata", type=str, nargs='+', help='ore or many wikidata codes')
 
-parser.add_argument("-с", "--city", type=str, required=True,help='English city name for caption')
+parser.add_argument("-с", "--city", type=str, required=True,help='city wikidata object for caption')
 parser.add_argument("-dry", "--dry-run", action="store_const",
                     required=False, default=False, const=True)
 

@@ -15,6 +15,7 @@ parser = argparse.ArgumentParser(
 
 
 parser.add_argument('--wikidata', type=str, required=False, help='Wikidata object if already exists')
+parser.add_argument('--street_type', type=str, required=False, default='Q79007', help='Wikidata instanceof for creating a new object')
 
 parser.add_argument('--name_en', type=str, required=False, help='English street name')
 parser.add_argument('--name_ru', type=str, required=False, help='Russian street name')
@@ -57,6 +58,7 @@ if street_wdid is None:
                                                    named_after=named_after_wdid, 
                                                    country=country_wdid, 
                                                    coords=coords,
+                                                   street_type=args.street_type,
                                                    dry_mode=dry_mode)
     if not args.wikidata_only and args.catname is None:
         street_category_result = modelwiki.create_street_category(street_wdid, city_wdid)

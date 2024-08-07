@@ -42,7 +42,7 @@ class Fileprocessor:
     exiftool_path = "exiftool"
     
     # TIFF LARGER THAN THIS VALUE WILL BE COMPRESSED TO WEBP 
-    tiff2webp_min_size_mb = 55
+    tiff2webp_min_size_mb = 10
     
     # Size of chunk for all uploads to wikimedia engine
     chunk_size = 10240000
@@ -682,12 +682,9 @@ class Fileprocessor:
             cat_content=cat_content.replace('$transports',transports[vehicle])
             cat_content=cat_content.replace('$city_name_en',city_name_en)
             need_create_categories.append({'name':cat,'content':cat_content})
-            categories.add(cat)
             
         
-        if 'system_wd' in locals():
-            if vehicle not in train_synonims:
-                categories.add(system_wd['commons'])
+
 
         cat = 'Photographs by {photographer}/{country}/{transport}'
         cat = cat.format(photographer=self.photographer,
@@ -790,7 +787,8 @@ class Fileprocessor:
 
 
 
-        
+        # FACING
+
                 
         # do not add facing category if this is interior
         if 'Q60998096' in secondary_wikidata_ids:
@@ -923,17 +921,25 @@ class Fileprocessor:
 
                 modelwiki.create_category(catname, category_page_content)
         # MODEL
+
+        model_in_location_found = False
         # if dt_obj is not None and vehicle == 'trolleybus':
         # category for model. search for category like "ZIU-9 in Moscow"
         if not has_category_for_this_vehicle:
             cat = modelwiki.get_category_object_in_location(
                 model_wd['id'], street_wd['id'], order=digital_number, verbose=True)
             if cat is not None:
+                model_in_location_found = True
                 categories.add(cat)
             else:
                 categories.add(model_wd["commons"] +
                                '|' + digital_number)
         
+        # TRANSPORT IN CITY
+        if 'system_wd' in locals():
+            if vehicle not in train_synonims and model_in_location_found == False and has_category_for_this_vehicle == False :
+                categories.add(system_wd['commons'])
+                
         # categories for secondary_wikidata_ids
         # search for geography categories using street like (ZIU-9 in Russia)
 
@@ -2267,18 +2273,18 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             # if exists file with webp extension:
             filename_webp = filename.replace('.tif', '.webp')
             src_filesize_mb = os.path.getsize(filename) / (1024 * 1024)
-            if filename.endswith('.tif') and src_filesize_mb > self.tiff2webp_min_size_mb :
+            if filename.endswith(('.tif','.tiff')) and src_filesize_mb > self.tiff2webp_min_size_mb :
                 print('file is big, convert to webp to bypass upload errors')
                 self.convert_to_webp(filename)
 
-            if filename.endswith('.tif') and os.path.isfile(filename_webp):
+            if filename.endswith(('.tif','.tiff')) and os.path.isfile(filename_webp):
                 print(
                     'found tif and webp file with same name. upload webp with fileinfo from tif')
                 if not dry_run:
                     self.move_file_to_uploaded_dir(
                         filename, uploaded_folder_path)
                 filename = filename_webp
-                texts["name"] = texts["name"].replace('.tif', '.webp')
+                texts["name"] = texts["name"].replace('.tif', '.webp').replace('.tiff', '.webp')
                 
             if filename.lower().endswith(('.mp4','.mov','.avi')):
                 video_converted_filename=self.convert_to_webm(filename)

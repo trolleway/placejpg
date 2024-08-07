@@ -497,6 +497,9 @@ class Model_wiki:
         wd_object["aliases"]["ru"].append(name_ru + ', ' + city_wd['labels']['ru'])
         wd_object["aliases"]["en"].append(name_en + ', ' + city_wd['labels']['en'])
 
+        #type
+        wd_object["claims"]["P31"] = street_type_wd['id']
+        
         # COORDINATES
         if 'LINESTRING' in coords.upper():
             #line with 3 points: write coordinates for start, middle, end of street
@@ -1964,6 +1967,9 @@ class Model_wiki:
 
 
     def get_category_object_in_location(self, object_wdid, location_wdid, order: str = None, verbose=False) -> str:
+        """
+        search existing category in commons by administrative tree
+        """
         object_wdid = self.normalize_wdid(object_wdid)
         cache_key = str(object_wdid)+'/'+location_wdid
         if cache_key in self.cache_category_object_in_location:
@@ -2012,6 +2018,81 @@ class Model_wiki:
                 stop_hieraechy_walk = True
                 continue
             upper_wd = self.get_wikidata_simplified(upper_wdid)
+            geoobject_wd = upper_wd
+
+        return None
+    
+    def category_tree_upwalk(self, object_wdid, location_wdid, order: str = None, verbose=False) -> str:
+        """
+        generate proposed names and content for missing categories
+        """
+        proposed_categories=list()
+        suggested_category = ''
+        
+        object_wdid = self.normalize_wdid(object_wdid)
+        cache_key = str(object_wdid)+'/'+location_wdid
+        if cache_key in self.cache_category_object_in_location:
+            text = ''+self.cache_category_object_in_location[cache_key]+''
+            if order:
+                text = text+'|'+order
+            return text, proposed_categories
+        
+             
+        object_wd = self.get_wikidata_simplified(object_wdid)
+        geoobject_wd = self.get_wikidata_simplified(location_wdid)
+        
+        # both id are same
+        if object_wdid == location_wdid:
+            if object_wd.get('commons') is not None:
+                self.cache_category_object_in_location[cache_key] = object_wd.get('commons')
+                return object_wd['commons'], proposed_categories
+        stop_hieraechy_walk = False
+        cnt = 0
+
+        while not stop_hieraechy_walk:
+            cnt = cnt+1
+            if cnt > 9:
+                stop_hieraechy_walk = True
+            if verbose:
+                info = 'search category for union ' + \
+                    str(object_wd['labels'].get('en', object_wd['id']))+' ' + \
+                    str(geoobject_wd['labels'].get(
+                        'en', geoobject_wd['id'])[0:35].rjust(35))
+                print(info)
+                # self.logger.info(info)
+
+            # search category "objects in city/country" by name
+            if object_wd.get('commons') is not None and geoobject_wd.get('commons') is not None:
+                suggested_category=object_wd['commons'] + ' in '+geoobject_wd['commons']
+                if self.is_category_exists(suggested_category):
+                    text=suggested_category
+                    if order:
+                        text = text+'|'+order
+                    return text, proposed_categories
+            
+
+            # search category by wikidata
+            union_category_name = self.search_commonscat_by_2_wikidata(
+                object_wdid, geoobject_wd['id'])
+            if union_category_name is not None:
+                if verbose: print('found ' + '[[Category:'+union_category_name+']]')
+                self.cache_category_object_in_location[cache_key] = union_category_name
+                text = ''+union_category_name+''
+                if order:
+                    text = text+'|'+order
+                return text, proposed_categories
+
+            # save proposed category for optional manual creation
+            # search upper level
+            upper_wdid = self.get_upper_location_wdid(geoobject_wd)
+            if upper_wdid is None:
+                stop_hieraechy_walk = True
+                continue
+            upper_wd = self.get_wikidata_simplified(upper_wdid)
+            proposed_cat={'name':'Category:'+suggested_category,'object_wdid':object_wdid,'location_wdid':geoobject_wd['id'],'upper_location_wdid':upper_wdid}
+            proposed_categories.append(proposed_cat)
+            
+
             geoobject_wd = upper_wd
 
         return None

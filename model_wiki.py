@@ -483,7 +483,9 @@ class Model_wiki:
     }
     """
         
-
+        translate_variants=dict()
+        translate_variants['street']=['ulitsa']
+        translate_variants['Street']=['Ulitsa']
 
         city_wd = self.get_wikidata_simplified(city)
         street_type_wd = self.get_wikidata_simplified(street_type)
@@ -496,6 +498,11 @@ class Model_wiki:
         wd_object["aliases"] = {"ru": list(), "en":list()}
         wd_object["aliases"]["ru"].append(name_ru + ', ' + city_wd['labels']['ru'])
         wd_object["aliases"]["en"].append(name_en + ', ' + city_wd['labels']['en'])
+        
+        # ALIAS: Unylaya street is also Unylaya ulitsa
+        for k,v in translate_variants.items():
+            if name_ru is not None:
+                if k in name_ru: wd_object["aliases"]["en"].append(name_en.replace(k,v))
 
         #type
         wd_object["claims"]["P31"] = street_type_wd['id']
@@ -802,6 +809,8 @@ class Model_wiki:
 
         object_record['id'] = entity.getID()
         claims = dict()
+        if 'claims' not in entity.toJSON():
+            raise ValueError(f'entitiy https://www.wikidata.org/wiki/{entity_id} must has some claims')
         wb_claims = entity.toJSON()['claims']
 
         for prop_id in wb_claims:

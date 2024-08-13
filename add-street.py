@@ -46,41 +46,48 @@ city = args.city
 dry_mode = args.dry_run
 
 # --- move to method
-city_wdid = modelwiki.wikidata_input2id(args.city)
-country_wdid = modelwiki.wikidata_input2id(args.country)
-named_after_wdid = modelwiki.wikidata_input2id(args.named_after)
-if street_wdid is None:
-    street_name_en = args.name_en
-    street_name_ru = args.name_ru
-    street_wdid = modelwiki.create_street_wikidata(city=city_wdid,
-                                                   name_en=street_name_en,
-                                                   name_ru =street_name_ru,
-                                                   named_after=named_after_wdid, 
-                                                   country=country_wdid, 
-                                                   coords=coords,
-                                                   street_type=args.street_type,
-                                                   dry_mode=dry_mode)
-    if not args.wikidata_only and args.catname is None:
-        street_category_result = modelwiki.create_street_category(street_wdid, city_wdid)
-        print(street_category_result)
-    else:
-        if args.catname is not None and modelwiki.is_category_exists(catname):
-            modelwiki.wikidata_add_commons_category(street_wdid,catname)
-            modelwiki.category_add_template_wikidata_infobox(catname)
+def create_street(city_wdid, country_wdid, named_after_wdid, street_name_en, street_name_ru, street_type, wikidata_only, catname, street_wdid):
 
-elif street_wdid is not None:
     
-    street_wd = modelwiki.get_wikidata_simplified(street_wdid)
-    # SET COORDINATES
-    modelwiki.wikidata_set_coords(street_wdid,coords=coords)
-    # CREATE CATEGORY IF NOT EXIST
-    if street_wd['commons'] is None:
-        # create street category
-        street_category_result = modelwiki.create_street_category(street_wdid, city_wdid)
-        print(street_category_result)
-    else:
-        print('wikidata entity already has commons category')
-    #add wikidata infobox if needed
-    if args.catname is not None and modelwiki.is_category_exists(catname):
-        modelwiki.category_add_template_wikidata_infobox(catname)
     
+    if street_wdid is None:
+        street_wdid = modelwiki.create_street_wikidata(city=city_wdid,
+                                                       name_en=street_name_en,
+                                                       name_ru =street_name_ru,
+                                                       named_after=named_after_wdid, 
+                                                       country=country_wdid, 
+                                                       coords=coords,
+                                                       street_type=street_type,
+                                                       dry_mode=dry_mode)
+        if wikidata_only !=True and catname is None:
+            street_category_result = modelwiki.create_street_category(street_wdid, city_wdid)
+            print(street_category_result)
+        else:
+            if catname is not None and modelwiki.is_category_exists(catname):
+                modelwiki.wikidata_add_commons_category(street_wdid,catname)
+                modelwiki.category_add_template_wikidata_infobox(catname)
+
+    elif street_wdid is not None:
+        
+        street_wd = modelwiki.get_wikidata_simplified(street_wdid)
+        # SET COORDINATES
+        modelwiki.wikidata_set_coords(street_wdid,coords=coords)
+        # CREATE CATEGORY IF NOT EXIST
+        if street_wd['commons'] is None:
+            # create street category
+            street_category_result = modelwiki.create_street_category(street_wdid, city_wdid)
+            print(street_category_result)
+        else:
+            print('wikidata entity already has commons category')
+        #add wikidata infobox if needed
+        if catname is not None and modelwiki.is_category_exists(catname):
+            modelwiki.category_add_template_wikidata_infobox(catname)
+       
+create_street(city_wdid=modelwiki.wikidata_input2id(args.city), country_wdid = modelwiki.wikidata_input2id(args.country), 
+named_after_wdid = modelwiki.wikidata_input2id(args.named_after),
+street_name_en = args.name_en,
+street_name_ru = args.name_ru,
+street_type=args.street_type,
+wikidata_only =  args.wikidata_only,
+catname = catname,
+street_wdid=street_wdid)

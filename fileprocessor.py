@@ -42,7 +42,7 @@ class Fileprocessor:
     exiftool_path = "exiftool"
     
     # TIFF LARGER THAN THIS VALUE WILL BE COMPRESSED TO WEBP 
-    tiff2webp_min_size_mb = 10
+    tiff2webp_min_size_mb = 18
     
     # Size of chunk for all uploads to wikimedia engine
     chunk_size = 10240000
@@ -121,6 +121,7 @@ class Fileprocessor:
             targetSite=site,  # The site object for Wikimedia Commons
             aborts=True,  # List of the warning types to abort upload on
             chunk_size=self.chunk_size,
+            summary='Upload with placejpg',
             ignore_warning=ignore_warning
         )
         print()
@@ -245,7 +246,7 @@ class Fileprocessor:
                 if street_wdid is None:
                     msg = f'file:{regions_filepath} https://geohack.toolforge.org/geohack.php?params={lat};{lon}_type:camera'
                     self.logger.error(filename.ljust(
-                        40) + ' not found location in '+msg+'')
+                        40) + ' no found '+msg+'')
                     modelgeo.save_not_found_geom(lat,lon,filename)
                     return None
                 #street_wd = modelwiki.get_wikidata_simplified(street_wdid)
@@ -1236,6 +1237,8 @@ class Fileprocessor:
         need_create_categories = list()
         wikidata_4_structured_data = set()
         location_of_creation = ''
+        
+
 
         assert os.path.isfile(filename), 'not found '+filename
 
@@ -1245,6 +1248,10 @@ class Fileprocessor:
         dt_obj = self.image2datetime(filename)
         iptc_objectname = self.image2objectname(filename)
         geo_dict = self.image2coords(filename)
+        
+        print('signal   '+filename)
+        print(geo_dict)
+        print(wikidata)
             
 
         # Optionaly obtain wikidata from gpkg file if wikidata parameter is path to vector file (.gpkg)
@@ -1281,7 +1288,7 @@ class Fileprocessor:
             for i in wd_record['claims']['P31']:
                 instance_of_data.append(
                     modelwiki.get_wikidata_simplified(i['value']))
-
+        
         text = ""
         objectnames = {}
         objectname_long = {}
@@ -1374,7 +1381,7 @@ class Fileprocessor:
             for secondary_wikidata_id in secondary_wikidata_ids:
                 if secondary_wikidata_id == wikidata: continue
                 st += " {{on Wikidata|" + secondary_wikidata_id + "}}\n"
-            
+        
         # CULTURAL HERITAGE
         # if main object is cultural heritage: insert special templates
         heritage_id = None
@@ -1385,6 +1392,11 @@ class Fileprocessor:
             if today.strftime('%Y-%m') == '2023-09':
                 st += "{{Wiki Loves Monuments 2023|1=ru}}"
                 
+        # wikidata depicts
+        st += """ |other_fields_1 = 
+{{Information field
+ |name  = {{Label|P180|link=-|capitalization=ucfirst}} 
+ |value = {{#property:P180|from=M{{PAGEID}} }} }} \n"""
 
         st += self.get_date_information_part(dt_obj, country)
         st += self.get_source_information_part(filename)

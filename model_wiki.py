@@ -1524,6 +1524,8 @@ class Model_wiki:
             wlm_district_wdid = self.get_best_claim(wikidata,'P131')
             wlm_district_wd=self.get_wikidata_simplified(wlm_district_wdid)
             wlm_district_category=wlm_district_wd['commons']
+            if wlm_district_category is None:
+                quit('cant detect wlm category for district '+wlm_district_wdid)
             code += "{{Cultural Heritage Russia|id="+wlm_ru_code+"|category="+wlm_district_category+"}}" + "\n"
             
         if year != "":
@@ -1919,7 +1921,8 @@ class Model_wiki:
                 if claim['rank']=='preferred':
                     return claim['value']
             for claim in claims:
-                return claim['value']
+                if claim['rank']=='normal':
+                    return claim['value']
         except:
             self.logger.error(f'can not get claims from https://www.wikidata.org/wiki/{wdid}')
             self.pp.pprint(entity['claims'])
@@ -2203,6 +2206,7 @@ class Model_wiki:
         return True
         
     def append_location_of_creation(self, commonsfilename, entity, dry_run=False)->bool:
+        entity=entity.strip()
         if entity=='': return True
         entity_list = list()
         entity_list.append(entity)

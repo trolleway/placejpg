@@ -52,7 +52,7 @@ if len(proposeds)>0:
         
         print()
         print(proposed_cat['name'])
-        print('{{Wikdata Infobox}}')
+        print('{{Wikidata Infobox}}')
         print('{{GeoGroup}}')
         print('[[Category:'+object_commonscat+' in '+str(location_upper_commonscat) +']]')
         print('[[Category:'+location_commonscat+']]')

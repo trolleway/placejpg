@@ -562,15 +562,17 @@ class Fileprocessor:
                 modelwiki.get_wikidata_simplified(line_wdid)['labels']['en']
         text += "{{en|1=" + captions['en'] + '}}'+"\n"
 
-        captions['ru'] = objectname_ru + ' на ' +  \
-            street_names['ru'].replace(
+        lang='ru'
+        assert street_names.get(lang,'') != '', 'object https://www.wikidata.org/wiki/' + line_wdid + ' must has name'+lang
+        captions[lang] = objectname_ru + ' на ' +  \
+            street_names[lang].replace(
                 'Улица', 'улица').replace('Проспект', 'проспект')
         if route is not None:
-            captions['ru'] += ' Маршрут '+route
+            captions[lang] += ' Маршрут '+route
         if line_wdid is not None:
-            captions['ru'] += ' ' + \
-                modelwiki.get_wikidata_simplified(line_wdid)['labels']['ru']
-        text += "{{ru|1=" + captions['ru'] + '}}'+"\n"
+            captions[lang] += ' ' + \
+                modelwiki.get_wikidata_simplified(line_wdid)['labels'][lang]
+        text += "{{"+lang+"|1=" + captions[lang] + '}}'+"\n"
 
         if vehicle in ('bus','trolleybus','tram'):
             text += " {{#property:P180|from=M{{PAGEID}} }} \n"

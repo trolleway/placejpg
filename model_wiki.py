@@ -499,10 +499,10 @@ class Model_wiki:
         wd_object["aliases"]["ru"].append(name_ru + ', ' + city_wd['labels']['ru'])
         wd_object["aliases"]["en"].append(name_en + ', ' + city_wd['labels']['en'])
         
-        # ALIAS: Unylaya street is also Unylaya ulitsa
+        # ALIAS: to "Unylaya street" add alias "Unylaya ulitsa"
         for k,v in translate_variants.items():
             if name_ru is not None:
-                if k in name_ru: wd_object["aliases"]["en"].append(name_en.replace(k,v))
+                if k in name_ru: wd_object["aliases"]["en"].append(name_en.replace(k,v[0]))
 
         #type
         wd_object["claims"]["P31"] = street_type_wd['id']
@@ -1039,6 +1039,7 @@ class Model_wiki:
         items_ids = list()
         for item in generator:
             items_ids.append(item.id)
+        items_ids.append('Q8346700')    
         heritage_types = {"RU": items_ids}
         return heritage_types
 
@@ -1093,6 +1094,7 @@ class Model_wiki:
 
         heritage_types = self.get_heritage_types('RU')
         claims = item.claims.get("P1435")
+
         for claim in claims:
             if claim.getTarget().id in heritage_types['RU']:
                 heritage_claim = item.claims.get("P1483")[0]
@@ -1537,13 +1539,14 @@ class Model_wiki:
         if levels > 0:
             code += "[[Category:%levelstr%-story buildings in %city%]]" + "\n"
 
-        building_function='Buildings'
+        blacklist_categories=['Q2319498']
         for instance in building_dict_wd["claims"]["P31"]:
             #if instance['value'] in ('Q1081138')
             try:
-                cat=self.get_category_object_in_location(instance['value'],street_dict_wd['id'],verbose=True)
-                assert cat is not None 
-                code += f"[[Category:{cat}]]" + "\n"
+                if instance['value'] not in blacklist_categories:
+                    cat=self.get_category_object_in_location(instance['value'],street_dict_wd['id'],verbose=True)
+                    assert cat is not None 
+                    code += f"[[Category:{cat}]]" + "\n"
             except:
                 self.logger.info('no category found for '+self.get_wikidata_simplified(instance['value'])['labels']['en'])
 

@@ -44,6 +44,7 @@ ikarus280=Q1076730
 ikarus283=Q4041280
 ikarus415=Q897608
 ikarus435=Q718410
+liaz4292=Q28666158
 liaz5256=Q7241301
 liaz5292=Q4260755
 liaz5293=Q4260759
@@ -192,6 +193,7 @@ python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $trolza5265   
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $trolza5265   i/_trolleybuses/$city/trolza5265  --number BEFORE_UNDERSCORE --country "Ryazan Oblast"  --progress --street trolleybus.gpkg 
 
 
+python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz4292   i/_buses/moscow/mgt_liaz4292 --country countries.gpkg --number BEFORE_UNDERSCORE   --progress  --operator-vehicle-category "Mosgortrans buses" --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz5256   i/_buses/moscow/mgt_liaz5256 --country countries.gpkg --number BEFORE_UNDERSCORE   --progress  --operator-vehicle-category "Mosgortrans buses" --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz6212   i/_buses/moscow/mgt_liaz6212 --country countries.gpkg --number BEFORE_UNDERSCORE --operator-vehicle-category "Mosgortrans buses"   --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz6213   i/_buses/moscow/mgt_liaz6213 --country countries.gpkg --number BEFORE_UNDERSCORE --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 

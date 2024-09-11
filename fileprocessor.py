@@ -108,6 +108,7 @@ class Fileprocessor:
     def upload_file(self, filepath, commons_name, description, verify_description=False,ignore_warning=False):
         # The site object for Wikimedia Commons
         site = pywikibot.Site("commons", "commons")
+        logging.basicConfig(level=logging.DEBUG, format='%(message)s')
 
         # The upload robot object
         bot = UploadRobot(
@@ -593,8 +594,8 @@ class Fileprocessor:
                 if heritage_id is not None:
                     text += "{{Cultural Heritage Russia|" + heritage_id + "}}"
                     today = datetime.today()
-                    if today.strftime('%Y-%m') == '2023-09':
-                        text += "{{Wiki Loves Monuments 2023|1=ru}}"
+                    if today.strftime('%Y-%m') == '2024-09':
+                        text += "{{Wiki Loves Monuments 2024|ru}}"
         text += "\n"
         
         if vehicle in ('bus','trolleybus','tram') and model is not None:
@@ -1391,8 +1392,8 @@ class Fileprocessor:
         if heritage_id is not None:
             st += "{{Cultural Heritage Russia|" + heritage_id + "}}"
             today = datetime.today()
-            if today.strftime('%Y-%m') == '2023-09':
-                st += "{{Wiki Loves Monuments 2023|1=ru}}"
+            if today.strftime('%Y-%m') == '2024-09':
+                st += "{{Wiki Loves Monuments 2024|ru}}"
                 
         # wikidata depicts
         st += """ |other_fields_1 = 

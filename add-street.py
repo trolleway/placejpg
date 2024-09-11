@@ -40,7 +40,7 @@ processor = trolleway_commons.CommonsOps()
 modelwiki = Model_wiki()
 street_wdid = args.wikidata
 coords = args.coords
-catname = str(args.catname)
+catname = args.catname
 
 city = args.city
 dry_mode = args.dry_run
@@ -48,8 +48,6 @@ dry_mode = args.dry_run
 # --- move to method
 def create_street(city_wdid, country_wdid, named_after_wdid, street_name_en, street_name_ru, street_type, wikidata_only, catname, street_wdid):
 
-    
-    
     if street_wdid is None:
         street_wdid = modelwiki.create_street_wikidata(city=city_wdid,
                                                        name_en=street_name_en,

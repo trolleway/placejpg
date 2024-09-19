@@ -57,15 +57,18 @@ parser.add_argument('--skip-en', action="store_const", const=True, required=Fals
 
 
 parser.add_argument('--wikidata-only', action="store_const", const=True, required=False, help='Create only wikidata entity, do not create commons category ')
+parser.add_argument('--prepend-names', action="store_const", const=True, required=False, help='append original wikidata names at snow-fix ')
 parser.add_argument('--category', type=str, default=None, required=False, help='Commons category. If already exist - script will create wikidata entity and links with this category')
 
-parser.add_argument('--snow-fix', action="store_const", const=True, required=False, help='generate wikidata building name and description from LOCATED ON STREET attribure and exit')
+parser.add_argument('--snow-fix', action="store_const", const=True, required=False, help='generate wikidata building name and description from LOCATED ON STREET attribure, then create commons category')
 
 parser.add_argument(
     "-dry", "--dry-run", action="store_const", required=False, default=False, const=True
 )
 
 args = parser.parse_args()
+if args.prepend_names and args.snow_fix==False:
+    parser.error("--prepend_names work only with --snow_fix")
 processor = trolleway_commons.CommonsOps()
 modelwiki = Model_wiki()
 
@@ -87,6 +90,11 @@ if args.snow_fix is not None:
         modelwiki.wikidata_set_address(building_wikidata,street_wdid,housenumber=args.housenumber)
         
     modelwiki.wikidata_set_building_entity_name(building_wikidata,city_wdid=city_wdid,skip_en=args.skip_en)
+    
+
+    if not args.wikidata_only:
+        
+        category_name = modelwiki.create_building_category(building_wikidata, city_wikidata=city_wdid, dry_mode=dry_run)
     quit()
     
 elif args.wikidata is not None:

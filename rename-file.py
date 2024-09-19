@@ -8,13 +8,15 @@ import trolleway_commons
 from model_wiki import Model_wiki
 from fileprocessor import Fileprocessor
 from urllib.parse import urlparse
+import csv
 
 
 parser = argparse.ArgumentParser(
     description=" ")
 
 parser.add_argument('--pagename', type=str, required=False, help='Wikipedia filepage')
-parser.add_argument('--wikidata', type=str, required=False)
+parser.add_argument('--csv', type=str, required=False, help='list of page names for batch rename')
+parser.add_argument('--wikidata', type=str, required=True)
 parser.add_argument('--suffix', type=str, required=False,default='')
 parser.add_argument('--prefix', type=str, required=False,default='')
 parser.add_argument('--rationale', type=int, required=False,default=2,help='1.	At the original uploader’s request, 2 .	To change from a meaningless or ambiguous name to a name that describes what the image particularly displays 3 obvious errors 4  harmonize the names of a set of images 5 violation of Commons’ policies and guidelines 6 Non-controversial maintenance and bug fixes')
@@ -130,32 +132,70 @@ if __name__ == '__main__':
     modelwiki = Model_wiki()
     helper_renamer = Helper_rename()
 
-    pagename=args.pagename
     wikidata= modelwiki.wikidata_input2id(args.wikidata)
     
-    new_name = helper_renamer.generate_filename(pagename,wikidata)
+    pagename=args.pagename
+    csvpath=args.csv
     suffix = args.suffix
     prefix = args.prefix
-    new_name = helper_renamer.append_prefix(new_name,prefix)
-    new_name = helper_renamer.append_suffix(new_name,suffix)
-    rename_template_text = helper_renamer.generate_rename_template(new_name,rationale=args.rationale)
-    
     verify=args.verify
-    mode = 'change'
     set_sds = True
-    if mode=='change':
-        if verify:
-            print('prepend string')
-            print(rename_template_text)
-            print("Press any key to continue or Ctrl+C for cancel...")
-            input()
-        helper_renamer.prepend_text_page(pagename,rename_template_text)
     
-    if set_sds:
-        entity_list = modelwiki.wikidata2instanceof_list(wikidata)
-        entity_list.append(wikidata)
-        modelwiki.append_image_descripts_claim(pagename,entity_list)
+    if pagename is not None:
+        new_name = helper_renamer.generate_filename(pagename,wikidata)
+        new_name = helper_renamer.append_prefix(new_name,prefix)
+        new_name = helper_renamer.append_suffix(new_name,suffix)
+        rename_template_text = helper_renamer.generate_rename_template(new_name,rationale=args.rationale)
         
+        mode = 'change'
+        if mode=='change':
+            if verify:
+                print('prepend string')
+                print(rename_template_text)
+                print("Press Enter to continue or Ctrl+C for cancel...")
+                input()
+            helper_renamer.prepend_text_page(pagename,rename_template_text)
+        
+        if set_sds:
+            entity_list = modelwiki.wikidata2instanceof_list(wikidata)
+            entity_list.append(wikidata)
+            modelwiki.append_image_descripts_claim(pagename,entity_list)
+    elif csvpath is not None:
+        with open(csvpath, newline='') as f:
+            reader = csv.reader(f)
+            pageslist = list(reader)
+        
+        print('====== proposed changes ========')
+        changeset=list()
+        skipped=list()
+        for el in pageslist:
+            pagename=el[0]
+            try:
+                new_name = helper_renamer.generate_filename(pagename,wikidata)
+            except:
+                print(pagename.ljust(20), ' error generate filename, skip')
+                skipped.append(pagename)
+                continue
+            new_name = helper_renamer.append_prefix(new_name,prefix)
+            new_name = helper_renamer.append_suffix(new_name,suffix)
+            
+            print(pagename.ljust(20),' ',new_name.ljust(30))
+            changeset.append({'from':pagename,'to':new_name})
+        print(f'to change: {len(changeset)}   skipped: {len(skipped)}')
+        verify = True
+        if verify:
+            print("Press Enter to continue or Ctrl+C for cancel...")
+            input()
+        
+        for change in changeset:
+            rename_template_text = helper_renamer.generate_rename_template(change['to'],rationale=args.rationale)
+            helper_renamer.prepend_text_page(change['from'],rename_template_text)
+            if set_sds:
+                entity_list = modelwiki.wikidata2instanceof_list(wikidata)
+                entity_list.append(wikidata)
+                modelwiki.append_image_descripts_claim(change['from'],entity_list)
+
+    
 
     
         

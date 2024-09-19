@@ -1077,7 +1077,7 @@ class Model_wiki:
         return items_ids
 
 
-    def get_heritage_id(self, wdid) -> str:
+    def get_heritage_id_check_heritage_types(self, wdid) -> str:
         # if wikidata object "heritage designation" is one of "culture heritage in Russia" - return russian monument id
         # for https://www.wikidata.org/wiki/Q113683163 reads P1483, returns '6931214010' or None
 
@@ -1101,6 +1101,24 @@ class Model_wiki:
                 return heritage_claim.getTarget()
 
         return None
+    def get_heritage_id_by_check_ruwikivoyage_id(self, wdid) -> str:
+
+
+        site = pywikibot.Site("wikidata", "wikidata")
+        site.login()
+        site.get_tokens("csrf")  # preload csrf token
+        item = pywikibot.ItemPage(site, wdid)
+        item.get()
+
+        try:
+            heritage_claim = item.claims.get("P1483")[0]
+            return heritage_claim.getTarget()
+        except:
+            pass
+        return None
+    
+    def get_heritage_id(self, wdid) -> str:
+        return self.get_heritage_id_by_check_ruwikivoyage_id(wdid)
 
     def wikidata_input2id(self, inp) -> str:
         if inp is None:
@@ -1752,6 +1770,8 @@ class Model_wiki:
         else:
             self.logger.error(vehicle +' not implemented')
         return name
+    
+    
     def wikidata_add_commons_category(self,item_id:str, category_name:str):
         """
         Set a sitelink to a commons category in a wikidata item.
@@ -2305,7 +2325,7 @@ class Model_wiki:
 
         return True
 
-    def wikidata_set_building_entity_name(self, wdid, city_wdid,skip_en):
+    def wikidata_set_building_entity_name(self, wdid, city_wdid,skip_en, prepend_names=False):
         '''
         change names and aliaces of wikidata entity for building created by SNOW tool: https://ru-monuments.toolforge.org/snow/index.php?id=6330122000
 
@@ -2368,13 +2388,13 @@ class Model_wiki:
         labels = dict()
         change_langs=dict()
         new_label = self.address_international(city='',street=street_name_en, housenumber=housenumber).strip()
-        if len(item.labels.get('en','')) < 50 and len(item.labels.get('en','')) > 6: new_label=new_label+', '+item.labels['en']
+        if prepend_names and len(item.labels.get('en','')) < 50 and len(item.labels.get('en','')) > 6: new_label=new_label+', '+item.labels['en']
         if new_label != item.labels.get('en','') and not skip_en:
             labels['en'] = new_label
             change_langs['en']=True
         
         new_label = street_name_ru+' '+housenumber
-        if len(item.labels.get('ru','')) < 50 and len(item.labels.get('ru','')) > 6: new_label=new_label+', '+item.labels['ru']
+        if prepend_names and len(item.labels.get('ru','')) < 50 and len(item.labels.get('ru','')) > 6: new_label=new_label+', '+item.labels['ru']
         if new_label != item.labels.get('ru',''): 
             labels['ru'] = new_label
             change_langs['ru']=True

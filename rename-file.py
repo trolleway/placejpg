@@ -9,6 +9,7 @@ from model_wiki import Model_wiki
 from fileprocessor import Fileprocessor
 from urllib.parse import urlparse
 import csv
+from tqdm import tqdm
 
 
 parser = argparse.ArgumentParser(
@@ -161,15 +162,17 @@ if __name__ == '__main__':
             entity_list.append(wikidata)
             modelwiki.append_image_descripts_claim(pagename,entity_list)
     elif csvpath is not None:
-        with open(csvpath, newline='') as f:
-            reader = csv.reader(f)
-            pageslist = list(reader)
+        with open(csvpath) as file:
+            pageslist = file.read().splitlines()
+            #pageslist = file.readlines()
+
+
         
-        print('====== proposed changes ========')
+        print('====== analysing changes ========')
         changeset=list()
         skipped=list()
         for el in pageslist:
-            pagename=el[0]
+            pagename=el
             try:
                 new_name = helper_renamer.generate_filename(pagename,wikidata)
             except:
@@ -181,13 +184,17 @@ if __name__ == '__main__':
             
             print(pagename.ljust(20),' ',new_name.ljust(30))
             changeset.append({'from':pagename,'to':new_name})
+        print()
+        print('====== proposed changes ========')
+        for change in changeset:
+            print(change['from'].ljust(70),' > ',change['to'].ljust(70))
         print(f'to change: {len(changeset)}   skipped: {len(skipped)}')
         verify = True
         if verify:
             print("Press Enter to continue or Ctrl+C for cancel...")
             input()
         
-        for change in changeset:
+        for change in tqdm(changeset):
             rename_template_text = helper_renamer.generate_rename_template(change['to'],rationale=args.rationale)
             helper_renamer.prepend_text_page(change['from'],rename_template_text)
             if set_sds:

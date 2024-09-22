@@ -1615,7 +1615,6 @@ class Fileprocessor:
             except:
                 pass
 
-        
         return commons_filename
 
     def take_user_wikidata_id(self, wdid) -> str:

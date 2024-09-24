@@ -171,8 +171,13 @@ if __name__ == '__main__':
         print('====== analysing changes ========')
         changeset=list()
         skipped=list()
+        entity_list = modelwiki.wikidata2instanceof_list(wikidata)
+        entity_list.append(wikidata)
         for el in pageslist:
             pagename=el
+            if set_sds:
+
+                modelwiki.append_image_descripts_claim(pagename,entity_list)
             try:
                 new_name = helper_renamer.generate_filename(pagename,wikidata)
             except:
@@ -197,11 +202,12 @@ if __name__ == '__main__':
         for change in tqdm(changeset):
             rename_template_text = helper_renamer.generate_rename_template(change['to'],rationale=args.rationale)
             helper_renamer.prepend_text_page(change['from'],rename_template_text)
+            '''
             if set_sds:
                 entity_list = modelwiki.wikidata2instanceof_list(wikidata)
                 entity_list.append(wikidata)
                 modelwiki.append_image_descripts_claim(change['from'],entity_list)
-
+            '''
     
 
     

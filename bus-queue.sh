@@ -19,6 +19,7 @@ trolza6206=Q4463696
 BTZ527601=Q4074052
 BTZ527604=Q4074053
 BTZ52761=Q4074054
+gorozanin=Q113409885
 VZTM5284=Q21660663
 PTZ210=Q123915913
 PTZ5283=Q124209334
@@ -172,6 +173,7 @@ python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $BTZ527604   i
 
 SYSTEM=Q4494362 #khabarovsk_troll
 city=khabarovsk
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $gorozanin   i/_trolleybuses/$city/gorozanin  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $BKM321   i/_trolleybuses/$city/BKM321  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $vmz529800   i/_trolleybuses/$city/vmz529800  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $trolza5275optima   i/_trolleybuses/$city/trolza5275optima  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 

@@ -232,7 +232,7 @@ class Fileprocessor:
             elif os.path.isfile(street):
                 if geo_dict is None:
                     self.logger.error(
-                        filename + '  must have coordinates for search in geodata or _place in filename ('+os.path.basename(filename)+' override_key='+override_key+' find=' +str(os.path.basename(filename).find(override_key)))
+                        filename + '  must have coordinates for search in geodata, or set --street')
                     return None
                 regions_filepath = street
                 from model_geo import Model_Geo as Model_geo_ask
@@ -309,23 +309,23 @@ class Fileprocessor:
         
         # Optionaly obtain country from gpkg file if country parameter is path to vector file (.gpkg)
         if os.path.isfile(country):
-            country = self.get_place_from_input(filename,country,geo_dict,override_key='_place',geodata_attribute='name:en')
+            country = self.get_place_from_input(filename,country,geo_dict,override_key='_location',geodata_attribute='name:en')
             if country is None:
                 #place should taken from gpkg, but not found
                 return None  
 
-
+                
         # TAKEN ON LOCATION
         # search filename for pattern "_locationMoscow-Oblast"
         import re
         l=None
-        regex = "_place(.*?)[_.\b]"
+        regex = "_location(.*?)[_.\b]"
         test_str = os.path.basename(filename)
 
         matches = re.finditer(regex, test_str, re.MULTILINE)
         for match in matches:
-            l = match.group()[6:-1].replace('-',' ').title()
-        if l == 'place':
+            l = match.group()[9:-1].replace('-',' ').title()
+        if l == 'location':
             l = None
         if l is not None: country=l
         del l
@@ -892,7 +892,7 @@ class Fileprocessor:
                 modelwiki.create_category(catname, category_page_content)
         # end of search category for this vehicle 
         
-        if number is not None and vehicle == 'bus':
+        if number is not None and vehicle == 'bus' and digital_number.isdigit():
             catname = f'Number {digital_number} on buses'
             if not has_category_for_this_vehicle: categories.add(catname)
             modelwiki.create_number_on_vehicles_category(vehicle='bus', number=digital_number)
@@ -1009,7 +1009,7 @@ class Fileprocessor:
         test_str = test_str[0:test_str.index('.')]
 
         lst = re.findall(r'(suffix\d+)', test_str)
-        suffix=lst[0].replace('suffix','').strip()
+        suffix=lst[0].replace('suffix','')
         return suffix
 
     def get_colorlist_from_string(self, test_str: str) -> list:
@@ -1269,7 +1269,7 @@ class Fileprocessor:
 
         # Optionaly obtain country from gpkg file if country parameter is path to vector file (.gpkg)
         if os.path.isfile(country):
-            country = self.get_place_from_input(filename,country,geo_dict,override_key='_place',geodata_attribute='name:en')
+            country = self.get_place_from_input(filename,country,geo_dict,override_key='_location',geodata_attribute='name:en')
             if country is None:
                 #place should taken from gpkg, but not found
                 return None   

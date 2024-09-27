@@ -83,7 +83,15 @@ VDL_Citea_SLE_120=Q125210502
 YaAZ_5267=Q4535783
 DaewooBS=Q12591646
 Bychok=Q4182156
+FordTransit2013=Q130361067
 
+MODE=full
+
+if [ $MODE = "full" ]; then
+# switchoff  this
+city=blagoveshchensk
+SYSTEM=Q130375300
+python3 vehicle-upload.py -v bus  --system $SYSTEM  --model $liaz5292   i/_buses/$city/liaz5292 --number BEFORE_UNDERSCORE  --country countries.gpkg  --progress --street trolleybus.gpkg
 
 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $ZIU9   i/_trolleybuses/moscow/ZIU9  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
@@ -221,6 +229,7 @@ python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz5292   i/_buses/
 python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz5292   i/_buses/moscow/tmp20_liaz5292 --country countries.gpkg --number BEFORE_UNDERSCORE  --operator-vehicle-category "TMP20 buses"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $MAN_LIONCOACH_R07   i/_buses/moscow/MAN_LIONCOACH_R07 --country countries.gpkg --number BEFORE_UNDERSCORE   --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $MAZ203   i/_buses/moscow/avtoline_MAZ203 --country countries.gpkg --number BEFORE_UNDERSCORE  --operator-vehicle-category "Avtoline buses in Moscow"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v bus --system $mosbus  --model $FordTransit2013   i/_buses/moscow/FordTransit2013 --country countries.gpkg --number BEFORE_UNDERSCORE   --progress --street trolleybus.gpkg 
 
 #rare
 python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz5293   i/_buses/moscow/mgt_liaz5293 --country countries.gpkg --number BEFORE_UNDERSCORE   --progress  --operator-vehicle-category "Mosgortrans buses" --street trolleybus.gpkg 
@@ -299,3 +308,5 @@ python3 vehicle-upload.py -v bus --system $SYSTEM  --model $PAZ3205   i/_buses/$
 city=Barnaul
 SYSTEM=Q4078392
 python3 vehicle-upload.py -v bus --system $SYSTEM  --model $ScaniaOmniLink   i/_buses/$city/ScaniaOmniLink --number BEFORE_UNDERSCORE  --country countries.gpkg  --progress --street trolleybus.gpkg
+
+fi

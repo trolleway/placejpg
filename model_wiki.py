@@ -458,7 +458,7 @@ class Model_wiki:
         return new pywikibot claim object for add to wikidata using pywikibot from dict 
         """
 
-    def create_street_wikidata(self,city,name_en,coords,name_ru=None,named_after=None, street_type='Q79007',country=None,dry_mode=False)->str:
+    def create_geoobject_wikidata(self,city,name_en,coords,name_ru=None,named_after=None, maintype='Q79007',country=None,dry_mode=False)->str:
         wikidata_template = """
     {
       "type": "item",
@@ -488,7 +488,7 @@ class Model_wiki:
         translate_variants['Street']=['Ulitsa']
 
         city_wd = self.get_wikidata_simplified(city)
-        street_type_wd = self.get_wikidata_simplified(street_type)
+        street_type_wd = self.get_wikidata_simplified(maintype)
         wd_object = json.loads(wikidata_template)
         wd_object["labels"]["en"] = name_en
         wd_object["descriptions"]["en"] = street_type_wd['labels']['en'] + ' in ' + city_wd['labels']['en']
@@ -1372,6 +1372,9 @@ class Model_wiki:
         cityname = city_wd['labels']['en']
         catname = f'{streetname}'
         uppercat = self.get_category_object_in_location(street_wd['claims']['P31'][0]['value'],city_wikidata,verbose=True)
+        if uppercat is None:
+            print('no category for '+street_wd['claims']['P31'][0]['value'])
+            return None
         content = """{{Wikidata infobox}}
         {{GeoGroup}}
         [[Category:%uppercat%]]
@@ -2594,7 +2597,7 @@ class Model_wiki:
             self.wikidata_cache, self.wikidata_cache_filename)
         return None
         
-    def print_category_filenames(self,categoryname, start:int=None,total:int=None):
+    def print_category_filenames(self,categoryname, start:int=None, total:int=None):
         """ print list of files in category to terminal for bash pipelines"""
         
         site = pywikibot.Site("commons", "commons")
@@ -2607,3 +2610,30 @@ class Model_wiki:
             category, recurse=0, start=start, total=total, content=False, namespaces=None)
         for page in gen1:
             print(page.title().replace('File:',''))
+    
+    def print_wikidata_category_filenames(self,wdid:str, start:int=None, total:int=None):
+        wd = self.get_wikidata_simplified(wdid)
+        if wd['commons'] is None:
+            return None
+        else:
+            self.print_category_filenames(wd['commons'])
+    
+    def list_category_by_wikidata(self,wdid:str, start:int=None, total:int=None)->list:
+        wd = self.get_wikidata_simplified(wdid)
+        if wd['commons'] is None:
+            return None
+        else:
+
+            pagenames=list()
+            site = pywikibot.Site("commons", "commons")
+            site.login()
+            site.get_tokens("csrf")  # preload csrf token
+            category = pywikibot.Category(site, wd['commons'])
+            
+
+            gen1 = pagegenerators.CategorizedPageGenerator(
+                category, recurse=0, start=start, total=total, content=False, namespaces=None)
+            for page in gen1:
+                if page.title().startswith('File:'):
+                    pagenames.append(page.title())
+            return pagenames

@@ -20,6 +20,7 @@ parser.add_argument('--csv', type=str, required=False, help='list of page names 
 parser.add_argument('--wikidata', type=str, required=True)
 parser.add_argument('--suffix', type=str, required=False,default='')
 parser.add_argument('--prefix', type=str, required=False,default='')
+parser.add_argument("-s","--skip-sds",action="store_true",help="skip add SDS")
 parser.add_argument('--rationale', type=int, required=False,default=2,help='1.	At the original uploader’s request, 2 .	To change from a meaningless or ambiguous name to a name that describes what the image particularly displays 3 obvious errors 4  harmonize the names of a set of images 5 violation of Commons’ policies and guidelines 6 Non-controversial maintenance and bug fixes')
 parser.add_argument("--verify", action="store_const",
                     required=False, default=False, const=True)
@@ -140,7 +141,7 @@ if __name__ == '__main__':
     suffix = args.suffix
     prefix = args.prefix
     verify=args.verify
-    set_sds = True
+    skip_sds = args.skip_sds
     
     if pagename is not None:
         new_name = helper_renamer.generate_filename(pagename,wikidata)
@@ -157,7 +158,7 @@ if __name__ == '__main__':
                 input()
             helper_renamer.prepend_text_page(pagename,rename_template_text)
         
-        if set_sds:
+        if not skip_sds:
             entity_list = modelwiki.wikidata2instanceof_list(wikidata)
             entity_list.append(wikidata)
             modelwiki.append_image_descripts_claim(pagename,entity_list)
@@ -175,8 +176,7 @@ if __name__ == '__main__':
         entity_list.append(wikidata)
         for el in pageslist:
             pagename=el
-            if set_sds:
-
+            if not skip_sds:
                 modelwiki.append_image_descripts_claim(pagename,entity_list)
             try:
                 new_name = helper_renamer.generate_filename(pagename,wikidata)

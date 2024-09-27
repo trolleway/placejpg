@@ -23,7 +23,10 @@ parser.add_argument('category', type=str,  help='commons category')
 args = parser.parse_args()
 
 modelwiki = Model_wiki()
-filenames = modelwiki.print_category_filenames(args.category)
+if args.category.startswith('Q') and args.category[1].isdigit() and args.category[2].isdigit():
+    filenames = modelwiki.print_wikidata_category_filenames(args.category)
+else:
+    filenames = modelwiki.print_category_filenames(args.category)
 
 
 

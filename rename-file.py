@@ -36,6 +36,8 @@ class Helper_rename:
     
     cachedir='maintainer_cache'
     fileprocessor = Fileprocessor()
+    blacklist = list()
+    blacklist.append('Ludvig14')
 
     def dowload_or_cache_read(self,FilePage)->str:
         if not os.path.isdir(self.cachedir):
@@ -113,6 +115,12 @@ class Helper_rename:
         site.login()
         site.get_tokens("csrf")  # preload csrf token
         file_page = pywikibot.FilePage(site, pagename)
+        
+        #блатной
+        if any(word in file_page.text for word in self.blacklist):
+            print('user too cool for rename, skip')
+            return False
+            
 
         new_page_text = helper_renamer.prepend_text(file_page.text,rename_template_text,'{{Rename')
         if new_page_text is None:

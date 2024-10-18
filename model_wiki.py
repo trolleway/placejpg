@@ -1917,7 +1917,7 @@ class Model_wiki:
             building_wd["claims"]["P669"][0]["value"])
 
         if 'qualifiers' not in building_wd["claims"]["P669"][0]:
-            self.logger.error( "object https://www.wikidata.org/wiki/"
+            self.logger.warning( "object https://www.wikidata.org/wiki/"
                     + wikidata
                     + "#P669 has [P669 Located on street]. If it has qualifier [P670 house number], this page name will improved. Upload without address text now")
             return None

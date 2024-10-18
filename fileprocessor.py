@@ -25,6 +25,7 @@ import contextlib
 import io
 
 import placejpgconfig
+from iptcinfo3 import IPTCInfo
 
 
 class Fileprocessor:
@@ -42,7 +43,7 @@ class Fileprocessor:
     exiftool_path = "exiftool"
     
     # TIFF LARGER THAN THIS VALUE WILL BE COMPRESSED TO WEBP 
-    tiff2webp_min_size_mb = 18
+    tiff2webp_min_size_mb = 9
     
     # Size of chunk for all uploads to wikimedia engine
     chunk_size = 10240000
@@ -259,9 +260,28 @@ class Fileprocessor:
                     assert street_wdid is not None
             return street_wdid
 
+    def get_coordinate_from_string(self,filename)->list:
+        # COORDINATE
+        # search filename for pattern "LatLng(55.59818, 37.58834)"
+        import re
+        l=None
+        regex = "_LatLng(.*?)[)]"
+        test_str = os.path.basename(filename)
+
+        matches = re.finditer(regex, test_str, re.MULTILINE)
+        for match in matches:
+            l = match.group()[len('_LatLng('):-1]
+            parts=l.split(',')
+            lat=float(parts[0].strip())
+            lon=float(parts[1].strip())
+            
+            return lat,lon
+        
+        return None,None
 
     def make_image_texts_vehicle(self, filename, vehicle, model, number, street=None, system=None,  route=None, country=None, line=None, facing=None, colors=None, operator=None, operator_vehicle_category=None, secondary_wikidata_ids=None, digital_number=None, custom_categories=list(), suffix='', skip_unixtime=False) -> dict:
         assert os.path.isfile(filename)
+
 
         from model_wiki import Model_wiki as Model_wiki_ask
         modelwiki = Model_wiki_ask()
@@ -272,6 +292,7 @@ class Fileprocessor:
         vehicle_names = {'ru': {'tram': 'трамвай', 'trolleybus': 'троллейбус',
                                 'bus': 'автобус', 'train': 'поезд', 'locomotive': 'локомотив', 'auto': 'автомобиль', 'plane': 'самолёт','metro':'метропоезд'}}
         wikidata_4_structured_data = set()
+        if secondary_wikidata_ids is None: secondary_wikidata_ids = list()
         train_synonims = ['train', 'locomotive', 'emu', 'dmu','metro']
 
         # assert facing in ('Left','Right',None)
@@ -314,7 +335,10 @@ class Fileprocessor:
                 #place should taken from gpkg, but not found
                 return None  
 
-                
+                 
+
+
+        
         # TAKEN ON LOCATION
         # search filename for pattern "_locationMoscow-Oblast"
         import re
@@ -448,7 +472,7 @@ class Fileprocessor:
         if 'en' in line_names:
             if len(line_names['en']) > 0:
                 placenames['en'].append(line_names['en'])
-        if 'en' in street_names:
+        if 'street_names' in locals() and 'en' in street_names:
             if street_names['en'] != '':
                 placenames['en'].append(street_names['en'])
         
@@ -874,7 +898,7 @@ class Fileprocessor:
             if modelwiki.is_category_exists(cat):
                 has_category_for_this_vehicle = True
                 categories.add(cat)
-            else:
+            elif  digital_number.isdigit():
                 catname = "Number "+digital_number+" on rail vehicles"
                 category_page_content = '{{NumbercategoryTrain|'+digital_number+'}}'
                 modelwiki.create_category(catname, category_page_content)
@@ -896,11 +920,11 @@ class Fileprocessor:
             catname = f'Number {digital_number} on buses'
             if not has_category_for_this_vehicle: categories.add(catname)
             modelwiki.create_number_on_vehicles_category(vehicle='bus', number=digital_number)
-        elif number is not None and vehicle == 'trolleybus':
+        elif number is not None and vehicle == 'trolleybus' and digital_number.isdigit():
             catname = f'Number {digital_number} on trolleybuses'
             if not has_category_for_this_vehicle: categories.add(catname)
             modelwiki.create_number_on_vehicles_category(vehicle='trolleybus', number=digital_number)
-        elif number is not None and vehicle == 'tram':
+        elif number is not None and vehicle == 'tram' and digital_number.isdigit():
             catname="Trams with fleet number "+digital_number
             if not has_category_for_this_vehicle: categories.add(catname)
             category_page_content = '{{' + \
@@ -1033,7 +1057,7 @@ class Fileprocessor:
     def get_licenceplate_from_string(self, test_str: str) -> str:
         # from string 2002_20031123_lpA 123 BC 99_.jpg  returns [A 123 BC 99]
         
-        if '_lp' not in test_str: 
+        if '_np' not in test_str: 
             return ''
 
         import re
@@ -1046,7 +1070,7 @@ class Fileprocessor:
         lst = list()
 
         for part in parts:
-            if part.startswith('lp'):
+            if part.startswith('np'):
                 lst.append(part[2:].upper())
              
         return lst[0]
@@ -1226,7 +1250,37 @@ class Fileprocessor:
         return text,categories
 
 
+    def read_IPTC(self,filepath)->dict:
+    
+        # read IPTC
+        info = IPTCInfo(filepath, force=True)
+        city = None
+        sublocation = None
+        objectname = None
 
+        if info['city'] is not None:
+            city = info['city'].decode('UTF-8')
+        if info['sub-location'] is not None:
+            sublocation = info['sub-location'].decode('UTF-8')
+        if info['object name'] is not None:
+            try:
+                objectname = info['object name'].decode('UTF-8')
+            except:
+                objectname = info['object name'].decode('CP1251')
+        caption = info['caption/abstract']
+        if caption is not None:
+            try:
+                caption = caption.decode('UTF-8')
+            except:
+                caption = caption.decode('CP1251')
+        else:
+            caption = ''
+        
+        if objectname is None or caption is None: return None
+        result = dict()
+        result['object name']=objectname
+        result['caption']=caption
+        return result
 
     def make_image_texts_simple(
         self, filename, wikidata, country='', rail='', secondary_wikidata_ids=list(), custom_categories=list(), suffix=''
@@ -1252,10 +1306,6 @@ class Fileprocessor:
         iptc_objectname = self.image2objectname(filename)
         geo_dict = self.image2coords(filename)
         
-        print('signal   '+filename)
-        print(geo_dict)
-        print(wikidata)
-            
 
         # Optionaly obtain wikidata from gpkg file if wikidata parameter is path to vector file (.gpkg)
         if os.path.isfile(wikidata):
@@ -1291,6 +1341,9 @@ class Fileprocessor:
             for i in wd_record['claims']['P31']:
                 instance_of_data.append(
                     modelwiki.get_wikidata_simplified(i['value']))
+        
+        iptc_captions = self.read_IPTC(filename)
+
         
         text = ""
         objectnames = {}
@@ -1372,6 +1425,14 @@ class Fileprocessor:
         st = """== {{int:filedesc}} ==
 {{Information
 |description="""
+
+        if iptc_captions is not None and iptc_captions['objectname']!='':
+            st += iptc_captions['objectname']
+            
+        if iptc_captions is not None and iptc_captions['caption']!='':
+            st += iptc_captions['caption']
+            
+
         for lang in self.langs_primary:
             st += "{{"+lang+"|1=" + objectname_long[lang] + "}} \n"
 
@@ -1856,7 +1917,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
     def check_extension_valid(self, filepath) -> bool:
         ext = os.path.splitext(filepath)[1].lower()[1:]
         allowed = ['tiff', 'tif', 'png', 'gif', 'jpg', 'jpeg', 'webp', 'xcf', 'mid', 'ogg', 'ogv',
-                   'svg', 'djvu', 'stl', 'oga', 'flac', 'opus', 'wav', 'webm','mp4','mov', 'mp3', 'midi', 'mpg', 'mpeg']
+                   'svg', 'djvu', 'stl', 'oga', 'flac', 'opus', 'wav', 'webm','mp4','mov', 'mp3', 'midi', 'mpg', 'mpeg','avi']
         if ext in allowed:
             return True
         return False
@@ -1902,9 +1963,10 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                     tmp = exiftool_text_result.splitlines()[1].split(b",")
                     if len(tmp) > 1:
                         dt_str = tmp[1]
-                        dt_obj = datetime.strptime(
-                            dt_str.decode("UTF-8"), "%Y:%m:%d %H:%M:%S"
-                        )
+                        if ':' in str(dt_str):
+                            dt_obj = datetime.strptime(
+                                dt_str.decode("UTF-8"), "%Y:%m:%d %H:%M:%S"
+                            )
             elif path.lower().endswith('.stl'):
                 dt_obj = None
 
@@ -1927,6 +1989,10 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
             lat = round(float(exiftool_metadata.get('gpslatitude')), 6)
             lon = round(float(exiftool_metadata.get('gpslongitude')), 6)
         except:
+            pass
+        lat,lon = self.get_coordinate_from_string(path)
+        
+        if lat is None and lon is None:
             self.logger.warning('no coordinates in '+path)
             return None
 
@@ -1952,37 +2018,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
         commonsfilename = commonsfilename.replace("_", " ")
         return commonsfilename
 
-    def write_iptc(self, path, caption, keywords):
-        # path can be both filename or directory
-        assert os.path.exists(path)
-
-        '''
-        To prevent duplication when adding new items, specific items can be deleted then added back again in the same command. For example, the following command adds the keywords "one" and "two", ensuring that they are not duplicated if they already existed in the keywords of an image:
-
-exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
-        '''
-
-        # workaround for write utf-8 keywords: write them to file
-        argfiletext = ''
-        if isinstance(keywords, list) and len(keywords) > 0:
-            for keyword in keywords:
-                argfiletext += '-keywords-='+keyword+''+" \n"+'-keywords+='+keyword+' '+"\n"
-
-        argfile = tempfile.NamedTemporaryFile()
-        argfilename = 't.txt'
-        with open(argfilename, 'w') as f:
-            f.write(argfiletext)
-
-        cmd = [self.exiftool_path, '-preserve', '-overwrite_original', '-charset iptc=UTF8', '-charset', 'utf8', '-codedcharacterset=utf8',
-               '-@', argfilename, path]
-        print(' '.join(cmd))
-        response = subprocess.run(cmd, capture_output=True)
-
-        if isinstance(caption, str):
-            cmd = [self.exiftool_path, '-preserve', '-overwrite_original',
-                   '-Caption-Abstract='+caption+'', path]
-            response = subprocess.run(cmd, capture_output=True)
-
+   
     def print_structured_data(self, commonsfilename):
         warnings.warn('moved to model_wiki', DeprecationWarning, stacklevel=2)
         commonsfilename = self.prepare_commonsfilename(commonsfilename)
@@ -2006,49 +2042,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
 
     
 
-    def commons2stock_dev(self, url, city_wdid, images_dir='stocks', dry_run=False, date=None):
 
-        site = pywikibot.Site('commons', 'commons')
-        file_page = pywikibot.FilePage(site, url.replace(
-            'https://commons.wikimedia.org/wiki/', ''))
-
-        data_item = file_page.data_item()
-        data_item.get()
-
-        wd_ids = list()
-
-        for prop in data_item.claims:
-            if prop != 'P180':
-                continue
-            for statement in data_item.claims[prop]:
-                if isinstance(statement.target, pywikibot.page._wikibase.ItemPage):
-                    print(prop, statement.target.id)
-                    wd_ids.append(statement.target.id)
-
-        if not os.path.isdir(images_dir):
-            os.makedirs(images_dir)
-        filename = os.path.join(images_dir, url.replace(
-            'https://commons.wikimedia.org/wiki/File:', ''))
-        if not os.path.exists(filename):
-            self.logger.debug('download: '+filename)
-            file_page.download(filename)
-
-        caption, keywords = self.get_shutterstock_desc(
-            filename=filename,
-            wikidata_list=wd_ids,
-            city=city_wdid,
-            date=date,
-        )
-
-        if dry_run:
-            print()
-            print(filename)
-            print(caption)
-            print(', '.join(keywords))
-            return
-
-        self.write_iptc(filename, caption, keywords)
-        # processed_files.append(filename)
     
     def deprecated_replace_duplicated(self,filepath:str):
         """
@@ -2156,7 +2150,6 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             pbar.set_description(filename)
             if 'commons_uploaded' in filename:
                 continue
-            
             if self.check_extension_valid(filename):
                 if self.check_exif_valid(filename) :
                     files_filtered.append(filename)
@@ -2168,17 +2161,19 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
         if total_files > 1 and 'progress' in desc_dict:
             progressbar_on = True
             pbar = tqdm(total=total_files)
-
+        
         files = files_filtered
         del files_filtered
+        
         for filename in files:
             if 'commons_uploaded' in filename:
                 continue
+            
             if not(os.path.isfile(filename)):
                 # this section goes when upload mp4: mp4 converted to webp, upload failed, then run second time, mp4 moved, webp uploaded, ciycle continued   
                 continue
             
-
+            
             secondary_wikidata_ids = modelwiki.input2list_wikidata(
                 desc_dict['secondary_objects'])
 
@@ -2190,6 +2185,8 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
             
             # get custom categories without wikidata from filename
             # i use it for film rolls
+            
+            
             
             custom_categories = list()
             custom_categories = self.get_categorieslist_from_string(filename)
@@ -2250,7 +2247,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 desc_dict['line'] = modelwiki.wikidata_input2id(
                     desc_dict.get('line', None))
 
-
+                
                 texts = self.make_image_texts_vehicle(
                     filename=filename,
                     vehicle=desc_dict['vehicle'],
@@ -2282,6 +2279,8 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                 '''
                     'new_filename':commons_filename,'ru':objectname_long_ru,'en':objectname_long_en
                 '''
+                
+            
             # HACK
             # UPLOAD WEBP instead of TIFF if tiff is big
             # if exists file with webp extension:
@@ -2309,7 +2308,7 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
                     self.move_file_to_uploaded_dir(
                         filename, uploaded_folder_path)
                 filename = video_converted_filename
-                texts["name"] = texts["name"].replace('.mp4', '.webm').replace('.MP4', '.webm').replace('.MOV', '.webm').replace('.mov', '.webm').replace('.avi', '.webm')          
+                texts["name"] = texts["name"].replace('.mp4', '.webm').replace('.MP4', '.webm').replace('.MOV', '.webm').replace('.mov', '.webm').replace('.avi', '.webm').replace('.AVI', '.webm')             
                 
 
             print(texts["name"])
@@ -2482,17 +2481,28 @@ exiftool -keywords-=one -keywords+=one -keywords-=two -keywords+=two DIR
 
     def convert_to_webm(self,filename)->str:
         # convert video to webm vp9. files not overwriten
-        filename_dst = filename.replace('.mp4', '.webm').replace('.MP4', '.webm').replace('.MOV', '.webm').replace('.mov', '.webm')  
+        filename_dst = filename.replace('.mp4', '.webm').replace('.MP4', '.webm').replace('.MOV', '.webm').replace('.mov', '.webm').replace('.avi', '.webm').replace('.AVI', '.webm')    
         if os.path.isfile(filename_dst): return filename_dst
+        
+        file_stats = os.stat(filename)
+        filesize_mb=file_stats.st_size / (1024 * 1024)
+        if filesize_mb > 20:
+        
+            cmd = ['ffmpeg', '-i',filename, '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '30', '-pass', '1', '-row-mt', '1', '-an', '-f', 'webm', '-y', '/dev/null']
+            print(' '.join(cmd))
+            response = subprocess.run(cmd)
 
-        cmd = ['ffmpeg', '-i',filename, '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '30', '-pass', '1', '-row-mt', '1', '-an', '-f', 'webm', '-y', '/dev/null']
-        print(' '.join(cmd))
-        response = subprocess.run(cmd)
-
-        cmd = ['ffmpeg', '-i', filename, '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '30', '-pass', '2', '-row-mt', '1', '-c:a', 'libopus',   filename_dst]
-        print(' '.join(cmd))
-        response = subprocess.run(cmd)
-        return filename_dst
+            cmd = ['ffmpeg', '-i', filename, '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '30', '-pass', '2', '-row-mt', '1', '-c:a', 'libopus',   filename_dst]
+            print(' '.join(cmd))
+            response = subprocess.run(cmd)
+            return filename_dst
+        else:
+            self.logger.info('video file is small, convert lossless')
+            cmd = ['ffmpeg', '-i', filename, '-c:v', 'libvpx-vp9', '-lossless', '1',  '-c:a', 'libopus',   filename_dst]
+            print(' '.join(cmd))
+            response = subprocess.run(cmd)
+            return filename_dst
+            
         
     def move_file_to_uploaded_dir(self, filename, uploaded_folder_path):
         # move uploaded file to subfolder

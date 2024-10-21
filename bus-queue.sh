@@ -9,6 +9,7 @@ spbbus=Q4407764
 vitebsktroll=Q2089752
 vitebskbus=Q16271696
 vidnoyetroll=Q4110660
+moscoblbus=Q125810299
 
 ZIU9=Q198271
 ZIU6205=Q2424761
@@ -299,12 +300,13 @@ python3 vehicle-upload.py -v bus --system $vyborgbus --city $city --model $Scani
 
 
 
-moscoblbus=Q125810299
+
 city="Moscow Oblast"
 
 
 python3 vehicle-upload.py -v bus --system $moscoblbus --city "Q1697" --model $liaz5292  i/_buses/mostransavto/liaz5292 --country countries.gpkg --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mostransavto"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $moscoblbus --city "Q1697" --model $NEFAZ5299  i/_buses/mostransavto/NEFAZ5299 --country countries.gpkg --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mostransavto"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v bus --system $moscoblbus --city "Q1697" --model $NEFAZ5299  i/_buses/mostransavto_nonum/NEFAZ5299 --country countries.gpkg  --operator-vehicle-category "Mostransavto"  --progress --street trolleybus.gpkg 
 
 city=Yekaterinburg
 ekaterinburgbus=Q4174307

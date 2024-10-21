@@ -29,7 +29,7 @@ parser.add_argument('-m', '--model', type=str, required='station' not in sys.arg
                     help='wikidata id or wikidata name of vehicle model')
 parser.add_argument('-st', '--street', type=str, default=None, required=False,
                     help='wikidata id or wikidata name of streer or highway')
-parser.add_argument('-n', '--number', type=str, required='station' not in sys.argv,
+parser.add_argument('-n', '--number', type=str, required=False,
                     help='vehicle number. Use BEFORE_UNDERSCORE to extract 3213 from 3213_20060702_162.jpg ')
 parser.add_argument('--digital_number', type=str, required=False,
                     help='optional digit vehicle number for Wikimedia Commons category. Example: 1468 from 2TE10M-1468 ')

@@ -279,7 +279,7 @@ class Fileprocessor:
         
         return None,None
 
-    def make_image_texts_vehicle(self, filename, vehicle, model, number, street=None, system=None,  route=None, country=None, line=None, facing=None, colors=None, operator=None, operator_vehicle_category=None, secondary_wikidata_ids=None, digital_number=None, custom_categories=list(), suffix='', skip_unixtime=False) -> dict:
+    def make_image_texts_vehicle(self, filename, vehicle, model, number=None, street=None, system=None,  route=None, country=None, line=None, facing=None, colors=None, operator=None, operator_vehicle_category=None, secondary_wikidata_ids=None, digital_number=None, custom_categories=list(), suffix='', skip_unixtime=False) -> dict:
         assert os.path.isfile(filename)
 
 
@@ -483,7 +483,35 @@ class Fileprocessor:
         else:
             timestamp_format='%s'
 
-        if vehicle not in train_synonims:
+
+        if vehicle == 'auto' or (vehicle not in train_synonims and  number is None):
+            objectname_en = '{city} {transport} {license_plate}'.format(
+                transport=vehicle,
+                city=city_name_en,
+                model=model_names['en'],
+                license_plate=license_plate
+            )
+
+            objectname_ru = '{city}, {transport} {model} {license_plate}'.format(
+                city=city_name_ru,
+                transport=vehicle_names['ru'][vehicle],
+                model=model_names.get('ru', model_names['en']),
+                license_plate=license_plate
+            )
+            if license_plate != '':
+                objectname_ru = ' '+objectname_ru
+            
+            commons_filename = '{city} {transport} {license_plate} {dt} {timestamp} {place} {model}{suffix}{extension}'.format(
+                city=city_name_en,
+                transport=vehicle,
+                license_plate=license_plate,
+                dt=dt_obj.strftime("%Y-%m"),
+                timestamp = dt_obj.strftime(timestamp_format),
+                place=' '.join(placenames['en']),
+                model=model_names['en'],
+                suffix=suffix,
+                extension=filename_extension)
+        elif vehicle not in train_synonims:
             objectname_en = '{city} {transport} {number}'.format(
                 transport=vehicle,
                 city=city_name_en,
@@ -525,6 +553,8 @@ class Fileprocessor:
                     extension=filename_extension)
 
             commons_filename = commons_filename.replace('  ',' ')
+            
+            
         elif vehicle in train_synonims:
             assert street_names is not None or line_names is not None
             if 'en' not in system_names:
@@ -2115,7 +2145,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
         assert os.path.exists(filepath)
         #asap quicker check if directory is empty
         if os.listdir(filepath) == []: quit()
-        assert desc_dict['mode'] in ['object', 'vehicle']
+        assert desc_dict['mode'] in ['object', 'vehicle','auto']
 
         assert 'country' in desc_dict
 
@@ -2193,7 +2223,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
             custom_categories = self.get_categorieslist_from_string(filename)
             
             suffix=self.get_suffix_from_string(filename)
-
+            
             if desc_dict['mode'] == 'object':
                 if desc_dict['wikidata'] == 'FROMFILENAME':
                     if not self.get_wikidatalist_from_string(filename):
@@ -2237,6 +2267,44 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                 del entity_list
 
 
+            elif desc_dict['mode'] == 'auto':
+                desc_dict['model'] = modelwiki.wikidata_input2id(
+                    desc_dict.get('model', None))
+                # transfer street user input deeper, it can be vector file name
+                desc_dict['street'] = desc_dict.get('street', None)
+
+                desc_dict['city'] = modelwiki.wikidata_input2id(
+                    desc_dict.get('city', None))
+                desc_dict['line'] = modelwiki.wikidata_input2id(
+                    desc_dict.get('line', None))
+
+                
+                texts = self.make_image_texts_vehicle(
+                    filename=filename,
+                    vehicle=desc_dict['vehicle'],
+                    model=desc_dict.get('model', None),
+                    street=desc_dict.get('street', None),
+                    number=desc_dict.get('number', None),
+                    digital_number=desc_dict.get('digital_number', None),
+                    system=desc_dict.get('system', None),
+                    route=desc_dict.get('route', None),
+                    country=desc_dict.get('country', None),
+                    line=desc_dict.get('line', None),
+                    operator=desc_dict.get('operator', None),
+                    operator_vehicle_category=desc_dict.get('operator_vehicle_category', None),
+                    facing=desc_dict.get('facing', None),
+                    colors=desc_dict.get('colors', None),
+                    secondary_wikidata_ids=secondary_wikidata_ids,
+                    custom_categories=custom_categories,
+                    suffix=suffix
+                )
+                if texts is None:
+                    # invalid metadata for this file, continue to next file
+                    continue
+                wikidata_list = list()
+                wikidata_list += texts['structured_data_on_commons']
+                wikidata_list += secondary_wikidata_ids
+                
             elif desc_dict['mode'] == 'vehicle':
                 desc_dict['model'] = modelwiki.wikidata_input2id(
                     desc_dict.get('model', None))
@@ -2274,12 +2342,9 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                 wikidata_list = list()
                 wikidata_list += texts['structured_data_on_commons']
                 wikidata_list += secondary_wikidata_ids
-                standalone_captions_dict = {
-                    'new_filename': texts['name'], 'ru': texts['captions']['ru'], 'en': texts['captions']['en']}
 
-                '''
-                    'new_filename':commons_filename,'ru':objectname_long_ru,'en':objectname_long_en
-                '''
+
+
                 
             
             # HACK

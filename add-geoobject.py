@@ -58,7 +58,7 @@ def create_geoobject(city_wdid, country_wdid, named_after_wdid, street_name_en, 
                                                        maintype=maintype,
                                                        dry_mode=dry_mode)
         if wikidata_only !=True and catname is None:
-            street_category_result = modelwiki.create_street_category(street_wdid, city_wdid)
+            street_category_result = modelwiki.create_category_by_wikidata(street_wdid, city_wdid)
             print(street_category_result)
         else:
             if catname is not None and modelwiki.is_category_exists(catname):
@@ -73,7 +73,7 @@ def create_geoobject(city_wdid, country_wdid, named_after_wdid, street_name_en, 
         # CREATE CATEGORY IF NOT EXIST
         if street_wd['commons'] is None:
             # create street category
-            street_category_result = modelwiki.create_street_category(street_wdid, city_wdid)
+            street_category_result = modelwiki.create_category_by_wikidata(street_wdid, city_wdid)
             print(street_category_result)
         else:
             print('wikidata entity already has commons category')

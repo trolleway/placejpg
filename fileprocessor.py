@@ -1986,11 +1986,12 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
     def image2coords(self, path):
         exiftool_metadata = self.image2camera_params(path)
         try:
+            
             lat = round(float(exiftool_metadata.get('gpslatitude')), 6)
             lon = round(float(exiftool_metadata.get('gpslongitude')), 6)
         except:
             pass
-        lat,lon = self.get_coordinate_from_string(path)
+            lat,lon = self.get_coordinate_from_string(path)
         
         if lat is None and lon is None:
             self.logger.warning('no coordinates in '+path)

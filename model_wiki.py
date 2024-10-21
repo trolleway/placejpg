@@ -1358,12 +1358,13 @@ class Model_wiki:
         return text
         
 
-    def create_category_by_wikidata(self,street_wikidata:str)-> str:
+    def create_category_by_wikidata(self,street_wikidata:str, city_wikidata:str=None)-> str:
         if street_wikidata is None:
             return None
             
         street_wd = self.get_wikidata_simplified(street_wikidata)
-        city_wikidata = street_wd['claims']['P131'][0]['value']
+        if city_wikidata is None:
+            city_wikidata = street_wd['claims']['P131'][0]['value']
         city_wd = self.get_wikidata_simplified(city_wikidata)
 
                 
@@ -1848,6 +1849,8 @@ class Model_wiki:
             pagename = 'Category:'+pagename
         if not self.is_category_exists(pagename):
             self.create_page(pagename, content, 'create category')
+            print('Created new category with content')
+            print(content)
         else:
             self.logger.info('page already exists '+pagename)
     

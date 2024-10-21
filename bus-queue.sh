@@ -76,7 +76,7 @@ GAZELLE=Q650464
 MercedesVario=Q1921351
 MercedesShpurbus=Q1921285
 nefaz529940=Q118270591
-kamaz6292=Q60851127
+kamaz6282=Q60851127
 golaz6228_3axle=Q4141289
 PAZ3205=Q1997344
 PAZ3237=Q2043741
@@ -87,14 +87,14 @@ DaewooBS=Q12591646
 Bychok=Q15942199
 FordTransit2013=Q130361067
 
-MODE=full
+MODE='short'
 
 if [ $MODE = "full" ]; then
 # switchoff  this
 city=blagoveshchensk
 SYSTEM=Q130375300
 python3 vehicle-upload.py -v bus  --system $SYSTEM  --model $liaz5292   i/_buses/$city/liaz5292 --number BEFORE_UNDERSCORE  --country countries.gpkg  --progress --street trolleybus.gpkg
-
+fi 
 
 if [ $MODE = "full" ]; then
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $ZIU9   i/_trolleybuses/moscow/ZIU9  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
@@ -205,9 +205,11 @@ python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $admiral   i/_
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $trolza5265   i/_trolleybuses/$city/trolza5265  --number BEFORE_UNDERSCORE --country "Ryazan Oblast"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $trolza5265   i/_trolleybuses/$city/trolza5265  --number BEFORE_UNDERSCORE --country "Ryazan Oblast"  --progress --street trolleybus.gpkg 
 
+
+
 fi
 
-python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz4292   i/_buses/moscow/mgt_liaz4292 --country countries.gpkg --number BEFORE_UNDERSCORE   --progress  --operator-vehicle-category "Mosgortrans buses" --street trolleybus.gpkg 
+python3 vehicle-upload.py -v bus --system $mosbus  --model $kamaz6282   i/_buses/moscow/mgt_kamaz6282 --country countries.gpkg --number BEFORE_UNDERSCORE   --progress  --operator-vehicle-category "Mosgortrans buses" --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz5256   i/_buses/moscow/mgt_liaz5256 --country countries.gpkg --number BEFORE_UNDERSCORE   --progress  --operator-vehicle-category "Mosgortrans buses" --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz6212   i/_buses/moscow/mgt_liaz6212 --country countries.gpkg --number BEFORE_UNDERSCORE --operator-vehicle-category "Mosgortrans buses"   --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz6213   i/_buses/moscow/mgt_liaz6213 --country countries.gpkg --number BEFORE_UNDERSCORE --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
@@ -229,6 +231,9 @@ python3 vehicle-upload.py -v bus --system $mosbus  --model $FordTransit2013   i/
 
 #rare
 if [ $MODE = "full" ]; then
+
+python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz4292   i/_buses/moscow/mgt_liaz4292 --country countries.gpkg --number BEFORE_UNDERSCORE   --progress  --operator-vehicle-category "Mosgortrans buses" --street trolleybus.gpkg 
+
 python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz677   i/_buses/moscow/mgt_liaz677 --country countries.gpkg --number BEFORE_UNDERSCORE   --progress  --operator-vehicle-category "Mosgortrans buses" --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz5293   i/_buses/moscow/mgt_liaz5293 --country countries.gpkg --number BEFORE_UNDERSCORE   --progress  --operator-vehicle-category "Mosgortrans buses" --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $YaAZ_5267   i/_buses/moscow/mgt_YaAZ_5267 --country countries.gpkg --number BEFORE_UNDERSCORE   --progress  --operator-vehicle-category "Mosgortrans buses" --street trolleybus.gpkg 

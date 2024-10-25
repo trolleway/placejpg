@@ -279,7 +279,7 @@ class Fileprocessor:
         
         return None,None
 
-    def make_image_texts_vehicle(self, filename, vehicle, model, number=None, street=None, system=None,  route=None, country=None, line=None, facing=None, colors=None, operator=None, operator_vehicle_category=None, secondary_wikidata_ids=None, digital_number=None, custom_categories=list(), suffix='', skip_unixtime=False) -> dict:
+    def make_image_texts_vehicle(self, filename, vehicle, model=None, number=None, street=None, system=None,  route=None, country=None, line=None, facing=None, colors=None, operator=None, operator_vehicle_category=None, secondary_wikidata_ids=None, digital_number=None, custom_categories=list(), suffix='', skip_unixtime=False) -> dict:
         assert os.path.isfile(filename)
 
 
@@ -301,11 +301,7 @@ class Fileprocessor:
         dt_obj = self.image2datetime(filename)
         geo_dict = self.image2coords(filename)
 
-        if model is not None:
-            model_wdid = modelwiki.wikidata_input2id(model)
-            model_wd = modelwiki.get_wikidata_simplified(model_wdid)
-            model_names = model_wd["labels"]
-            wikidata_4_structured_data.add(model_wd['id'])
+
 
         # STREET
         # if street - vector file path: get street wikidata code by point in polygon
@@ -353,6 +349,23 @@ class Fileprocessor:
             l = None
         if l is not None: country=l
         del l
+        
+        # MODEL 
+        if model is None:
+            # extract model "Q123456" from 16666_20070707_000_modelQ123456.jpg
+            import re
+            regex = "_model(.*?)[_.\b]"
+            test_str = os.path.basename(filename)
+
+            matches = re.finditer(regex, test_str, re.MULTILINE)
+            for match in matches:
+                model = match.group()[6:-1]
+                
+        if model is not None:
+            model_wdid = modelwiki.wikidata_input2id(model)
+            model_wd = modelwiki.get_wikidata_simplified(model_wdid)
+            model_names = model_wd["labels"]
+            wikidata_4_structured_data.add(model_wd['id'])
 
         # ROUTE
         if route is None:
@@ -501,16 +514,29 @@ class Fileprocessor:
             if license_plate != '':
                 objectname_ru = ' '+objectname_ru
             
-            commons_filename = '{city} {transport} {license_plate} {dt} {timestamp} {place} {model}{suffix}{extension}'.format(
-                city=city_name_en,
-                transport=vehicle,
-                license_plate=license_plate,
-                dt=dt_obj.strftime("%Y-%m"),
-                timestamp = dt_obj.strftime(timestamp_format),
-                place=' '.join(placenames['en']),
-                model=model_names['en'],
-                suffix=suffix,
-                extension=filename_extension)
+            if vehicle != 'auto':
+                commons_filename = '{city} {transport} {license_plate} {dt} {timestamp} {place} {model}{suffix}{extension}'.format(
+                    city=city_name_en,
+                    transport=vehicle,
+                    license_plate=license_plate,
+                    dt=dt_obj.strftime("%Y-%m"),
+                    timestamp = dt_obj.strftime(timestamp_format),
+                    place=' '.join(placenames['en']),
+                    model=model_names['en'],
+                    suffix=suffix,
+                    extension=filename_extension)
+            elif vehicle == 'auto':
+                commons_filename = '{transport} {model} {city} {place} {license_plate} {dt} {timestamp}{suffix}{extension}'.format(
+                    city=city_name_en,
+                    transport=vehicle,
+                    license_plate=license_plate,
+                    dt=dt_obj.strftime("%Y-%m"),
+                    timestamp = dt_obj.strftime(timestamp_format),
+                    place=' '.join(placenames['en']),
+                    model=model_names['en'],
+                    suffix=suffix,
+                    extension=filename_extension)
+            
         elif vehicle not in train_synonims:
             objectname_en = '{city} {transport} {number}'.format(
                 transport=vehicle,

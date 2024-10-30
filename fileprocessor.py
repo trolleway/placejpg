@@ -43,7 +43,7 @@ class Fileprocessor:
     exiftool_path = "exiftool"
     
     # TIFF LARGER THAN THIS VALUE WILL BE COMPRESSED TO WEBP 
-    tiff2webp_min_size_mb = 9
+    tiff2webp_min_size_mb = 19
     
     # Size of chunk for all uploads to wikimedia engine
     chunk_size = 10240000
@@ -2243,7 +2243,8 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
             # get custom categories without wikidata from filename
             # i use it for film rolls
             
-            
+            #display image in terminal
+            subprocess.run(['climage','--unicode','--truecolor',filename])
             
             custom_categories = list()
             custom_categories = self.get_categorieslist_from_string(filename)

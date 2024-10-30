@@ -87,8 +87,9 @@ YaAZ_5267=Q4535783
 DaewooBS=Q12591646
 Bychok=Q15942199
 FordTransit2013=Q130361067
+GolazAKA6226=Q4141293
 
-MODE='short'
+MODE='full'
 
 if [ $MODE = "full" ]; then
 # switchoff  this
@@ -253,6 +254,7 @@ python3 vehicle-upload.py -v bus --system $mosbus  --model $ikarus283   i/_buses
 python3 vehicle-upload.py -v bus --system $mosbus  --model $ikarus280   i/_buses/moscow/ikarus280 --country countries.gpkg --number BEFORE_UNDERSCORE   --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $FIAT_Ducato_244   i/_buses/moscow/mgt_FIAT_Ducato_244 --country countries.gpkg --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $MARZ52661   i/_buses/moscow/mgt_MARZ52661 --country countries.gpkg --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v bus --system $mosbus  --model $GolazAKA6226   i/_buses/moscow/mgt_GolazAKA6226 --country countries.gpkg --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 fi
 
 

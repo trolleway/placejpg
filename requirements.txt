@@ -9,3 +9,4 @@ wikitextparser
 tqdm
 pillow
 iptcinfo3
+climage

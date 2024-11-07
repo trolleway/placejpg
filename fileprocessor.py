@@ -1,4 +1,3 @@
- import pywikibot
 import pywikibot
 import json
 
@@ -740,6 +739,8 @@ class Fileprocessor:
         
         
         }
+        
+        # CATEGORY FOR ROUTE
 
         if route is not None:
             cat="{transports} on route {route} in {city}".format(
@@ -768,7 +769,7 @@ class Fileprocessor:
             need_create_categories.append({'name':cat,'content':cat_content})
             
         
-
+        # CATEGORY BY PHOTOGRAPHER
 
         cat = 'Photographs by {photographer}/{country}/{transport}'
         cat = cat.format(photographer=self.photographer,
@@ -909,7 +910,10 @@ class Fileprocessor:
                 wikidata_4_structured_data.add('Q119570670')
             if facing == 'Front':
                 wikidata_4_structured_data.add('Q1972238')
-
+        elif facing is None:
+            self.logger.info('🤏 direction of vehicle skipped')
+            
+        # COLORS CATEGORY
         if colors is None and 'color' in os.path.basename(filename):
             colors = self.get_colorlist_from_string(os.path.basename(filename))
         if colors is not None:
@@ -929,6 +933,8 @@ class Fileprocessor:
                 text += "[[Category:{colorname} {transports}]]\n".format(
                     transports=transports_color[vehicle].lower(),
                     colorname=colorname)
+        elif colors is None:
+            self.logger.info('🤏 colors of vehicle skipped')
 
 
 
@@ -1004,21 +1010,49 @@ class Fileprocessor:
                 )
 
                 modelwiki.create_category(catname, category_page_content)
-        # MODEL
+        
+        # AUTOMOBILES IN LOCATION
+        if vehicle == 'auto':
+            cat = modelwiki.get_category_object_in_location(
+                transports_wikidata[vehicle], street_wd['id'], order=None, verbose=True)
+            categories.add(cat)
+
+        # MODEL IN LOCATION
 
         model_in_location_found = False
         # if dt_obj is not None and vehicle == 'trolleybus':
         # category for model. search for category like "ZIU-9 in Moscow"
         if not has_category_for_this_vehicle:
-            cat = modelwiki.get_category_object_in_location(
-                model_wd['id'], street_wd['id'], order=digital_number, verbose=True)
+            if vehicle == 'auto': #for automobiles not use number plate
+                cat = modelwiki.get_category_object_in_location(
+                    model_wd['id'], street_wd['id'], order=None, verbose=True)
+            elif vehicle != 'auto':
+                cat = modelwiki.get_category_object_in_location(
+                    model_wd['id'], street_wd['id'], order=digital_number, verbose=True)
             if cat is not None:
                 model_in_location_found = True
-                categories.add(cat)
+                
             else:
-                categories.discard(model_wd["commons"]) #remove from set if exist
-                categories.add(model_wd["commons"] +
-                               '|' + digital_number)
+                if vehicle != 'auto':
+                    categories.discard(model_wd["commons"]) #remove from set if exist
+                    categories.add(model_wd["commons"] +
+                                   '|' + digital_number)
+                elif vehicle == 'auto':
+                    categories.discard(model_wd["commons"]) #remove from set if exist
+                    categories.add(model_wd["commons"])
+        
+        # SUBCLASS OF AUTOMOBILE IN LOCATION
+        if vehicle == 'auto':
+            subclasses = model_wd['claims'].get('P279',None)
+            if subclasses is None:
+                self.logger.info('🤏 subclass of car model in wikidata is null, skipped')
+            else:
+                for subclass in subclasses:
+                    cat = modelwiki.get_category_object_in_location(
+                    subclass['value'], street_wd['id'], order=None, verbose=True)
+                    categories.add(cat)
+                    break
+        
         
         # TRANSPORT IN CITY
         if 'system_wd' in locals():
@@ -2351,8 +2385,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                 wikidata_list += secondary_wikidata_ids
 
 
-
-                
+   
             
             # HACK
             # UPLOAD WEBP instead of TIFF if tiff is big

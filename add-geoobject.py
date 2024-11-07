@@ -43,6 +43,7 @@ coords = args.coords
 catname = args.catname
 
 city = args.city
+district = args.district
 dry_mode = args.dry_run
 
 # --- move to method
@@ -56,6 +57,7 @@ def create_geoobject(city_wdid, country_wdid, named_after_wdid, street_name_en, 
                                                        country=country_wdid, 
                                                        coords=coords,
                                                        maintype=maintype,
+                                                       district=district,
                                                        dry_mode=dry_mode)
         if wikidata_only !=True and catname is None:
             street_category_result = modelwiki.create_category_by_wikidata(street_wdid, city_wdid)

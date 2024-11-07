@@ -1,4 +1,4 @@
-import pywikibot
+ import pywikibot
 import pywikibot
 import json
 
@@ -1016,6 +1016,7 @@ class Fileprocessor:
                 model_in_location_found = True
                 categories.add(cat)
             else:
+                categories.discard(model_wd["commons"]) #remove from set if exist
                 categories.add(model_wd["commons"] +
                                '|' + digital_number)
         
@@ -1435,12 +1436,12 @@ class Fileprocessor:
                                  i['id']+' must has name '+lang)
                         return None
                 objectname_long[lang] = ', '.join(
-                d['labels'][lang] for d in instance_of_data) + ' '+objectnames[lang]
+                d['labels'][lang] for d in instance_of_data if d['labels'][lang].upper() not in objectnames[lang].upper()) + ' '+objectnames[lang]
 
             for lang in self.langs_optional:
                 try:
                     objectnames_long[lang] = ', '.join(
-                        d['labels'][lang] for d in instance_of_data) + ' '+objectnames[lang]
+                        d['labels'][lang] for d in instance_of_data if d['labels'][lang].upper() not in objectnames[lang].upper()) + ' '+objectnames[lang]
                 except:
                     pass
         else:
@@ -2101,66 +2102,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
 
     
-    def deprecated_replace_duplicated(self,filepath:str):
-        """
-        for folder with commons_dublicated subfolder:
-        upload files using new filenames and new descriptions, taken from .desccription files
-        append to old files description template {{duplicate}} with link to new file on commons
-        """
-        from model_wiki import Model_wiki
-        modelwiki = Model_wiki()
-        filepath = os.path.join(filepath,'commons_duplicates')
-        if not os.path.exists(filepath):
-            print(filepath.ljust(50)+' '+' not exist')
-        assert os.path.exists(filepath)
-        files, uploaded_folder_path = self.input2filelist(filepath,mode='replace_duplicates')
-        files_filtered = list()
-        total_files = 0
-        for filename in files:
-            print(filename)
-            if 'commons_uploaded' in filename:
-                continue
-            if filename.endswith('.description'):
-                files_filtered.append(filename)
-                total_files = total_files + 1
-        files = files_filtered
-        del files_filtered
-        import pickle
-        for filename in files:
-            if 'commons_uploaded' in filename:
-                continue
-            file = open(filename, 'rb')
-            photo_duplicate_desc = pickle.load(file)
-            file.close()
-            #photo_duplicate_desc={'old_filename':old_filename,'desc':texts["text"],'new_name':texts["name"],'wikidata_list':wikidata_list,'need_create_categories':texts['need_create_categories']}
-            upload_messages = self.upload_file(
-                    photo_duplicate_desc['filename'], photo_duplicate_desc['new_name'], photo_duplicate_desc['desc'], ignore_warning=True
-                )
-            print(upload_messages)
-
-            self.logger.info('append claims')
-            claims_append_result = modelwiki.append_image_descripts_claim(
-                photo_duplicate_desc['new_name'], photo_duplicate_desc['wikidata_list'])
-            
-            # CREATE CATEGORY PAGES
-            if len(photo_duplicate_desc['need_create_categories'])>0:
-                for ctd in photo_duplicate_desc['need_create_categories']:
-                    if not modelwiki.is_category_exists(ctd['name']):
-                        self.logger.info()
-                    modelwiki.create_category(ctd['name'], ctd['content'])
-                    
-
-            # move uploaded file to subfolder
-            
-            self.move_file_to_uploaded_dir(filename, uploaded_folder_path)
-            self.move_file_to_uploaded_dir(photo_duplicate_desc['filename'], uploaded_folder_path)
-
-            #add duplicate template to previous uploaded photo
-            print('add to old file:')
-            print(photo_duplicate_desc['old_filename'])
-
-            modelwiki.file_add_duplicate_template('File:'+photo_duplicate_desc['old_filename'],new_filename=photo_duplicate_desc['new_name'])
-
+    
 
     def process_and_upload_files(self, filepath, desc_dict):
         from model_wiki import Model_wiki
@@ -2171,7 +2113,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
         assert os.path.exists(filepath)
         #asap quicker check if directory is empty
         if os.listdir(filepath) == []: quit()
-        assert desc_dict['mode'] in ['object', 'vehicle','auto']
+        assert desc_dict['mode'] in ['object', 'vehicle', 'auto', 'bus']
 
         assert 'country' in desc_dict
 
@@ -2309,6 +2251,44 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                 texts = self.make_image_texts_vehicle(
                     filename=filename,
                     vehicle=desc_dict['vehicle'],
+                    model=desc_dict.get('model', None),
+                    street=desc_dict.get('street', None),
+                    number=desc_dict.get('number', None),
+                    digital_number=desc_dict.get('digital_number', None),
+                    system=desc_dict.get('system', None),
+                    route=desc_dict.get('route', None),
+                    country=desc_dict.get('country', None),
+                    line=desc_dict.get('line', None),
+                    operator=desc_dict.get('operator', None),
+                    operator_vehicle_category=desc_dict.get('operator_vehicle_category', None),
+                    facing=desc_dict.get('facing', None),
+                    colors=desc_dict.get('colors', None),
+                    secondary_wikidata_ids=secondary_wikidata_ids,
+                    custom_categories=custom_categories,
+                    suffix=suffix
+                )
+                if texts is None:
+                    # invalid metadata for this file, continue to next file
+                    continue
+                wikidata_list = list()
+                wikidata_list += texts['structured_data_on_commons']
+                wikidata_list += secondary_wikidata_ids
+                
+            elif desc_dict['mode'] == 'bus':
+                desc_dict['model'] = modelwiki.wikidata_input2id(
+                    desc_dict.get('model', None))
+                # transfer street user input deeper, it can be vector file name
+                desc_dict['street'] = desc_dict.get('street', None)
+
+                desc_dict['city'] = modelwiki.wikidata_input2id(
+                    desc_dict.get('city', None))
+                desc_dict['line'] = modelwiki.wikidata_input2id(
+                    desc_dict.get('line', None))
+
+                
+                texts = self.make_image_texts_vehicle(
+                    filename=filename,
+                    vehicle='bus',
                     model=desc_dict.get('model', None),
                     street=desc_dict.get('street', None),
                     number=desc_dict.get('number', None),

@@ -458,7 +458,7 @@ class Model_wiki:
         return new pywikibot claim object for add to wikidata using pywikibot from dict 
         """
 
-    def create_geoobject_wikidata(self,city,name_en,coords,name_ru=None,named_after=None, maintype='Q79007',country=None,dry_mode=False)->str:
+    def create_geoobject_wikidata(self,city,name_en,coords,name_ru=None,named_after=None, maintype='Q79007',country=None,district=None,dry_mode=False)->str:
         wikidata_template = """
     {
       "type": "item",
@@ -537,6 +537,7 @@ class Model_wiki:
         wd_object["claims"]["P17"] = country_claim
         # located in adm
         wd_object["claims"]["P131"] = city_wd['id']
+        if district is not None: wd_object["claims"]["P131"] = district
         if named_after is not None: wd_object["claims"]["P138"] = named_after
 
         if dry_mode:
@@ -1358,15 +1359,17 @@ class Model_wiki:
         return text
         
 
-    def create_category_by_wikidata(self,street_wikidata:str, city_wikidata:str=None)-> str:
-        if street_wikidata is None:
+    def create_category_by_wikidata(self,geoobject_wikidata:str, city_wikidata:str=None)-> str:
+        if geoobject_wikidata is None:
             return None
             
-        street_wd = self.get_wikidata_simplified(street_wikidata)
+        street_wd = self.get_wikidata_simplified(geoobject_wikidata)
         if city_wikidata is None:
             city_wikidata = street_wd['claims']['P131'][0]['value']
         city_wd = self.get_wikidata_simplified(city_wikidata)
-
+        
+        # IF this is street: call special function for street
+        if street_wd['claims']['P31'][0]['value']=='Q79007': return self.create_street_category(geoobject_wikidata,city_wikidata)
                 
         # MAKE CATEGORY NAME
         streetname = street_wd['labels']['en']
@@ -1384,7 +1387,7 @@ class Model_wiki:
         content = content.replace('%cityname%',cityname)
         if not self.is_category_exists(catname):
             self.create_category(catname,content)
-            self.wikidata_add_commons_category(street_wikidata,catname)
+            self.wikidata_add_commons_category(geoobject_wikidata,catname)
         else:
             print('category already exists')
 

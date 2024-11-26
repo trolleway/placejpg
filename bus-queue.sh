@@ -154,7 +154,7 @@ python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $BTZ527604   i
 SYSTEM=Q4407766 #spb_troll
 city=spb
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $PTZ210   i/_trolleybuses/cities/$city/PTZ210  --number BEFORE_UNDERSCORE --country "Saint Petersburg"  --progress --street trolleybus.gpkg 
-python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $PTZ5283   i/_trolleybuses/cities/$city/PTZ5283  --number BEFORE_UNDERSCORE --country "Saint Petersburg"  --progress --street trolleybus.gpkg 
+#python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $PTZ5283   i/_trolleybuses/cities/$city/PTZ5283  --number BEFORE_UNDERSCORE --country "Saint Petersburg"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $ZIU9   i/_trolleybuses/cities/$city/ZIU-9  --number BEFORE_UNDERSCORE --country "Saint Petersburg"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $VZTM5284#ziu-9   i/_trolleybuses/cities/$city/VZTM5284  --number BEFORE_UNDERSCORE --country "Saint Petersburg"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $ZIU6205   i/_trolleybuses/cities/$city/ZIU6205  --number BEFORE_UNDERSCORE --country "Saint Petersburg"  --progress --street trolleybus.gpkg 

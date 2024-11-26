@@ -1603,6 +1603,7 @@ class Model_wiki:
                 code += "\n[[Category:"+category+"]]"
             else:
                 category = self.get_wikidata_simplified(architector_value)["commons"]
+                assert category is not None, f'not found architector category for https://www.wikidata.org/wiki/{architector_value}'
                 code += "\n[[Category:"+category+"]]"
             del category
             del architector_value

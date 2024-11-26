@@ -227,8 +227,11 @@ class Fileprocessor:
             
             # take place from filename if present
             if os.path.basename(filename).find(override_key)>0:
-                street_wdid = self.get_placewikidatalist_from_string(
-                    os.path.basename(filename))[0]
+                places=street_wdid = self.get_placewikidatalist_from_string(
+                    os.path.basename(filename))
+                print(places)
+                street_wdid =  places[0]
+                del places
             elif os.path.isfile(street):
                 if geo_dict is None:
                     self.logger.error(
@@ -1224,7 +1227,9 @@ class Fileprocessor:
 
         import re
         # cut to . symbol if extsts
-        test_str = test_str[0:test_str.index('.')]
+        startpos=test_str.index('place')
+        endpos=test_str[startpos:].index('.')+startpos
+        test_str = test_str[startpos:endpos]
 
         lst = re.findall(r'(placeQ\d+)', test_str)
 
@@ -1234,6 +1239,7 @@ class Fileprocessor:
         lst = lst2
         del lst2
         if 'placeQ' in test_str:
+            assert len(lst)>0
             assert lst[0].startswith('Q'), lst[0] + \
                 ' get instead of wikidata id'
 

@@ -15,8 +15,8 @@ parser = argparse.ArgumentParser(
 
 
 
-parser.add_argument('-wd','--wikidata', required=True, help='wikidata object')
-parser.add_argument('-p','--place', required=True, help='wikidata object for place')
+parser.add_argument('wikidata',  help='wikidata object')
+parser.add_argument('place',  help='wikidata object for place')
 
 
 parser.add_argument(

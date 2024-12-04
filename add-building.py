@@ -3,6 +3,7 @@
 
 
 import os, subprocess, logging, argparse, sys
+import shortuuid
 
 import trolleway_commons
 from model_wiki import Model_wiki
@@ -67,6 +68,16 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
+
+
+if args.wikidata is None:
+    # generate UUID as early as possible 
+    local_wikidata_uuid='UUID'+str(shortuuid.uuid())
+    print(f'Created UUID, you now can use it as placeholder for wikidata id place in filename')
+    print(local_wikidata_uuid)
+else:
+    local_wikidata_uuid = None
+
 if args.prepend_names and args.snow_fix==False:
     parser.error("--prepend_names work only with --snow_fix")
 processor = trolleway_commons.CommonsOps()
@@ -160,7 +171,7 @@ else:
         quit()
     category_name = ''
     for data in buildings:
-        building_wikidata = modelwiki.create_wikidata_building(data, dry_mode=dry_run)
+        building_wikidata = modelwiki.create_wikidata_building(data, dry_mode=dry_run, local_wikidata_uuid=local_wikidata_uuid)
         if not args.wikidata_only and args.category is None:
             category_name = modelwiki.create_building_category(
                 building_wikidata, city_wikidata=city_wdid, dry_mode=dry_run)

@@ -3,6 +3,7 @@
 
 
 import os, subprocess, logging, argparse, sys
+import shortuuid
 
 import trolleway_commons
 from model_wiki import Model_wiki
@@ -36,58 +37,37 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
+wdid = args.wikidata
+if wdid is None:
+    # generate UUID as early as possible 
+    local_wikidata_uuid='UUID'+str(shortuuid.uuid())
+    print(f'Created UUID, you now can use it as placeholder for wikidata id place in filename')
+    print(local_wikidata_uuid)
+else:
+    local_wikidata_uuid = None
+
 processor = trolleway_commons.CommonsOps()
 modelwiki = Model_wiki()
-street_wdid = args.wikidata
+
 coords = args.coords
 catname = args.catname
 
 city = args.city
 district = args.district
-dry_mode = args.dry_run
+
 
 # --- move to method
-def create_geoobject(city_wdid, country_wdid, named_after_wdid, street_name_en, street_name_ru, maintype, wikidata_only, catname, street_wdid):
 
-    if street_wdid is None:
-        street_wdid = modelwiki.create_geoobject_wikidata(city=city_wdid,
-                                                       name_en=street_name_en,
-                                                       name_ru =street_name_ru,
-                                                       named_after=named_after_wdid, 
-                                                       country=country_wdid, 
-                                                       coords=coords,
-                                                       maintype=maintype,
-                                                       district=district,
-                                                       dry_mode=dry_mode)
-        if wikidata_only !=True and catname is None:
-            street_category_result = modelwiki.create_category_by_wikidata(street_wdid, city_wdid)
-            print(street_category_result)
-        else:
-            if catname is not None and modelwiki.is_category_exists(catname):
-                modelwiki.wikidata_add_commons_category(street_wdid,catname)
-                modelwiki.category_add_template_wikidata_infobox(catname)
-
-    elif street_wdid is not None:
-        
-        street_wd = modelwiki.get_wikidata_simplified(street_wdid)
-        # SET COORDINATES
-        modelwiki.wikidata_set_coords(street_wdid,coords=coords)
-        # CREATE CATEGORY IF NOT EXIST
-        if street_wd['commons'] is None:
-            # create street category
-            street_category_result = modelwiki.create_category_by_wikidata(street_wdid, city_wdid)
-            print(street_category_result)
-        else:
-            print('wikidata entity already has commons category')
-        #add wikidata infobox if needed
-        if catname is not None and modelwiki.is_category_exists(catname):
-            modelwiki.category_add_template_wikidata_infobox(catname)
-       
-create_geoobject(city_wdid=modelwiki.wikidata_input2id(args.city), country_wdid = modelwiki.wikidata_input2id(args.country), 
+modelwiki.create_or_update_geoobject(city_wdid=modelwiki.wikidata_input2id(args.city), 
+country_wdid = modelwiki.wikidata_input2id(args.country), 
 named_after_wdid = modelwiki.wikidata_input2id(args.named_after),
 street_name_en = args.name_en,
 street_name_ru = args.name_ru,
 maintype=args.maintype,
 wikidata_only =  args.wikidata_only,
 catname = catname,
-street_wdid=street_wdid)
+wdid=wdid,
+coords=coords,
+district=district,
+
+local_wikidata_uuid=local_wikidata_uuid)

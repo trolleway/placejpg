@@ -10,3 +10,5 @@ tqdm
 pillow
 iptcinfo3
 climage
+shortuuid
+jsonlines

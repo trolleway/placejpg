@@ -500,6 +500,9 @@ class Fileprocessor:
 
 
         if vehicle == 'auto' or (vehicle not in train_synonims and  number is None):
+            if 'en' not in model_names:
+                raise ValueError('vehicle model https://www.wikidata.org/wiki/' +
+                             model_wdid+' must has name en')
             objectname_en = '{city} {transport} {license_plate}'.format(
                 transport=vehicle,
                 city=city_name_en,
@@ -877,7 +880,8 @@ class Fileprocessor:
 
         # FACING
 
-                
+        if facing is None and 'facing' in os.path.basename(filename):
+            facing = self.get_facing_from_string(os.path.basename(filename))        
         # do not add facing category if this is interior
         if 'Q60998096' in secondary_wikidata_ids:
             facing = None
@@ -903,7 +907,13 @@ class Fileprocessor:
             if facing == 'Rear three-quarter'.capitalize():
                 text += "[[Category:Rear three-quarter views of " + \
                     transports[vehicle].lower()+"]]\n"
+            if facing == 'rtq'.capitalize():
+                text += "[[Category:Rear three-quarter views of " + \
+                    transports[vehicle].lower()+"]]\n"
             if facing == 'Three-quarter'.capitalize():
+                text += "[[Category:Three-quarter views of " + \
+                    transports[vehicle].lower()+"]]\n"
+            if facing == 'Tq'.capitalize():
                 text += "[[Category:Three-quarter views of " + \
                     transports[vehicle].lower()+"]]\n"
 
@@ -917,17 +927,25 @@ class Fileprocessor:
             self.logger.info('🤏 direction of vehicle skipped')
             
         # COLORS CATEGORY
+        liveries_codes=dict()
+        liveries_codes['RZDGREEN']='Russian railways green livery'
+        liveries_codes['RZD']='Russian Railways livery'
+        liveries_codes['NASHEPODMOSKOVIE']='Nashe Podmoskovie livery'
         if colors is None and 'color' in os.path.basename(filename):
             colors = self.get_colorlist_from_string(os.path.basename(filename))
         if colors is not None:
             colorname = ''
             if colors[0].upper() == 'RZDGREEN':
-                text += "[[Category:Trains in Russian railways green livery]]\n".format(
-                    transports=transports_color[vehicle].lower(),
+                text += "[[Category:{transports} in Russian railways green livery]]\n".format(
+                    transports=transports_color[vehicle].capitalize(),
                     colorname=colorname)
             elif colors[0].upper() == 'RZD':
-                text += "[[Category:Trains in Russian Railways livery]]\n".format(
-                    transports=transports_color[vehicle].lower(),
+                text += "[[Category:{transports} in Russian Railways livery]]\n".format(
+                    transports=transports_color[vehicle].capitalize(),
+                    colorname=colorname)
+            elif colors[0].upper() == 'NASHEPODMOSKOVIE':
+                text += "[[Category:{transports} in Nashe Podmoskovie livery]]\n".format(
+                    transports=transports_color[vehicle].capitalize(),
                     colorname=colorname)
             else:
                 colors.sort()
@@ -937,7 +955,12 @@ class Fileprocessor:
                     transports=transports_color[vehicle].lower(),
                     colorname=colorname)
         elif colors is None:
+            txt="liveries codes:\n"
+            for key in liveries_codes:
+                txt = txt + f"🎨 {key} > {liveries_codes[key]} \n"
             self.logger.info('🤏 colors of vehicle skipped')
+            print(txt)
+            del txt
 
 
 
@@ -1034,8 +1057,12 @@ class Fileprocessor:
                     model_wd['id'], street_wd['id'], order=digital_number, verbose=True)
             if cat is not None:
                 model_in_location_found = True
+                categories.add(cat)
                 
             else:
+                if model_wd["commons"] is None:
+                    raise ValueError('vehicle model https://www.wikidata.org/wiki/' +
+                             model_wdid+' must has commons category')
                 if vehicle != 'auto':
                     categories.discard(model_wd["commons"]) #remove from set if exist
                     categories.add(model_wd["commons"] +
@@ -1148,6 +1175,26 @@ class Fileprocessor:
 
         return lst
         
+    def get_facing_from_string(self, test_str: str) -> str:
+        # from string 2002_20031123__r32_facingThree-quarter.jpg  returns 'Three-quarter]
+        # 2002_20031123__r32_colorgray_colorblue.jpg
+
+        import re
+        # cut to . symbol if extsts
+        test_str = test_str[0:test_str.index('.')]
+
+        # split string by _
+        parts = re.split('_+', test_str)
+
+        lst = list()
+        for part in parts:
+            if part.startswith('facing'):
+                #lst.append(part[5:].title())
+                text = part[len('facing'):].upper()
+                return text
+
+        return lst
+        
     def get_licenceplate_from_string(self, test_str: str) -> str:
         # from string 2002_20031123_lpA 123 BC 99_.jpg  returns [A 123 BC 99]
         
@@ -1182,14 +1229,33 @@ class Fileprocessor:
         return id
     
     def get_wikidatalist_from_string(self, test_str: str) -> list:
-        ''' from string 2002_20031123__r32_colorgray_colorblue_Q12345_wikidataAntonovka.jpg  returns [Q12345]
-        # 2002_20031123__r32_colorgray_colorblue.jpg
+        ''' from string 
+        2002_20031123__r32_colorgray_colorblue_Q111_Q12345_wikidataAntonovka_placeUUID12345.jpg  
+        returns [Q111,Q12345,UUID12345]
+
+
+
+print python code for extract substrings from string as list
+given string 2002_20031123__r32_colorgray_colorblue_Q111_Q12345_wikidataAntonovka_placeUUIDGvVFYJM
+substrings is start with Q or UUID and end with '_' or end of string
+must return ['Q111','Q12345','UUIDGvVFYJM']
+
         '''
         import re
+        test_str = os.path.basename(test_str)
         # cut to . symbol if extsts
         test_str = test_str[0:test_str.index('.')]
-        lst = re.findall(r'(Q\d+)', test_str)
+        lst = re.findall(r'(Q[^\W_]*|UUID[^\W_]*)(?=_|$)', test_str)
+        if 'UUID' in test_str:
+            uuids2wikidata = self.load_local_wikidata_uuids()
+            lst = [uuids2wikidata[item] if 'uuid' in item.lower() else item for item in lst]
+        lst = [item for item in lst if len(item) > 1] #remove element 1 char lenght
+
         return lst
+    
+    
+
+    
     
     def get_categorieslist_from_string(self, test_str: str) -> list:
         '''
@@ -1219,7 +1285,13 @@ class Fileprocessor:
                     categories.append(category)
             return categories
        
-            
+    def load_local_wikidata_uuids(self)->dict:
+        import jsonlines
+        # read from local cache
+        with jsonlines.open('local_wikidata_uuids.json') as reader:
+            list_of_dicts = [obj for obj in reader]
+            uuid2wdid = {d['uuid']: d['wdid'] for d in list_of_dicts}
+            return uuid2wdid
 
     def get_placewikidatalist_from_string(self, test_str: str) -> list:
         # from string 2002_20031123__r32_colorgray_colorblue_locationQ12345_wikidataAntonovka.jpg  returns [Q12345]
@@ -1231,6 +1303,23 @@ class Fileprocessor:
         endpos=test_str[startpos:].index('.')+startpos
         test_str = test_str[startpos:endpos]
 
+        if 'placeUUID' in test_str:
+
+            lst = re.findall(r'(placeUUID\d+)', test_str)
+
+            lst2 = list()
+            for line in lst:
+                lst2.append(line[8:])
+            lst = lst2
+            del lst2
+            
+            local_wikidata_uuid=lst
+            # read from local cache
+            uuid2wdid = self.load_local_wikidata_uuids()
+            return uuid2wdid[local_wikidata_uuid]
+
+
+        
         lst = re.findall(r'(placeQ\d+)', test_str)
 
         lst2 = list()
@@ -2207,6 +2296,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
         for filename in files:
             if 'commons_uploaded' in filename:
                 continue
+            assert '_place'+' ' not in filename
             
             if not(os.path.isfile(filename)):
                 # this section goes when upload mp4: mp4 converted to webp, upload failed, then run second time, mp4 moved, webp uploaded, ciycle continued   
@@ -2218,7 +2308,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
 
             # get wikidata from filepath
 
-            if secondary_wikidata_ids == [] and 'Q' in filename:
+            if secondary_wikidata_ids == [] and ('_Q' in filename or 'placeQ' in filename or 'UUID' in filename):
                 secondary_wikidata_ids = self.get_wikidatalist_from_string(
                     filename)
             
@@ -2239,8 +2329,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                         self.logger.error(filename.ljust(
                             80)+': no wikidata in filename, skip upload')
                         continue  # continue to next file
-                    wikidata = self.get_wikidatalist_from_string(filename)[
-                        0]
+                    wikidata = self.get_wikidatalist_from_string(filename)[0]
                     del secondary_wikidata_ids[0]
                 else:
                     if os.path.isfile(desc_dict['wikidata']):

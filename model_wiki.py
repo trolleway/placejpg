@@ -22,8 +22,10 @@ import pickle
 import re
 import traceback
 from tqdm import tqdm
+import ast
 
 import traceback
+from num2words import num2words
 
 
 from fileprocessor import Fileprocessor
@@ -236,7 +238,8 @@ class Model_wiki:
         return float(struct[0]), float(struct[-1])
 
 
-    def create_wikidata_item(self,wd_object):
+    def create_wikidata_item(self,wd_object, local_wikidata_uuid=None):
+    
         '''
         created with bing ai 
         https://www.bing.com/search?iscopilotedu=1&sendquery=1&q=%D0%A7%D1%82%D0%BE+%D1%82%D0%B0%D0%BA%D0%BE%D0%B5+%D0%BD%D0%BE%D0%B2%D1%8B%D0%B9+Bing%3F&showconv=1&filters=wholepagesharingscenario%3A%22Conversation%22&shareId=4d855391-009e-4938-81b4-8591617df8db&shtc=0&shsc=Codex_ConversationMode&form=EX0050&shid=b116c20e-9d13-494d-a4cc-8f8b3a8a6260&shtp=GetUrl&shtk=0J7Qt9C90LDQutC%2B0LzRjNGC0LXRgdGMINGBINGN0YLQuNC8INC%2B0YLQstC10YLQvtC8IEJpbmc%3D&shdk=0JLQvtGCINC%2B0YLQstC10YIsINC%2F0L7Qu9GD0YfQtdC90L3Ri9C5INGBINC%2F0L7QvNC%2B0YnRjNGOINC90L7QstC%2B0LPQviBCaW5nLCDQs9C70L7QsdCw0LvRjNC90L7QuSDRgdC40YHRgtC10LzRiyDQvtGC0LLQtdGC0L7QsiDQvdCwINCx0LDQt9C1INC40YHQutGD0YHRgdGC0LLQtdC90L3QvtCz0L4g0LjQvdGC0LXQu9C70LXQutGC0LAuINCp0LXQu9C60L3QuNGC0LUg0LTQu9GPINC%2F0YDQvtGB0LzQvtGC0YDQsCDQvtGC0LLQtdGC0LAg0YbQtdC70LjQutC%2B0Lwg0Lgg0L%2FQvtC%2F0YDQvtCx0YPQudGC0LUg0Y3RgtGDINGE0YPQvdC60YbQuNGOINGB0LDQvNC%2B0YHRgtC%2B0Y%2FRgtC10LvRjNC90L4u&shhk=KUktXhHaQFr142oHDgOzFPKk2Snr3G22dzXkpH3KtHg%3D&shth=OBFB.107AF8B2FB79BD01FFDCABA4D756224A
@@ -245,6 +248,25 @@ class Model_wiki:
 
         
         '''
+        
+        # at frist create and print local UUID, user may use it as placeholder for wikidata id, because wikidata object create took 30-40 seconds long
+        
+        # test is save possible
+        with open('local_wikidata_uuids.json', 'a') as file:
+            pass
+
+        
+        import shortuuid,jsonlines
+        
+        if local_wikidata_uuid is None:
+            local_wikidata_uuid='UUID'+str(shortuuid.uuid())
+            self.logger.info(f'Created UUID, you now can use it as placeholder for wikidata id place in filename')
+            self.logger.info(local_wikidata_uuid)
+        
+
+
+
+        
         # create a site object for wikidata
         site = pywikibot.Site("wikidata", "wikidata")
         # create a new item
@@ -254,10 +276,13 @@ class Model_wiki:
         try:
             new_item.editLabels(labels=wd_object["labels"], summary="Setting labels")
             self.logger.info('created wikidata entity: '+str(new_item.getID()) + '    _place'+str(new_item.getID()))
+            #save local wikidata UUID
+            with jsonlines.open('local_wikidata_uuids.json', mode='a') as writer:
+                writer.write({'uuid':local_wikidata_uuid,'wdid':new_item.getID()})
             new_item.editDescriptions(descriptions=wd_object["descriptions"], summary="Setting descriptions")
             new_item.editAliases(aliases=wd_object["aliases"], summary="Setting aliases")
         except:
-            self.logger.warning('prorably this building already created in wikidata. merge not implement yet')
+            self.logger.warning('prorably this object already created in wikidata. merge not implement yet')
             pass
         
         # iterate over the claims in the wd_object
@@ -458,7 +483,45 @@ class Model_wiki:
         return new pywikibot claim object for add to wikidata using pywikibot from dict 
         """
 
-    def create_geoobject_wikidata(self,city,name_en,coords,name_ru=None,named_after=None, maintype='Q79007',country=None,district=None,dry_mode=False)->str:
+    def create_or_update_geoobject(self, city_wdid, country_wdid, named_after_wdid, street_name_en, street_name_ru, maintype, wikidata_only, catname, wdid, coords, district, local_wikidata_uuid=None):
+
+        if wdid is None:
+            wdid = self.create_geoobject_wikidata(city=city_wdid,
+                                                           name_en=street_name_en,
+                                                           name_ru =street_name_ru,
+                                                           named_after=named_after_wdid, 
+                                                           country=country_wdid, 
+                                                           coords=coords,
+                                                           maintype=maintype,
+                                                           district=district,
+                                                           dry_mode=False,
+                                                           local_wikidata_uuid = local_wikidata_uuid)
+            if wikidata_only !=True and catname is None:
+                street_category_result = self.create_category_by_wikidata(wdid, city_wdid)
+                print(street_category_result)
+            else:
+                if catname is not None and self.is_category_exists(catname):
+                    self.wikidata_add_commons_category(wdid,catname)
+                    self.category_add_template_wikidata_infobox(catname)
+
+        elif wdid is not None:
+            
+            street_wd = self.get_wikidata_simplified(wdid)
+            # SET COORDINATES
+            self.wikidata_set_coords(wdid,coords=coords)
+            # CREATE CATEGORY IF NOT EXIST
+            if street_wd['commons'] is None:
+                # create street category
+                street_category_result = self.create_category_by_wikidata(wdid, city_wdid)
+                print(street_category_result)
+            else:
+                print('wikidata entity already has commons category')
+            #add wikidata infobox if needed
+            if catname is not None and self.is_category_exists(catname):
+                self.category_add_template_wikidata_infobox(catname)
+           
+
+    def create_geoobject_wikidata(self,city,name_en,coords,name_ru=None,named_after=None, maintype='Q79007',country=None,district=None,dry_mode=False, local_wikidata_uuid = None)->str:
         wikidata_template = """
     {
       "type": "item",
@@ -545,8 +608,8 @@ class Model_wiki:
             self.logger.info("dry mode, no creating wikidata entity")
             return
 
-        new_item_id = self.create_wikidata_item(wd_object)
-        self.logger.info(f'street object created: https://www.wikidata.org/wiki/{new_item_id} ')
+        new_item_id = self.create_wikidata_item(wd_object, local_wikidata_uuid = local_wikidata_uuid)
+        self.logger.info(f'new object created: https://www.wikidata.org/wiki/{new_item_id} ')
         return new_item_id
         
     def wikidata_set_coords(self,wdid,coords):
@@ -601,7 +664,7 @@ class Model_wiki:
     
     
     
-    def create_wikidata_building(self, data, dry_mode=False):
+    def create_wikidata_building(self, data, dry_mode=False, local_wikidata_uuid = None):
         assert "street_wikidata" in data
 
         # get street data from wikidata
@@ -751,8 +814,8 @@ class Model_wiki:
             self.logger.info("dry mode, no creating wikidata entity")
             return
 
-        new_item_id = self.create_wikidata_item(wd_object)
-        print("created https://www.wikidata.org/wiki/" + new_item_id)
+        new_item_id = self.create_wikidata_item(wd_object, local_wikidata_uuid = local_wikidata_uuid)
+        print("created building https://www.wikidata.org/wiki/" + new_item_id)
         print("created _place" + new_item_id)
         if data.get('category') is not None:
             self.wikidata_add_commons_category(new_item_id, data.get('category'))
@@ -976,7 +1039,7 @@ class Model_wiki:
     def is_wikidata_id(text) -> bool:
         # check if string is valid wikidata id
         if not isinstance(text,str): return False
-        if text.startswith('Q') and text[1:].isnumeric():
+        if len(text) > 1 and text.startswith('Q') and text[1:].isnumeric():
             return True
         else:
             return False
@@ -1131,7 +1194,7 @@ class Model_wiki:
         # returns wikidata id
 
         inp = self.prepare_wikidata_url(inp)
-        if inp.startswith('Q'):
+        if inp.startswith('Q') and self.is_wikidata_id('Q'):
             return self.normalize_wdid(inp)
 
         site = pywikibot.Site("wikidata", "wikidata")
@@ -1449,7 +1512,19 @@ class Model_wiki:
                                                        housenumber=translit(housenumber,"ru",reversed=True,
                 ))
         return result 
-                
+               
+    def get_amount_as_digit(self,s):
+        """
+        from string 
+        "{'amount': '+5', 'upperBound': None, 'lowerBound': None, 'unit': '1'}"
+        return 5
+        """
+        # Safely evaluate the string to a dictionary
+        data = ast.literal_eval(s)
+        # Extract the 'amount' value and convert it to an integer
+        amount = int(data['amount'])
+        return amount
+    
     def create_building_category(self, wikidata:str, city_wikidata:str, dry_mode=False ) -> str:
         """
         Create wikimedia commons category for wikidata building entity
@@ -1460,8 +1535,8 @@ class Model_wiki:
             print("commons category will be created here...")
             return
 
-
-        assert wikidata.startswith("Q")
+        assert self.is_wikidata_id(wikidata)
+        assert self.is_wikidata_id(city_wikidata)
         building_dict_wd=self.get_wikidata_simplified(wikidata)
         city_dict_wd=self.get_wikidata_simplified(city_wikidata)
        
@@ -1480,26 +1555,26 @@ class Model_wiki:
         for street_counter in range(0,len(building_dict_wd['claims']['P669'])):
             street_dict_wd = self.get_wikidata_simplified(building_dict_wd['claims']['P669'][street_counter]['value'])
             housenumber = building_dict_wd["claims"]["P669"][street_counter]['qualifiers']['P670'][0]["datavalue"]["value"]
-            assert street_dict_wd['commons'] is not None
             
-            category_street = street_dict_wd['commons']     
-            category_street +='|'+housenumber.zfill(2)
-            category_streets.append(category_street)
-            del category_street
+            ALLOW_STREET_HAS_NO_CATEGORY = True
+            if not ALLOW_STREET_HAS_NO_CATEGORY:            
+                assert street_dict_wd['commons'] is not None
+            elif street_dict_wd['commons'] is not None:
+                category_street = street_dict_wd['commons']     
+                category_street +='|'+housenumber.zfill(2)
+                category_streets.append(category_street)
+                del category_street
             del housenumber
             del street_dict_wd
         #get one prefered street for category name
 
         street_dict_wd = self.get_wikidata_simplified(building_dict_wd['claims']['P669'][0]['value'])
         housenumber = building_dict_wd["claims"]["P669"][0]['qualifiers']['P670'][0]["datavalue"]["value"]
-        assert street_dict_wd['commons'] is not None
-        category_street = street_dict_wd['commons']     
-        category_street +='|'+housenumber.zfill(2)
-               
+
         category_name = self.address_international(city=city_dict_wd['labels']['en'],
                                        street=street_dict_wd['labels']['en'],
                                        housenumber=housenumber)
-        del category_street
+
 
         
         year = ""
@@ -1530,11 +1605,13 @@ class Model_wiki:
         assert year == "" or len(year) == 4, "invalid year:" + str(year)
         assert decade == "" or len(decade) == 4, "invalid decade:" + str(decade)
         levels = 0
+
         try:
-            levels = building_dict_wd["claims"]["P1101"][0]["value"]["amount"]
+            levels = self.get_amount_as_digit(building_dict_wd["claims"]["P1101"][0]["value"])
         except:
             pass
             # no levels in building
+            
         assert isinstance(levels, int)
         assert levels == 0 or levels > 0, "invalid levels:" + str(levels)
 
@@ -1554,7 +1631,9 @@ class Model_wiki:
             if wlm_district_category is None:
                 quit('cant detect wlm category for district '+wlm_district_wdid)
             code += "{{Cultural Heritage Russia|id="+wlm_ru_code+"|category="+wlm_district_category+"}}" + "\n"
-            
+        
+        
+        # Make category text    
         if year != "":
             code += "[[Category:Built in %city% in %year%]]" + "\n"
 
@@ -1590,7 +1669,6 @@ class Model_wiki:
             code = code.replace("%levelstr%", str(num2words(levels).capitalize()))
         elif levels > 20:
             code = code.replace("%levelstr%", str(levels))
-
 
 
 
@@ -1686,6 +1764,24 @@ class Model_wiki:
             print(category_name)
             print(code)
             commonscat_create_result = self.create_category(category_name, code)
+            
+        if levels is not None and int(levels) > 0:
+            city = city_dict_wd['labels']['en']
+                    
+            if levels > 0 and levels < 21:
+                levelstr = str(num2words(levels).capitalize())
+            elif levels > 20:
+                levelstr = str(levels)
+            
+            category_name=f'{levelstr}-story buildings in {city}'
+            code = f'[[Category:{levelstr}-story buildings in {country}]]'
+            
+
+            print(category_name)
+            print(code)
+            commonscat_create_result = self.create_category(category_name, code)
+
+
             
 
         return category_name_building
@@ -2436,8 +2532,8 @@ class Model_wiki:
     def create_wikidata_object_for_bylocation_category(self, category, wikidata1, wikidata2):
         assert category.startswith(
             'Category:'), 'category should start with Category:  only'
-        assert wikidata1.startswith('Q'), 'wikidata1 should start from Q only'
-        assert wikidata2.startswith('Q'), 'wikidata2 should start from Q only'
+        assert self.is_wikidata_id(wikidata1)     
+        assert self.is_wikidata_id(wikidata2)     
         category_name = category.replace('Category:', '')
 
         site = pywikibot.Site("wikidata", "wikidata")

@@ -1192,7 +1192,6 @@ class Model_wiki:
         # detect user input string for wikidata
         # if user print a query - search wikidata
         # returns wikidata id
-
         inp = self.prepare_wikidata_url(inp)
         if inp.startswith('Q') and self.is_wikidata_id('Q'):
             return self.normalize_wdid(inp)
@@ -1253,6 +1252,10 @@ class Model_wiki:
         # convert string https://www.wikidata.org/wiki/Q4412648 to Q4412648
 
         wikidata = str(wikidata).strip()
+        #remove # part
+        sharppos = wikidata.find('#')
+        if sharppos != -1: wikidata=wikidata[0:sharppos]
+        
         wikidata = wikidata.replace('https://www.wikidata.org/wiki/', '')
         if wikidata[0].isdigit() and not wikidata.upper().startswith('Q'):
             wikidata = 'Q'+wikidata

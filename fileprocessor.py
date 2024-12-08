@@ -572,7 +572,7 @@ class Fileprocessor:
 
             # filename for Moscow Trolleybus
             if system_wdid == 'Q4304313':
-                commons_filename = '{city} {transport} {model} {number} {dt} {place}{suffix}{extension}'.format(
+                commons_filename = '{city} {transport} {model} {number} {dt} {timestamp} {place}{suffix}{extension}'.format(
                     city=city_name_en,
                     transport=vehicle,
                     number=number,

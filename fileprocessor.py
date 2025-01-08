@@ -1612,10 +1612,10 @@ must return ['Q111','Q12345','UUIDGvVFYJM']
 {{Information
 |description="""
 
-        if iptc_captions is not None and iptc_captions['objectname']!='':
+        if iptc_captions is not None and iptc_captions.get('objectname','')!='':
             st += iptc_captions['objectname']
             
-        if iptc_captions is not None and iptc_captions['caption']!='':
+        if iptc_captions is not None and iptc_captions.get('caption','')!='':
             st += iptc_captions['caption']
             
 

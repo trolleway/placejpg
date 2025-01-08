@@ -197,6 +197,7 @@ city=khimki
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $ZIU9   i/_trolleybuses/$city/ziu9  --number BEFORE_UNDERSCORE --country countries.gpkg --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $BKM101   i/_trolleybuses/$city/BKM101  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $BKM321   i/_trolleybuses/$city/BKM321  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $vmz52980150   i/_trolleybuses/$city/vmz52980150  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 
 
 SYSTEM=Q4406433 #samara_troll

@@ -39,6 +39,7 @@ proposed_cats_final=dict()
 proposed_number=0
 candidates = list()
 
+location_commonscat_previous = ''
 
 
 if len(proposeds)>0:

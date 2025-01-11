@@ -1656,6 +1656,8 @@ must return ['Q111','Q12345','UUIDGvVFYJM']
 
         tech_description, tech_categories = self.get_tech_description(filename, geo_dict)
         text = text + tech_description
+        
+
 
         del tech_description
         categories.update(tech_categories)
@@ -1720,7 +1722,7 @@ must return ['Q111','Q12345','UUIDGvVFYJM']
                 need_create_categories.append({'name':cat_for_claim,'content':cat_content})                  
                 del cat_for_claim
                 
-        # BUILING DATE START
+        # BUILDING DATE START
         temp_wikidata_list = list()
         temp_wikidata_list = secondary_wikidata_ids+[wikidata]
         for wdid in temp_wikidata_list:
@@ -1728,10 +1730,12 @@ must return ['Q111','Q12345','UUIDGvVFYJM']
             if modelwiki.is_subclass_of_building(wdid) and not modelwiki.is_subclass_of(wdid,'Q376799'):
                 wd=modelwiki.get_wikidata_simplified(wdid)
                 prop=''
+                if 'P729' in wd['claims']: 
+                    prop='P729' #service entity
                 if 'P1619' in wd['claims']: 
                     prop='P1619' #date of official opening
                 elif  'P571' in wd['claims']:
-                    prop='P571' #date of official opening
+                    prop='P571' #inception 
                 else:
                     continue
                 for claim in wd['claims'][prop]:
@@ -1773,9 +1777,11 @@ must return ['Q111','Q12345','UUIDGvVFYJM']
 
             
         if len(secondary_wikidata_ids) < 1:
-            text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
+            #text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
+            categories.add(wd_record["commons"])
         else:
-            text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
+            #text = text + "[[Category:" + wd_record["commons"] + "]]" + "\n"
+            categories.add(wd_record["commons"])
             for wdid in secondary_wikidata_ids:
                 cat = modelwiki.get_category_object_in_location(
                     wdid, wikidata, verbose=True)
@@ -1786,10 +1792,32 @@ must return ['Q111','Q12345','UUIDGvVFYJM']
                     if wd_record.get('commons',None) is not None:
                         categories.add(wd_record["commons"])
 
-                    
+        # REMOVE OVERCATEGORISATION
+        
+        site = pywikibot.Site("commons", "commons")
+        copy_categories = categories.copy()
+        for catname in categories:
+            c=pywikibot.Category(site,catname)
+            upper_categories=list(c.categories())
+            sub_categories=list(c.subcategories(recurse=1))
+            tempstr=''
+            #for uc in upper_categories: tempstr=tempstr+'['+uc.title()+']'
+            for sc in sub_categories: tempstr=tempstr+' '+sc.title()+' '
+            #(f"-check if not needed category {catname}, it subs is "+tempstr )
+            for sc in sub_categories:
+                sc=sc.title().replace('Category:','')
+                if sc in categories:
+                    self.logger.info(f"will not include {catname}, already has it subcategory {sc}")
+                    copy_categories.remove(catname)
+        categories = copy_categories.copy()
+        del copy_categories
+        
+           
         for catname in categories:
             catname = catname.replace('Category:', '')
             text += "[[Category:"+catname+"]]" + "\n"
+   
+         
         
         # COPY INSTANCE_OF FROM MAIN OBJECT TO STRUCTURED DATA
         if len(instance_of_data) > 0:

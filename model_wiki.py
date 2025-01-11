@@ -760,22 +760,22 @@ class Model_wiki:
             }
 
         if "year" in data:
-            wd_object["claims"]["P1619"] = {
+            wd_object["claims"]["P729"] = {
                 "value": {"time": {"year":int(str(data["year"])[0:4])},"precision":9}}
             if "year_source" or "year_url" in data:
-                wd_object["claims"]["P1619"]["references"] = list()
-                wd_object["claims"]["P1619"]["references"].append(dict())
+                wd_object["claims"]["P729"]["references"] = list()
+                wd_object["claims"]["P729"]["references"].append(dict())
                 if data.get("year_source") == "2gis":
-                    wd_object["claims"]["P1619"]["references"][0]["P248"] = "Q112119515"
+                    wd_object["claims"]["P729"]["references"][0]["P248"] = "Q112119515"
                 if data.get("year_source") == "wikimapia":
-                    wd_object["claims"]["P1619"]["references"][0]["P248"] = "Q187491"
+                    wd_object["claims"]["P729"]["references"][0]["P248"] = "Q187491"
                 if 'https://2gis.ru' in data.get('year_url', ''):
-                    wd_object["claims"]["P1619"]["references"][0]["P248"] = "Q112119515"
+                    wd_object["claims"]["P729"]["references"][0]["P248"] = "Q112119515"
                 if 'reformagkh.ru' in data.get('year_url', ''):
-                    wd_object["claims"]["P1619"]["references"][0]["P248"] = "Q117323686"
+                    wd_object["claims"]["P729"]["references"][0]["P248"] = "Q117323686"
 
                 if "year_url" in data:
-                    wd_object["claims"]["P1619"]["references"][0]["P854"] = data[
+                    wd_object["claims"]["P729"]["references"][0]["P854"] = data[
                         "year_url"
                     ]
 
@@ -1441,7 +1441,7 @@ class Model_wiki:
         streetname = street_wd['labels']['en']
         cityname = city_wd['labels']['en']
         catname = f'{streetname}'
-        uppercat = self.get_category_object_in_location(street_wd['claims']['P31'][0]['value'],city_wikidata,verbose=True)
+        uppercat = self.get_category_object_in_location(self.get_best_claim(geoobject_wikidata,'P31'),city_wikidata,verbose=True)
         if uppercat is None:
             print('no category for '+street_wd['claims']['P31'][0]['value'])
             return None

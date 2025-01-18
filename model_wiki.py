@@ -1214,10 +1214,10 @@ class Model_wiki:
         for result in results["search"]:
             # Get the entity ID, label, description and URL
             entity_id = result["id"]
-            label = result["label"]
+            label = result.get("label",'')
             description = result.get("description", "No description")
             url = result["url"]
-            candidates.append(result['id']+' '+result['label'] +
+            candidates.append(result['id']+' '+label +
                               ' '+result.get("description", "No description"))
         
      
@@ -1425,7 +1425,7 @@ class Model_wiki:
         return text
         
 
-    def create_category_by_wikidata(self,geoobject_wikidata:str, city_wikidata:str=None)-> str:
+    def create_category_by_wikidata(self,geoobject_wikidata:str, city_wikidata:str=None, suffix:str='')-> str:
         if geoobject_wikidata is None:
             return None
             
@@ -1438,9 +1438,10 @@ class Model_wiki:
         if street_wd['claims']['P31'][0]['value']=='Q79007': return self.create_street_category(geoobject_wikidata,city_wikidata)
                 
         # MAKE CATEGORY NAME
-        streetname = street_wd['labels']['en']
+        objname = street_wd['labels']['en']
         cityname = city_wd['labels']['en']
-        catname = f'{streetname}'
+        catname = f'{objname}'
+        if suffix != '': catname = f'{objname}, {suffix}'
         uppercat = self.get_category_object_in_location(self.get_best_claim(geoobject_wikidata,'P31'),city_wikidata,verbose=True)
         if uppercat is None:
             print('no category for '+street_wd['claims']['P31'][0]['value'])

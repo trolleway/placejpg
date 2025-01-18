@@ -228,6 +228,7 @@ python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $vmz52980150  
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $admiral   i/_trolleybuses/$city/admiral  --number BEFORE_UNDERSCORE --country "Ryazan Oblast"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $trolza5265   i/_trolleybuses/$city/trolza5265  --number BEFORE_UNDERSCORE --country "Ryazan Oblast"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $trolza5265   i/_trolleybuses/$city/trolza5265  --number BEFORE_UNDERSCORE --country "Ryazan Oblast"  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $BKM321   i/_trolleybuses/$city/BKM321  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 
 
 

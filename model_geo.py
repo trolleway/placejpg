@@ -1,6 +1,7 @@
 
-from osgeo import ogr, gdal, osr
+from osgeo import ogr, gdal
 import logging,pprint,os
+from tqdm import tqdm
 
 class Model_Geo:
     logging.basicConfig(
@@ -12,7 +13,7 @@ class Model_Geo:
     pp = pprint.PrettyPrinter(indent=4)
     gdal.UseExceptions()
     
-    not_found_geodata = 'not_found.geojson'
+    not_found_geodata = 'not_found.geojsons'
     
     def make_search_rect(self,pointgeom):
         
@@ -74,14 +75,14 @@ class Model_Geo:
     def save_not_found_geom(self,lat,lon,filepath):
         
         if not os.path.isfile(self.not_found_geodata): 
-            driver = ogr.GetDriverByName("GeoJSON")
+            driver = ogr.GetDriverByName("GeoJSONSeq")
             ds = driver.CreateDataSource(self.not_found_geodata)
             layer = ds.CreateLayer("not_found", geom_type=ogr.wkbPoint)
             layerDefn = layer.GetLayerDefn()
             filenameField = ogr.FieldDefn("filename", ogr.OFTString)
             layer.CreateField(filenameField)
         else:
-            driver = ogr.GetDriverByName("GeoJSON")
+            driver = ogr.GetDriverByName("GeoJSONSeq")
 
             ds = driver.Open(self.not_found_geodata, 1) # 0 means read-only. 1 means writeable.
             #ds = gdal.Open(self.not_found_geodata,gdal.OF_UPDATE)
@@ -98,3 +99,60 @@ class Model_Geo:
         
         layer=None
         ds = None
+
+    def make_photo_coordinates_file(self, startpath, geojsonl_filename):
+        from fileprocessor import Fileprocessor as Fileprocessor_ask
+        localinstance_fileprocessor = Fileprocessor_ask()
+        assert os.path.isdir(startpath), "The path is not a directory"
+        if os.path.exists(geojsonl_filename): os.remove(geojsonl_filename)
+        if not os.path.isfile(geojsonl_filename): 
+            driver = ogr.GetDriverByName("GeoJSONSeq")
+            ds = driver.CreateDataSource(geojsonl_filename)
+            layer = ds.CreateLayer("not_found", geom_type=ogr.wkbPoint)
+            layerDefn = layer.GetLayerDefn()
+            filenameField = ogr.FieldDefn("filename", ogr.OFTString)
+            layer.CreateField(filenameField)
+        else:
+            driver = ogr.GetDriverByName("GeoJSONSeq")
+
+            ds = driver.Open(geojsonl_filename, 1) # 0 means read-only. 1 means writeable.
+            assert ds is not None, "Could not create file"
+            layer = ds.GetLayer()
+        
+        total_files = sum([len(fnames) for _, _, fnames in os.walk(startpath)])
+        with tqdm(total=total_files, desc="Processing files") as pbar:
+            for dirpath, dnames, fnames in os.walk(startpath):
+                for f in fnames:
+                    pbar.update(1)
+                    filepath=os.path.join(dirpath, f)
+                    pbar.set_postfix_str(filepath)
+                    
+                    if 'commons_duplicates' in filepath: continue
+                    if 'commons_uploaded' in filepath: continue
+
+                    if localinstance_fileprocessor.check_extension_valid(filepath) == False: continue
+                    if localinstance_fileprocessor.check_exif_valid(filepath) == False: continue
+                    # Process the file
+
+                    geo_dict = localinstance_fileprocessor.image2coords(filepath)  
+                    if 'dest_lat' in geo_dict and 'dest_lon' in geo_dict:
+                        lat=geo_dict.get("dest_lat")
+                        lon=geo_dict.get("dest_lon")
+                    else:
+                        lat=geo_dict.get("lat")
+                        lon=geo_dict.get("lon")
+                    
+                    #print(lat,lon,filepath)
+                    featureDefn = layer.GetLayerDefn()
+                        
+                    feature = ogr.Feature(featureDefn)
+                    point = ogr.Geometry(ogr.wkbPoint)
+                    point.AddPoint(lon, lat)
+                    feature.SetGeometry(point)
+                    feature.SetField("filename", filepath)
+                    layer.CreateFeature(feature)
+                    feature = None
+        layer=None
+        ds = None
+                
+                

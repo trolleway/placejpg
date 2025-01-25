@@ -1808,7 +1808,7 @@ must return ['Q111','Q12345','UUIDGvVFYJM']
                 sc=sc.title().replace('Category:','')
                 if sc in categories:
                     self.logger.info(f"will not include {catname}, already has it subcategory {sc}")
-                    copy_categories.remove(catname)
+                    copy_categories.discard(catname)
         categories = copy_categories.copy()
         del copy_categories
         

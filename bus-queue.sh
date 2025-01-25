@@ -278,6 +278,7 @@ python3 vehicle-upload.py -v bus --system $mosbus  --model $FIAT_Ducato_244   i/
 python3 vehicle-upload.py -v bus --system $mosbus  --model $MARZ52661   i/_buses/moscow/mgt_MARZ52661 --country countries.gpkg --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $GolazAKA6226   i/_buses/moscow/mgt_GolazAKA6226 --country countries.gpkg --number BEFORE_UNDERSCORE  --operator-vehicle-category "Mosgortrans buses"  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v bus --system $mosbus  --model $MAZ206   i/_buses/moscow/MAZ206 --country countries.gpkg --number BEFORE_UNDERSCORE    --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v bus --system $mosbus  --model $liaz5292   i/_buses/moscow/liaz5292 --country countries.gpkg --number BEFORE_UNDERSCORE     --progress --street trolleybus.gpkg 
 fi
 
 

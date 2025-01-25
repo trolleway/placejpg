@@ -1425,7 +1425,7 @@ class Model_wiki:
         return text
         
 
-    def create_category_by_wikidata(self,geoobject_wikidata:str, city_wikidata:str=None, suffix:str='')-> str:
+    def make_catagory_texts_by_wikidata(self,geoobject_wikidata:str, city_wikidata:str=None, suffix:str=''):
         if geoobject_wikidata is None:
             return None
             
@@ -1439,19 +1439,23 @@ class Model_wiki:
                 
         # MAKE CATEGORY NAME
         objname = street_wd['labels']['en']
-        cityname = city_wd['labels']['en']
+        cityname = city_wd['labels'].get('en','no english name')
         catname = f'{objname}'
         if suffix != '': catname = f'{objname}, {suffix}'
         uppercat = self.get_category_object_in_location(self.get_best_claim(geoobject_wikidata,'P31'),city_wikidata,verbose=True)
         if uppercat is None:
             print('no category for '+street_wd['claims']['P31'][0]['value'])
             return None
-        content = """{{Wikidata infobox}}
-        {{GeoGroup}}
-        [[Category:%uppercat%]]
-        """
+        content = "{{Wikidata infobox}}"
+        content = content + "\n{{GeoGroup}}"
+        content = content + "\n[[Category:"+uppercat+"]]"
+
         content = content.replace('%uppercat%',uppercat)
         content = content.replace('%cityname%',cityname)
+        return catname, content
+        
+    def create_category_by_wikidata(self,geoobject_wikidata:str, city_wikidata:str=None, suffix:str='')-> str:
+        catname, content = self.make_catagory_texts_by_wikidata(geoobject_wikidata,city_wikidata,suffix)
         if not self.is_category_exists(catname):
             self.create_category(catname,content)
             self.wikidata_add_commons_category(geoobject_wikidata,catname)
@@ -2109,7 +2113,33 @@ class Model_wiki:
                 return None
             geoobject_wd = self.get_wikidata_simplified(upper_wdid)
             
+    def get_administrative_names_for_object(self,location_wdid, verbose=False)->str:
+        """
+        for wikidata object run by P131 properties and return list of names of administrative objects
+        """
+        location_wdid = self.normalize_wdid(location_wdid)
+        cache_key = location_wdid
+        if cache_key in self.cache_settlement_for_object:
+            return self.cache_settlement_for_object[cache_key]
+        stop_hieraechy_walk = False
+        cnt = 0
+        geoobject_wd = self.get_wikidata_simplified(location_wdid)
+        settlements_ids = self.get_settlements_wdids()
+        administrative_names = list()
+        while not stop_hieraechy_walk:
+            cnt = cnt+1
+            if cnt > 9:
+                stop_hieraechy_walk = True
+            if verbose:
+                print('found that upper level is called '+geoobject_wd['labels'].get('en',' no english name'))
 
+            administrative_names.append(geoobject_wd['labels'].get('en',' no english name'))
+            upper_wdid = self.get_upper_location_wdid(geoobject_wd)
+            if upper_wdid is None:
+                stop_hieraechy_walk = True
+                break
+            geoobject_wd = self.get_wikidata_simplified(upper_wdid)            
+        return administrative_names[1:]
 
     def get_category_object_in_location(self, object_wdid, location_wdid, order: str = None, verbose=False) -> str:
         """

@@ -1,6 +1,7 @@
 pywikibot
 transliterate
-num2words
+#num2words
+num2words  @ git+https://github.com/trolleway/num2words.git
 exif
 python-dateutil
 simple_term_menu

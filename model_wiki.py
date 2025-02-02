@@ -1235,7 +1235,7 @@ class Model_wiki:
                 menu_entry_index = self.user_select(candidates)
             selected_url = results["search"][menu_entry_index]['id']
         print('For '+inp+' selected 【'+selected_url+' ' +
-              results["search"][menu_entry_index]['description']+'】')
+              results["search"][menu_entry_index].get('description','')+'】')
 
         return selected_url
 
@@ -1427,7 +1427,7 @@ class Model_wiki:
 
     def make_catagory_texts_by_wikidata(self,geoobject_wikidata:str, city_wikidata:str=None, suffix:str=''):
         if geoobject_wikidata is None:
-            return None
+            return None, None
             
         street_wd = self.get_wikidata_simplified(geoobject_wikidata)
         if city_wikidata is None:
@@ -1435,23 +1435,43 @@ class Model_wiki:
         city_wd = self.get_wikidata_simplified(city_wikidata)
         
         # IF this is street: call special function for street
-        if street_wd['claims']['P31'][0]['value']=='Q79007': return self.create_street_category(geoobject_wikidata,city_wikidata)
+        #if street_wd['claims']['P31'][0]['value']=='Q79007': return self.create_street_category(geoobject_wikidata,city_wikidata)
                 
         # MAKE CATEGORY NAME
         objname = street_wd['labels']['en']
         cityname = city_wd['labels'].get('en','no english name')
         catname = f'{objname}'
         if suffix != '': catname = f'{objname}, {suffix}'
-        uppercat = self.get_category_object_in_location(self.get_best_claim(geoobject_wikidata,'P31'),city_wikidata,verbose=True)
-        if uppercat is None:
-            print('no category for '+street_wd['claims']['P31'][0]['value'])
-            return None
+        
+        # MAKE CATEGORY CONTENT
         content = "{{Wikidata infobox}}"
         content = content + "\n{{GeoGroup}}"
-        content = content + "\n[[Category:"+uppercat+"]]"
+        wdids=self.get_claims_list(geoobject_wikidata,'P31')
+        for wdid in wdids:
+            
+            uppercat = self.get_category_object_in_location(wdid,city_wikidata,verbose=True)
+            if uppercat is None:
+                print('no category for '+street_wd['claims']['P31'][0]['value'])
+                return None, None
+            content += "\n[[Category:"+uppercat+"]]"
+        
+        # PART OF
+        wdids=self.get_claims_list(geoobject_wikidata,'P361')
 
-        content = content.replace('%uppercat%',uppercat)
-        content = content.replace('%cityname%',cityname)
+        if wdids is not None and len(wdids)>0:
+            for wdid in wdids:
+                try:
+                    temp_wd=self.get_wikidata_simplified(wdid)
+                    content += "\n[[Category:"+self.get_wikidata_simplified(wdid)['commons']+"]]"
+                except:
+                    pass
+        # ADMINISTRATIVE ENTITY
+        wdid=self.get_best_claim(geoobject_wikidata,'P131')
+        try:
+            temp_wd=self.get_wikidata_simplified(wdid)
+            content += "\n[[Category:"+self.get_wikidata_simplified(wdid)['commons']+"]]"
+        except:
+            pass
         return catname, content
         
     def create_category_by_wikidata(self,geoobject_wikidata:str, city_wikidata:str=None, suffix:str='')-> str:
@@ -2048,7 +2068,32 @@ class Model_wiki:
             return None
 
         return building_record
+    
+    def get_claims_list(self, wdid:str, prop:str) -> list:
+        assert prop.startswith('P')
+        entity=self.get_wikidata_simplified(wdid)
+        claims=entity['claims'].get(prop)
+        if claims is None: return None
+        claims_list=list()
+        if len(claims)==1:
+            claims_list.append(self.get_best_claim(wdid,prop))
+            return  claims_list
+        try:
+            for claim in claims:
+                if claim['rank']=='preferred':
+                    claims_list.append(claim['value'])
+                    return claims_list
+            for claim in claims:
+                if claim['rank']=='normal':
+                    claims_list.append(claim['value'])
+            return claims_list
+        
+        except:
+            self.logger.error(f'can not get claims from https://www.wikidata.org/wiki/{wdid}')
+            self.pp.pprint(entity['claims'])
 
+            quit()
+            
     def get_best_claim(self, wdid:str, prop:str) -> str:
         assert prop.startswith('P')
         entity=self.get_wikidata_simplified(wdid)

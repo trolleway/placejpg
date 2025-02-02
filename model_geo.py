@@ -134,7 +134,8 @@ class Model_Geo:
                     if localinstance_fileprocessor.check_exif_valid(filepath) == False: continue
                     # Process the file
 
-                    geo_dict = localinstance_fileprocessor.image2coords(filepath)  
+                    geo_dict = localinstance_fileprocessor.image2coords(filepath) 
+                    if geo_dict is None: continue
                     if 'dest_lat' in geo_dict and 'dest_lon' in geo_dict:
                         lat=geo_dict.get("dest_lat")
                         lon=geo_dict.get("dest_lon")

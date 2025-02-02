@@ -34,6 +34,8 @@ parser.add_argument("--rail", action="store_const", required=False, default=Fals
                     help='add to https://commons.wikimedia.org/wiki/Category:Railway_photographs_by_date')
 parser.add_argument("--progress", action="store_const", required=False, default=False, const=True,
                     help='display progressbar')
+parser.add_argument("--move-ready", type=str, required=False,
+                    help='Instead of uploading, move files to this directory')
 args = parser.parse_args()
 
 desc_dict = dict()
@@ -43,7 +45,7 @@ desc_dict['country'] = args.country
 desc_dict['secondary_objects'] = args.secondary_objects
 desc_dict['rail'] = args.rail
 desc_dict['later'] = args.later
-desc_dict['dry_run'] = args.dry_run
+desc_dict['move_ready'] = args.move_ready
 desc_dict['progress'] = args.progress
 
 fileprocessor.process_and_upload_files(args.filepath, desc_dict)

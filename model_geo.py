@@ -152,8 +152,8 @@ class Model_Geo:
                     feature.SetGeometry(point)
                     feature.SetField("filename", filepath)
                     layer.CreateFeature(feature)
-                    feature = None
-        layer=None
-        ds = None
+                    del feature
+        del layer
+        del ds
                 
                 

@@ -493,10 +493,12 @@ class Fileprocessor:
         
         if suffix != '':
             suffix=f' {suffix}'
+            skip_unixtime=True
         if skip_unixtime:
             timestamp_format=''
         else:
             timestamp_format='%s'
+        
 
 
         if vehicle == 'auto' or (vehicle not in train_synonims and  number is None):
@@ -608,7 +610,7 @@ class Fileprocessor:
                 number_lat=number_lat,
                 dt=dt_obj.strftime("%Y-%m"),
                 place=' '.join(placenames['en']),
-                timestamp=dt_obj.strftime("%s"),
+                timestamp=dt_obj.strftime(timestamp_format),
                 suffix=suffix,
                 extension=filename_extension
             )
@@ -2503,7 +2505,7 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
             if texts is None:
                 # invalid metadata for this file, continue to next file
                 continue
-            if desc_dict.get('move_ready','')!='':
+            if desc_dict.get('move_ready','')!='' and desc_dict.get('move_ready','')is not None:
                 assert os.path.isdir(desc_dict.get('move_ready','')),'move_ready folder not exist'
                 dest_filepath=os.path.join(desc_dict.get('move_ready',''),os.path.basename(filename))
                 assert not os.path.isfile(dest_filepath), 'file already exist in move_ready folder'
@@ -2522,11 +2524,11 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
             # if exists file with webp extension:
             filename_webp = filename.replace('.tif', '.webp')
             src_filesize_mb = os.path.getsize(filename) / (1024 * 1024)
-            if filename.endswith(('.tif','.tiff')) and src_filesize_mb > self.tiff2webp_min_size_mb and desc_dict.get['move_ready','']=='':
+            if filename.endswith(('.tif','.tiff')) and src_filesize_mb > self.tiff2webp_min_size_mb:
                 print('file is big, convert to webp to bypass upload errors')
                 self.convert_to_webp(filename)
 
-            if filename.endswith(('.tif','.tiff')) and os.path.isfile(filename_webp) and desc_dict.get['move_ready','']=='':
+            if filename.endswith(('.tif','.tiff')) and os.path.isfile(filename_webp):
                 print(
                     'found tif and webp file with same name. upload webp with fileinfo from tif')
                 if not dry_run:
@@ -2535,9 +2537,9 @@ Kaliningrad, Russia - August 28 2021: Tram car Tatra KT4 in city streets, in red
                 filename = filename_webp
                 texts["name"] = texts["name"].replace('.tif', '.webp').replace('.tiff', '.webp')
                 
-            if filename.lower().endswith(('.mp4','.mov','.avi')) and desc_dict.get['move_ready','']=='':
+            if filename.lower().endswith(('.mp4','.mov','.avi')):
                 video_converted_filename=self.convert_to_webm(filename)
-            if filename.lower().endswith(('.mp4','.mov','.avi')) and os.path.isfile(video_converted_filename) and desc_dict.get['move_ready','']=='':
+            if filename.lower().endswith(('.mp4','.mov','.avi')) and os.path.isfile(video_converted_filename):
                 print(
                     'found mp4 and webm file with same name. upload webm with fileinfo from mp4')
                 if not dry_run:

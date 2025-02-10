@@ -248,10 +248,13 @@ class Fileprocessor:
                     lon=geo_dict.get("lon")
                 street_wdid = modelgeo.identify_deodata(lat, lon, regions_filepath, layer=layer, fieldname=geodata_attribute)
                 if street_wdid is None:
-                    msg = f'file:{regions_filepath} https://geohack.toolforge.org/geohack.php?params={lat};{lon}_type:camera'
+                    msg = f'not found in file:{regions_filepath} https://geohack.toolforge.org/geohack.php?params={lat};{lon}_type:camera'
                     self.logger.error(filename.ljust(
-                        40) + ' no found '+msg+'')
-                    modelgeo.save_not_found_geom(lat,lon,filename)
+                        40) + ' '+msg+'')
+                    try:
+                        modelgeo.save_not_found_geom(lat,lon,filename)
+                    except:
+                        self.logger.warning('failed append to not found file, proceed to next gile')
                     return None
                 #street_wd = modelwiki.get_wikidata_simplified(street_wdid)
             else:
@@ -1158,7 +1161,7 @@ class Fileprocessor:
         lst = re.findall(r'(suffix\d+)', test_str)
         suffix=lst[0].replace('suffix','')
         return suffix
-
+    
     def get_colorlist_from_string(self, test_str: str) -> list:
         # from string 2002_20031123__r32_colorgray_colorblue.jpg  returns [Gray,Blue]
         # 2002_20031123__r32_colorgray_colorblue.jpg
@@ -1257,8 +1260,13 @@ must return ['Q111','Q12345','UUIDGvVFYJM']
     
     
 
-    
-    
+    def get_catid2filename_from_string(self, test_str: str) -> list:
+        import re
+        # cut to . symbol if extsts
+        test_str = test_str[0:test_str.index('.')]
+        lst = re.findall(r'(catid2filename\d+)', test_str)
+        return lst[0]    
+
     def get_categorieslist_from_string(self, test_str: str) -> list:
         '''
         from string 2002_20031123__r32_colorgray_colorblue_Q12345_wikidataAntonovka_catid34567.jpg  reads [34567], and returns category names for this ids
@@ -1282,6 +1290,7 @@ must return ['Q111','Q12345','UUIDGvVFYJM']
         else:
             categories=list()
             for category_id in category_ids:
+                if category_id == 'catid2': continue
                 category=modelwiki.pagename_from_id(category_id.replace('catid',''))
                 if category is not None:
                     categories.append(category)
@@ -1546,9 +1555,6 @@ must return ['Q111','Q12345','UUIDGvVFYJM']
                     wd_record['id']+' must has name '+lang)
                 return None
                 wd_record['labels'][lang]=wd_record['labels']['en']
-                #self.logger.error('object https://www.wikidata.org/wiki/' +
-                #                 wd_record['id']+' must has name '+lang)
-                #return None
             objectnames[lang] = wd_record['labels'][lang]
             objectname_long[lang] = objectnames[lang]
 
@@ -1560,6 +1566,8 @@ must return ['Q111','Q12345','UUIDGvVFYJM']
         # BUILD DESCRIPTION FROM 'INSTANCE OF' NAMES
         #  
         if len(instance_of_data) > 0:
+        
+            '''
             for lang in self.langs_primary:
                 for i in instance_of_data:
                     if lang not in i['labels']:
@@ -1568,8 +1576,9 @@ must return ['Q111','Q12345','UUIDGvVFYJM']
                         return None
                 objectname_long[lang] = ', '.join(
                 d['labels'][lang] for d in instance_of_data if d['labels'][lang].upper() not in objectnames[lang].upper()) + ' '+objectnames[lang]
+            '''
 
-            for lang in self.langs_optional:
+            for lang in self.langs_primary + self.langs_optional:
                 try:
                     objectnames_long[lang] = ', '.join(
                         d['labels'][lang] for d in instance_of_data if d['labels'][lang].upper() not in objectnames[lang].upper()) + ' '+objectnames[lang]
@@ -1694,11 +1703,12 @@ must return ['Q111','Q12345','UUIDGvVFYJM']
                     cat_for_claim=''
                     cat_for_claim = modelwiki.get_wikidata_simplified(claim['value'])['commons']    
                     cat_for_claim = f'{CategoryUserInCountry}/{cat_for_claim}'
-                    cat_content='''{{Usercat}}
-{{GeoGroup}}
-[[Category:'''+CategoryUserInCountry+''']]'''
-                    need_create_categories.append({'name':cat_for_claim,'content':cat_content})
-                    usercat_categories.add(cat_for_claim)
+                    if 'NONE' not in cat_for_claim.upper():
+                        cat_content='''{{Usercat}}
+    {{GeoGroup}}
+    [[Category:'''+CategoryUserInCountry+''']]'''
+                        need_create_categories.append({'name':cat_for_claim,'content':cat_content})
+                        usercat_categories.add(cat_for_claim)
                     del cat_for_claim
         
         # SUBCLASS OF ARCHITECTURAL ELEMENT
@@ -1798,6 +1808,7 @@ must return ['Q111','Q12345','UUIDGvVFYJM']
         
         site = pywikibot.Site("commons", "commons")
         copy_categories = categories.copy()
+        
         for catname in categories:
             c=pywikibot.Category(site,catname)
             upper_categories=list(c.categories())
@@ -1826,7 +1837,14 @@ must return ['Q111','Q12345','UUIDGvVFYJM']
             for element in instance_of_data:  
                 wikidata_4_structured_data.add(element['id'])
         
-        
+        # PROCESS CATID2FILENAME KEY
+        if 'catid2filename' in filename:
+            caid2filename = self.get_catid2filename_from_string(filename)
+            nam=modelwiki.pagename_from_id(caid2filename.replace('catid2filename',''))
+            nam=nam.replace('Category:','')
+            objectnames['en']=nam
+            del nam
+                
         if suffix == '':
             skip_unixtime=False
         else:
@@ -1868,7 +1886,9 @@ must return ['Q111','Q12345','UUIDGvVFYJM']
             if prefix not in objectnames['en']:
                 commons_filename = f"{prefix}_"
 
-        if suffix != '':  suffix =   '_'+suffix
+        if suffix != '':  
+            suffix =   '_'+suffix
+            skip_unixtime = True
         
         if skip_unixtime:
             time_suffix_format="%Y-%m"

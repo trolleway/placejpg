@@ -238,7 +238,7 @@ class Fileprocessor:
     def get_place_from_input(
         self,
         filename: str,
-        street: str,
+        gpkg_or_wdid: str,
         geo_dict: dict,
         override_key="placeQ",
         geodata_attribute="wikidata",
@@ -259,6 +259,7 @@ class Fileprocessor:
         """
         from model_wiki import Model_wiki as Model_wiki_ask
 
+
         modelwiki = Model_wiki_ask()
 
         # take place from filename if present
@@ -266,17 +267,17 @@ class Fileprocessor:
             places = street_wdid = self.get_placewikidatalist_from_string(
                 os.path.basename(filename)
             )
-            print(places)
+
             street_wdid = places[0]
             del places
-        elif os.path.isfile(street):
+        elif os.path.isfile(gpkg_or_wdid):
             if geo_dict is None:
                 self.logger.error(
                     filename
                     + "  must have coordinates for search in geodata, or set --street"
                 )
                 return None
-            regions_filepath = street
+            regions_filepath = gpkg_or_wdid
             from model_geo import Model_Geo as Model_geo_ask
 
             modelgeo = Model_geo_ask()
@@ -289,6 +290,7 @@ class Fileprocessor:
             street_wdid = modelgeo.identify_deodata(
                 lat, lon, regions_filepath, layer=layer, fieldname=geodata_attribute
             )
+            
             if street_wdid is None:
                 msg = f"not found in file:{regions_filepath} https://geohack.toolforge.org/geohack.php?params={lat};{lon}_type:camera"
                 self.logger.error(filename.ljust(40) + " " + msg + "")
@@ -303,8 +305,8 @@ class Fileprocessor:
         else:
             # take street from user input
 
-            street_wdid = modelwiki.wikidata_input2id(street)
-            if street is not None:
+            street_wdid = modelwiki.wikidata_input2id(gpkg_or_wdid)
+            if gpkg_or_wdid is not None:
                 assert street_wdid is not None
         return street_wdid
 
@@ -597,6 +599,15 @@ class Fileprocessor:
                     + model_wdid
                     + " must has name en"
                 )
+            city_wdid = None
+            city_wdid = self.get_place_from_input(
+                filename, "building-generator.gpkg", geo_dict, layer="cities"
+            )
+            if city_wdid is not None:
+                city_wd = modelwiki.get_wikidata_simplified(city_wdid)
+                city_name_en = city_wd["labels"]["en"]
+                city_name_ru = city_wd["labels"]["en"]
+
             objectname_en = "{city} {transport} {license_plate}".format(
                 transport=vehicle,
                 city=city_name_en,
@@ -2832,7 +2843,7 @@ class Fileprocessor:
                     entity_list = modelwiki.wikidata2instanceof_list(wd)
                     if entity_list is not None:
                         wikidata_list_upperlevel += entity_list
-                wikidata_list += wikidata_list_upperlevel
+                wikidata_list = wikidata_list + wikidata_list_upperlevel
                 del wikidata_list_upperlevel
                 del entity_list
 
@@ -2955,6 +2966,9 @@ class Fileprocessor:
                     custom_categories=custom_categories,
                     suffix=suffix,
                 )
+                wikidata_list = list()
+                wikidata_list += texts["structured_data_on_commons"]
+                wikidata_list += secondary_wikidata_ids
             if texts is None:
                 # invalid metadata for this file, continue to next file
                 continue
@@ -2974,9 +2988,6 @@ class Fileprocessor:
                 shutil.move(filename, dest_filepath)
                 self.logger.info("moved " + filename + " to " + dest_filepath)
                 continue
-            wikidata_list = list()
-            wikidata_list += texts["structured_data_on_commons"]
-            wikidata_list += secondary_wikidata_ids
 
             # HACK
             # UPLOAD WEBP instead of TIFF if tiff is big
@@ -3224,7 +3235,7 @@ class Fileprocessor:
 
         file_stats = os.stat(filename)
         filesize_mb = file_stats.st_size / (1024 * 1024)
-        if filesize_mb > 20:
+        if filesize_mb > 50:
 
             cmd = [
                 "ffmpeg",

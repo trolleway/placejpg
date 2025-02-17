@@ -44,16 +44,19 @@ class Model_wiki:
     cache_category_object_in_location = dict()
     cache_settlement_for_object = dict()
     wikidata_cache = dict()
-    wikidata_cache_filename = 'temp_wikidata_cache.dat'
-    optional_langs = ('de', 'fr', 'it', 'es', 'pt', 'uk', 'be', 'ja')
+    wikidata_cache_filename = "temp_wikidata_cache.dat"
+    optional_langs = ("de", "fr", "it", "es", "pt", "uk", "be", "ja")
 
     def __init__(self):
-        if not os.path.isfile('user-config.py'):
-            raise Exception('''Now you should enter Wikimedia user data in config. Call \n cp user-config.example.py user-config.py
-        \n open user-config.py in text editor, input username,  and run this script next time''')
+        if not os.path.isfile("user-config.py"):
+            raise Exception(
+                """Now you should enter Wikimedia user data in config. Call \n cp user-config.example.py user-config.py
+        \n open user-config.py in text editor, input username,  and run this script next time"""
+            )
 
         self.wikidata_cache = self.wikidata_cache_load(
-            wikidata_cache_filename=self.wikidata_cache_filename)
+            wikidata_cache_filename=self.wikidata_cache_filename
+        )
 
     def reset_cache(self):
         try:
@@ -61,31 +64,36 @@ class Model_wiki:
         except:
             pass
         self.wikidata_cache = self.wikidata_cache_load(
-            wikidata_cache_filename=self.wikidata_cache_filename)
+            wikidata_cache_filename=self.wikidata_cache_filename
+        )
 
     def replace_file_commons(self, pagename, filepath):
         assert pagename
         # Login to your account
-        site = pywikibot.Site('commons', 'commons')
+        site = pywikibot.Site("commons", "commons")
         site.login()
         site.get_tokens("csrf")  # preload csrf token
 
         # Replace the file
         file_page = pywikibot.FilePage(site, pagename)
 
-        file_page.upload(source=filepath, comment='Replacing file',ignore_warnings=True, watch=True)
+        file_page.upload(
+            source=filepath, comment="Replacing file", ignore_warnings=True, watch=True
+        )
 
         return
 
     def wikidata_cache_load(self, wikidata_cache_filename):
         if os.path.isfile(wikidata_cache_filename) == False:
-            cache = {'entities_simplified': {},  
-                     'commonscat_by_2_wikidata': {}, 
-                     'cities_ids':{},
-                     'commonscat_exists_set': set()}
+            cache = {
+                "entities_simplified": {},
+                "commonscat_by_2_wikidata": {},
+                "cities_ids": {},
+                "commonscat_exists_set": set(),
+            }
             return cache
         else:
-            file = open(wikidata_cache_filename, 'rb')
+            file = open(wikidata_cache_filename, "rb")
 
             # dump information to that file
             cache = pickle.load(file)
@@ -95,7 +103,7 @@ class Model_wiki:
             return cache
 
     def wikidata_cache_save(self, cache, wikidata_cache_filename) -> bool:
-        file = open(wikidata_cache_filename, 'wb')
+        file = open(wikidata_cache_filename, "wb")
 
         # dump information to that file
         pickle.dump(cache, file)
@@ -107,6 +115,7 @@ class Model_wiki:
 
         # check cache
         import sys
+
         pagename = page.title()
         if pagename in self.wiki_content_cache:
             return self.wiki_content_cache[pagename]
@@ -118,11 +127,11 @@ class Model_wiki:
         return pagecode
 
     def is_change_need(self, pagecode, operation) -> bool:
-        operations = ('taken on', 'taken on location')
+        operations = ("taken on", "taken on location")
         assert operation in operations
 
-        if operation == 'taken on':
-            if '{{Taken on'.upper() in pagecode.upper():
+        if operation == "taken on":
+            if "{{Taken on".upper() in pagecode.upper():
                 return False
             else:
                 return True
@@ -134,26 +143,28 @@ class Model_wiki:
         # File:Podolsk, Moscow Oblast, Russia - panoramio (152).jpg
 
         pagecode = str(pagecode)
-        pagecode = pagecode.replace('https://commons.wikimedia.org/wiki/', '')
-        pagecode = pagecode.replace('[[commons:', '').replace(']]', '')
+        pagecode = pagecode.replace("https://commons.wikimedia.org/wiki/", "")
+        pagecode = pagecode.replace("[[commons:", "").replace("]]", "")
         return pagecode
 
-    def url_add_template_taken_on(self, pagename, location, dry_run=True,verbose=False,interactive=False):
+    def url_add_template_taken_on(
+        self, pagename, location, dry_run=True, verbose=False, interactive=False
+    ):
         assert pagename
         location = location.title()
         site = pywikibot.Site("commons", "commons")
         site.login()
         site.get_tokens("csrf")  # preload csrf token
         pagename = self.page_name_canonical(pagename)
-        if not pagename.startswith('File:'): pagename='File:'+pagename
+        if not pagename.startswith("File:"):
+            pagename = "File:" + pagename
         page = pywikibot.Page(site, title=pagename)
 
+        self.page_template_taken_on(page, location, dry_run, verbose, interactive)
 
-        self.page_template_taken_on(page, location, dry_run, verbose,interactive)
-
-    def category_add_template_wikidata_infobox(self,category:str):
-        if not category.startswith('Category:'):
-            category = 'Category:'+category
+    def category_add_template_wikidata_infobox(self, category: str):
+        if not category.startswith("Category:"):
+            category = "Category:" + category
         assert category
         texts = dict()
         site = pywikibot.Site("commons", "commons")
@@ -163,66 +174,86 @@ class Model_wiki:
         page = pywikibot.Page(site, title=category)
 
         texts[0] = page.text
-        if 'wikidata infobox' in texts[0].lower():
+        if "wikidata infobox" in texts[0].lower():
             return True
-		
-        message = '{{Wikidata Infobox}}'
-        texts[1]=message+"\n"+page.text
+
+        message = "{{Wikidata Infobox}}"
+        texts[1] = message + "\n" + page.text
         page.text = texts[1]
-        page.save('add {{Wikidata Infobox}} template')
-    
-    def category_dev(self, categoryname,start=None,total=None)->list:
+        page.save("add {{Wikidata Infobox}} template")
+
+    def category_dev(self, categoryname, start=None, total=None) -> list:
         counter = 0
         site = pywikibot.Site("commons", "commons")
         cat = pywikibot.Category(site, categoryname)
-        subcats_obj = pagegenerators.SubCategoriesPageGenerator(category=cat,recurse=False, start=start, total=total, content=True)
-        #subcats_obj = cat.subcategories(recurse=False)
-        print('===categories witout wikidata ibfobox===')
+        subcats_obj = pagegenerators.SubCategoriesPageGenerator(
+            category=cat, recurse=False, start=start, total=total, content=True
+        )
+        # subcats_obj = cat.subcategories(recurse=False)
+        print("===categories witout wikidata ibfobox===")
         for subcat in subcats_obj:
-            
-            counter = counter+1
-            if 'wikidata infobox' in str(subcat.text).lower(): 
+
+            counter = counter + 1
+            if "wikidata infobox" in str(subcat.text).lower():
                 continue
             else:
-                print(str(counter)+'  '+subcat.title().replace('Category:',''))
+                print(str(counter) + "  " + subcat.title().replace("Category:", ""))
 
-        
-
-    def category_add_template_taken_on(self, categoryname, location, dry_run=True, interactive=False):
+    def category_add_template_taken_on(
+        self, categoryname, location, dry_run=True, interactive=False
+    ):
         assert categoryname
         total_files = 0
         site = pywikibot.Site("commons", "commons")
         site.login()
         site.get_tokens("csrf")  # preload csrf token
         category = pywikibot.Category(site, categoryname)
-        regex = '(?i)date.*=.*\d\d\d\d-\d\d-\d\d.*\}\}'
-        regex = '(?i)Information[\S\s]*date[\S\s]*=[\S\s]*\d\d\d\d-\d\d-\d\d.*\}\}'
+        regex = "(?i)date.*=.*\d\d\d\d-\d\d-\d\d.*\}\}"
+        regex = "(?i)Information[\S\s]*date[\S\s]*=[\S\s]*\d\d\d\d-\d\d-\d\d.*\}\}"
         gen1 = pagegenerators.CategorizedPageGenerator(
-            category, recurse=False, start=None, total=None, content=True, namespaces=None)
+            category,
+            recurse=False,
+            start=None,
+            total=None,
+            content=True,
+            namespaces=None,
+        )
         gen2 = pagegenerators.RegexBodyFilterPageGenerator(gen1, regex)
         regex
         gen2 = pagegenerators.RegexBodyFilterPageGenerator(gen1, regex)
         for page in gen2:
             print(page)
-            total_files = total_files+1
+            total_files = total_files + 1
 
         del gen1
         del gen2
         gen1 = pagegenerators.CategorizedPageGenerator(
-            category, recurse=False, start=None, total=None, content=True, namespaces=None)
+            category,
+            recurse=False,
+            start=None,
+            total=None,
+            content=True,
+            namespaces=None,
+        )
         gen2 = pagegenerators.RegexBodyFilterPageGenerator(gen1, regex)
 
         gen2 = pagegenerators.RegexBodyFilterPageGenerator(gen1, regex)
 
         logging.getLogger().setLevel(logging.DEBUG)
-        logging.getLogger('foo').debug('bah')
+        logging.getLogger("foo").debug("bah")
 
         location = location.title()
         pbar = tqdm(total=total_files)
         for page in gen2:
 
             self.page_template_taken_on(
-                page, location, dry_run, interactive, verbose=False, message=f'Set taken on location={location} for files in category {categoryname}')
+                page,
+                location,
+                dry_run,
+                interactive,
+                verbose=False,
+                message=f"Set taken on location={location} for files in category {categoryname}",
+            )
             pbar.update(1)
         pbar.close()
 
@@ -237,36 +268,31 @@ class Model_wiki:
             return None, None
         return float(struct[0]), float(struct[-1])
 
-
-    def create_wikidata_item(self,wd_object, local_wikidata_uuid=None):
-    
-        '''
-        created with bing ai 
+    def create_wikidata_item(self, wd_object, local_wikidata_uuid=None):
+        """
+        created with bing ai
         https://www.bing.com/search?iscopilotedu=1&sendquery=1&q=%D0%A7%D1%82%D0%BE+%D1%82%D0%B0%D0%BA%D0%BE%D0%B5+%D0%BD%D0%BE%D0%B2%D1%8B%D0%B9+Bing%3F&showconv=1&filters=wholepagesharingscenario%3A%22Conversation%22&shareId=4d855391-009e-4938-81b4-8591617df8db&shtc=0&shsc=Codex_ConversationMode&form=EX0050&shid=b116c20e-9d13-494d-a4cc-8f8b3a8a6260&shtp=GetUrl&shtk=0J7Qt9C90LDQutC%2B0LzRjNGC0LXRgdGMINGBINGN0YLQuNC8INC%2B0YLQstC10YLQvtC8IEJpbmc%3D&shdk=0JLQvtGCINC%2B0YLQstC10YIsINC%2F0L7Qu9GD0YfQtdC90L3Ri9C5INGBINC%2F0L7QvNC%2B0YnRjNGOINC90L7QstC%2B0LPQviBCaW5nLCDQs9C70L7QsdCw0LvRjNC90L7QuSDRgdC40YHRgtC10LzRiyDQvtGC0LLQtdGC0L7QsiDQvdCwINCx0LDQt9C1INC40YHQutGD0YHRgdGC0LLQtdC90L3QvtCz0L4g0LjQvdGC0LXQu9C70LXQutGC0LAuINCp0LXQu9C60L3QuNGC0LUg0LTQu9GPINC%2F0YDQvtGB0LzQvtGC0YDQsCDQvtGC0LLQtdGC0LAg0YbQtdC70LjQutC%2B0Lwg0Lgg0L%2FQvtC%2F0YDQvtCx0YPQudGC0LUg0Y3RgtGDINGE0YPQvdC60YbQuNGOINGB0LDQvNC%2B0YHRgtC%2B0Y%2FRgtC10LvRjNC90L4u&shhk=KUktXhHaQFr142oHDgOzFPKk2Snr3G22dzXkpH3KtHg%3D&shth=OBFB.107AF8B2FB79BD01FFDCABA4D756224A
 
 
 
-        
-        '''
-        
+
+        """
+
         # at frist create and print local UUID, user may use it as placeholder for wikidata id, because wikidata object create took 30-40 seconds long
-        
+
         # test is save possible
-        with open('local_wikidata_uuids.json', 'a') as file:
+        with open("local_wikidata_uuids.json", "a") as file:
             pass
 
-        
-        import shortuuid,jsonlines
-        
+        import shortuuid, jsonlines
+
         if local_wikidata_uuid is None:
-            local_wikidata_uuid='UUID'+str(shortuuid.uuid())
-            self.logger.info(f'Created UUID, you now can use it as placeholder for wikidata id place in filename')
+            local_wikidata_uuid = "UUID" + str(shortuuid.uuid())
+            self.logger.info(
+                f"Created UUID, you now can use it as placeholder for wikidata id place in filename"
+            )
             self.logger.info(local_wikidata_uuid)
-        
 
-
-
-        
         # create a site object for wikidata
         site = pywikibot.Site("wikidata", "wikidata")
         # create a new item
@@ -275,16 +301,27 @@ class Model_wiki:
         # set the labels, descriptions and aliases from the wd_object
         try:
             new_item.editLabels(labels=wd_object["labels"], summary="Setting labels")
-            self.logger.info('created wikidata entity: '+str(new_item.getID()) + '    _place'+str(new_item.getID()))
-            #save local wikidata UUID
-            with jsonlines.open('local_wikidata_uuids.json', mode='a') as writer:
-                writer.write({'uuid':local_wikidata_uuid,'wdid':new_item.getID()})
-            new_item.editDescriptions(descriptions=wd_object["descriptions"], summary="Setting descriptions")
-            new_item.editAliases(aliases=wd_object["aliases"], summary="Setting aliases")
+            self.logger.info(
+                "created wikidata entity: "
+                + str(new_item.getID())
+                + "    _place"
+                + str(new_item.getID())
+            )
+            # save local wikidata UUID
+            with jsonlines.open("local_wikidata_uuids.json", mode="a") as writer:
+                writer.write({"uuid": local_wikidata_uuid, "wdid": new_item.getID()})
+            new_item.editDescriptions(
+                descriptions=wd_object["descriptions"], summary="Setting descriptions"
+            )
+            new_item.editAliases(
+                aliases=wd_object["aliases"], summary="Setting aliases"
+            )
         except:
-            self.logger.warning('prorably this object already created in wikidata. merge not implement yet')
+            self.logger.warning(
+                "prorably this object already created in wikidata. merge not implement yet"
+            )
             pass
-        
+
         # iterate over the claims in the wd_object
         for prop, value in wd_object["claims"].items():
             # create a claim object for the property
@@ -294,10 +331,12 @@ class Model_wiki:
                 # it is a wikidata item id
                 # get the item object for the value
                 target = pywikibot.ItemPage(site, value)
-            elif isinstance(value, dict) and self.is_wikidata_id(value.get('value',None)):
+            elif isinstance(value, dict) and self.is_wikidata_id(
+                value.get("value", None)
+            ):
                 # it is a wikidata item id
                 # get the item object for the value
-                target = pywikibot.ItemPage(site, value.get('value'))                
+                target = pywikibot.ItemPage(site, value.get("value"))
             elif isinstance(value, dict):
                 # if the value is a dict, it is a special value type
                 # check the type of the value
@@ -309,20 +348,20 @@ class Model_wiki:
                         lon=value["value"]["longitude"],
                         precision=value["value"]["precision"],
                         site=site,
-                        #globe=value["value"]["globe"],
+                        # globe=value["value"]["globe"],
                     )
                 elif value["value"].get("time"):
                     # if the value has time, it is a time type
                     # create a time object for the value
                     target = pywikibot.WbTime(
                         year=int(value["value"]["time"]["year"]),
-                        #month=value["value"]["time"]["month"],
-                        #day=value["value"]["time"]["day"],
-                        #hour=value["value"]["time"]["hour"],
-                        #minute=value["value"]["time"]["minute"],
-                        #second=value["value"]["time"]["second"],
+                        # month=value["value"]["time"]["month"],
+                        # day=value["value"]["time"]["day"],
+                        # hour=value["value"]["time"]["hour"],
+                        # minute=value["value"]["time"]["minute"],
+                        # second=value["value"]["time"]["second"],
                         precision=value["value"]["precision"],
-                        #calendarmodel=value["value"]["calendarmodel"],
+                        # calendarmodel=value["value"]["calendarmodel"],
                     )
                 elif value["value"].get("amount"):
                     # if the value has amount, it is a quantity type
@@ -331,7 +370,7 @@ class Model_wiki:
                         amount=value["value"]["amount"],
                         unit=value["value"]["unit"],
                         error=value["value"].get("error"),
-                        site=site
+                        site=site,
                     )
                 else:
                     # otherwise, the value is not supported
@@ -368,20 +407,20 @@ class Model_wiki:
                                 lon=qual_value["value"]["longitude"],
                                 precision=qual_value["value"]["precision"],
                                 site=site,
-                                #globe=qual_value["value"]["globe"],
+                                # globe=qual_value["value"]["globe"],
                             )
                         elif qual_value["value"].get("time"):
                             # if the qualifier value has time, it is a time type
                             # create a time object for the qualifier value
                             qual_target = pywikibot.WbTime(
                                 year=int(qual_value["value"]["time"]["year"]),
-                                #month=qual_value["value"]["time"]["month"],
-                                #day=qual_value["value"]["time"]["day"],
-                                #hour=qual_value["value"]["time"]["hour"],
-                                #minute=qual_value["value"]["time"]["minute"],
-                                #second=qual_value["value"]["time"]["second"],
+                                # month=qual_value["value"]["time"]["month"],
+                                # day=qual_value["value"]["time"]["day"],
+                                # hour=qual_value["value"]["time"]["hour"],
+                                # minute=qual_value["value"]["time"]["minute"],
+                                # second=qual_value["value"]["time"]["second"],
                                 precision=qual_value["value"]["precision"],
-                                #calendarmodel=qual_value["value"]["calendarmodel"],
+                                # calendarmodel=qual_value["value"]["calendarmodel"],
                             )
                         elif qual_value["value"].get("amount"):
                             # if the qualifier value has amount, it is a quantity type
@@ -390,16 +429,20 @@ class Model_wiki:
                                 amount=qual_value["value"]["amount"],
                                 unit=qual_value["value"]["unit"],
                                 error=qual_value["value"].get("error"),
-                                site=site
+                                site=site,
                             )
                         else:
                             # otherwise, the qualifier value is not supported
                             # raise an exception
-                            raise ValueError(f"Unsupported qualifier value type: {qual_value}")
+                            raise ValueError(
+                                f"Unsupported qualifier value type: {qual_value}"
+                            )
                     else:
                         # otherwise, the qualifier value is not supported
                         # raise an exception
-                        raise ValueError(f"Unsupported qualifier value type: {qual_value}")
+                        raise ValueError(
+                            f"Unsupported qualifier value type: {qual_value}"
+                        )
                     # set the target of the qualifier to the qualifier value object
                     qualifier.setTarget(qual_target)
                     # add the qualifier to the claim
@@ -421,7 +464,7 @@ class Model_wiki:
                             if ref_value.startswith("http"):
                                 # if the reference value is a url, create a url object for the reference value
                                 ref_target = ref_value
-                                #source_claim.is_reference=True ???
+                                # source_claim.is_reference=True ???
                             else:
                                 # if the reference value is a wikidata item id, get the item object for the reference value
                                 ref_target = pywikibot.ItemPage(site, ref_value)
@@ -442,13 +485,13 @@ class Model_wiki:
                                 # create a time object for the reference value
                                 ref_target = pywikibot.WbTime(
                                     year=int(ref_value["value"]["time"]["year"]),
-                                    #month=ref_value["value"]["time"]["month"],
-                                    #day=ref_value["value"]["time"]["day"],
-                                    #hour=ref_value["value"]["time"]["hour"],
-                                    #minute=ref_value["value"]["time"]["minute"],
-                                    #second=ref_value["value"]["time"]["second"],
+                                    # month=ref_value["value"]["time"]["month"],
+                                    # day=ref_value["value"]["time"]["day"],
+                                    # hour=ref_value["value"]["time"]["hour"],
+                                    # minute=ref_value["value"]["time"]["minute"],
+                                    # second=ref_value["value"]["time"]["second"],
                                     precision=ref_value["value"]["precision"],
-                                    #calendarmodel=ref_value["value"]["calendarmodel"],
+                                    # calendarmodel=ref_value["value"]["calendarmodel"],
                                 )
                             elif ref_value["value"].get("amount"):
                                 # if the reference value has amount, it is a quantity type
@@ -457,16 +500,20 @@ class Model_wiki:
                                     amount=ref_value["value"]["amount"],
                                     unit=ref_value["value"]["unit"],
                                     error=ref_value["value"].get("error"),
-                                    site=site
+                                    site=site,
                                 )
                             else:
                                 # otherwise, the reference value is not supported
                                 # raise an exception
-                                raise ValueError(f"Unsupported reference value type: {ref_value}")
+                                raise ValueError(
+                                    f"Unsupported reference value type: {ref_value}"
+                                )
                         else:
                             # otherwise, the reference value is not supported
                             # raise an exception
-                            raise ValueError(f"Unsupported reference value type: {ref_value}")
+                            raise ValueError(
+                                f"Unsupported reference value type: {ref_value}"
+                            )
                         # set the target of the source claim to the reference value object
                         source_claim.setTarget(ref_target)
                         # append the source claim to the source claims list
@@ -477,51 +524,82 @@ class Model_wiki:
             new_item.addClaim(claim, summary="Adding claim")
         # return the new item id
         return new_item.getID()
-        
-    def claim_dict2pywikibot_claim(self,repo, claim):
+
+    def claim_dict2pywikibot_claim(self, repo, claim):
         """
-        return new pywikibot claim object for add to wikidata using pywikibot from dict 
+        return new pywikibot claim object for add to wikidata using pywikibot from dict
         """
 
-    def create_or_update_geoobject(self, city_wdid, country_wdid, named_after_wdid, street_name_en, street_name_ru, maintype, wikidata_only, catname, wdid, coords, district, local_wikidata_uuid=None):
+    def create_or_update_geoobject(
+        self,
+        city_wdid,
+        country_wdid,
+        named_after_wdid,
+        street_name_en,
+        street_name_ru,
+        maintype,
+        wikidata_only,
+        catname,
+        wdid,
+        coords,
+        district,
+        local_wikidata_uuid=None,
+    ):
 
         if wdid is None:
-            wdid = self.create_geoobject_wikidata(city=city_wdid,
-                                                           name_en=street_name_en,
-                                                           name_ru =street_name_ru,
-                                                           named_after=named_after_wdid, 
-                                                           country=country_wdid, 
-                                                           coords=coords,
-                                                           maintype=maintype,
-                                                           district=district,
-                                                           dry_mode=False,
-                                                           local_wikidata_uuid = local_wikidata_uuid)
-            if wikidata_only !=True and catname is None:
-                street_category_result = self.create_category_by_wikidata(wdid, city_wdid)
+            wdid = self.create_geoobject_wikidata(
+                city=city_wdid,
+                name_en=street_name_en,
+                name_ru=street_name_ru,
+                named_after=named_after_wdid,
+                country=country_wdid,
+                coords=coords,
+                maintype=maintype,
+                district=district,
+                dry_mode=False,
+                local_wikidata_uuid=local_wikidata_uuid,
+            )
+            if wikidata_only != True and catname is None:
+                street_category_result = self.create_category_by_wikidata(
+                    wdid, city_wdid
+                )
                 print(street_category_result)
             else:
                 if catname is not None and self.is_category_exists(catname):
-                    self.wikidata_add_commons_category(wdid,catname)
+                    self.wikidata_add_commons_category(wdid, catname)
                     self.category_add_template_wikidata_infobox(catname)
 
         elif wdid is not None:
-            
+
             street_wd = self.get_wikidata_simplified(wdid)
             # SET COORDINATES
-            self.wikidata_set_coords(wdid,coords=coords)
+            self.wikidata_set_coords(wdid, coords=coords)
             # CREATE CATEGORY IF NOT EXIST
-            if street_wd['commons'] is None:
+            if street_wd["commons"] is None:
                 # create street category
-                street_category_result = self.create_category_by_wikidata(wdid, city_wdid)
+                street_category_result = self.create_category_by_wikidata(
+                    wdid, city_wdid
+                )
                 print(street_category_result)
             else:
-                print('wikidata entity already has commons category')
-            #add wikidata infobox if needed
+                print("wikidata entity already has commons category")
+            # add wikidata infobox if needed
             if catname is not None and self.is_category_exists(catname):
                 self.category_add_template_wikidata_infobox(catname)
-           
 
-    def create_geoobject_wikidata(self,city,name_en,coords,name_ru=None,named_after=None, maintype='Q79007',country=None,district=None,dry_mode=False, local_wikidata_uuid = None)->str:
+    def create_geoobject_wikidata(
+        self,
+        city,
+        name_en,
+        coords,
+        name_ru=None,
+        named_after=None,
+        maintype="Q79007",
+        country=None,
+        district=None,
+        dry_mode=False,
+        local_wikidata_uuid=None,
+    ) -> str:
         wikidata_template = """
     {
       "type": "item",
@@ -545,49 +623,52 @@ class Model_wiki:
       }
     }
     """
-        
-        translate_variants=dict()
-        translate_variants['street']=['ulitsa']
-        translate_variants['Street']=['Ulitsa']
+
+        translate_variants = dict()
+        translate_variants["street"] = ["ulitsa"]
+        translate_variants["Street"] = ["Ulitsa"]
 
         city_wd = self.get_wikidata_simplified(city)
         street_type_wd = self.get_wikidata_simplified(maintype)
         wd_object = json.loads(wikidata_template)
         wd_object["labels"]["en"] = name_en
-        wd_object["descriptions"]["en"] = street_type_wd['labels']['en'] + ' in ' + city_wd['labels']['en']
+        wd_object["descriptions"]["en"] = (
+            street_type_wd["labels"]["en"] + " in " + city_wd["labels"]["en"]
+        )
         if name_ru is not None:
             wd_object["labels"]["ru"] = name_ru
-        wd_object["descriptions"]["ru"] = street_type_wd['labels']['ru'] + ' в ' + city_wd['labels']['ru']
-        wd_object["aliases"] = {"ru": list(), "en":list()}
-        wd_object["aliases"]["ru"].append(name_ru + ', ' + city_wd['labels']['ru'])
-        wd_object["aliases"]["en"].append(name_en + ', ' + city_wd['labels']['en'])
-        
-        # ALIAS: to "Unylaya street" add alias "Unylaya ulitsa"
-        for k,v in translate_variants.items():
-            if name_ru is not None:
-                if k in name_ru: wd_object["aliases"]["en"].append(name_en.replace(k,v[0]))
+        wd_object["descriptions"]["ru"] = (
+            street_type_wd["labels"]["ru"] + " в " + city_wd["labels"]["ru"]
+        )
+        wd_object["aliases"] = {"ru": list(), "en": list()}
+        wd_object["aliases"]["ru"].append(name_ru + ", " + city_wd["labels"]["ru"])
+        wd_object["aliases"]["en"].append(name_en + ", " + city_wd["labels"]["en"])
 
-        #type
-        wd_object["claims"]["P31"] = street_type_wd['id']
-        
+        # ALIAS: to "Unylaya street" add alias "Unylaya ulitsa"
+        for k, v in translate_variants.items():
+            if name_ru is not None:
+                if k in name_ru:
+                    wd_object["aliases"]["en"].append(name_en.replace(k, v[0]))
+
+        # type
+        wd_object["claims"]["P31"] = street_type_wd["id"]
+
         # COORDINATES
-        if 'LINESTRING' in coords.upper():
-            #line with 3 points: write coordinates for start, middle, end of street
+        if "LINESTRING" in coords.upper():
+            # line with 3 points: write coordinates for start, middle, end of street
             from model_geo import Model_Geo as Model_geo_ask
-            coords_list =  Model_geo_ask.extract_wktlinestring_to_points(coords)
-            assert len(coords_list) in (2,3)
-            
-            
-            
-        else: 
-            lat=None
-            lon=None
+
+            coords_list = Model_geo_ask.extract_wktlinestring_to_points(coords)
+            assert len(coords_list) in (2, 3)
+
+        else:
+            lat = None
+            lon = None
             lat, lon = self.location_string_parse(coords)
 
             assert lat is not None
             assert lon is not None
-            
-            
+
             wd_object["claims"]["P625"]["value"]["latitude"] = round(
                 float(lat), 5
             )  # coords
@@ -596,75 +677,86 @@ class Model_wiki:
             )  # coords
 
         # State
-        country_claim=self.get_best_claim(city,'P17')
+        country_claim = self.get_best_claim(city, "P17")
         wd_object["claims"]["P17"] = country_claim
         # located in adm
-        wd_object["claims"]["P131"] = city_wd['id']
-        if district is not None: wd_object["claims"]["P131"] = district
-        if named_after is not None: wd_object["claims"]["P138"] = named_after
+        wd_object["claims"]["P131"] = city_wd["id"]
+        if district is not None:
+            wd_object["claims"]["P131"] = district
+        if named_after is not None:
+            wd_object["claims"]["P138"] = named_after
 
         if dry_mode:
             print(json.dumps(wd_object, indent=1))
             self.logger.info("dry mode, no creating wikidata entity")
             return
 
-        new_item_id = self.create_wikidata_item(wd_object, local_wikidata_uuid = local_wikidata_uuid)
-        self.logger.info(f'new object created: https://www.wikidata.org/wiki/{new_item_id} ')
+        new_item_id = self.create_wikidata_item(
+            wd_object, local_wikidata_uuid=local_wikidata_uuid
+        )
+        self.logger.info(
+            f"new object created: https://www.wikidata.org/wiki/{new_item_id} "
+        )
         return new_item_id
-        
-    def wikidata_set_coords(self,wdid,coords):
-        site = pywikibot.Site('wikidata', 'wikidata')
+
+    def wikidata_set_coords(self, wdid, coords):
+        site = pywikibot.Site("wikidata", "wikidata")
         repo = site.data_repository()
         item = pywikibot.ItemPage(site, wdid)
-        item.get() # load the item data
-        claims = item.claims # get the claims dictionary
-        
+        item.get()  # load the item data
+        claims = item.claims  # get the claims dictionary
+
         if "P625" in claims:
-            print('no overwrite coordinates')
+            print("no overwrite coordinates")
             return None
-        
-        lat=None
-        lon=None
+
+        lat = None
+        lon = None
         lat, lon = self.location_string_parse(coords)
 
         assert lat is not None
         assert lon is not None
-            
-        coordinateclaim  = pywikibot.Claim(repo, 'P625') #Adding coordinate location (P625)
-        coordinate = pywikibot.Coordinate(lat=lat, lon=lon, precision=0.0001, site=site) #With location markes
-        coordinateclaim.setTarget(coordinate)
-        print('Adding coordinate claim')
-        item.addClaim(coordinateclaim, summary='Adding coordinate claim')
 
-    def wikidata_set_address(self,building_wdid,street_wdid,housenumber):
-        
+        coordinateclaim = pywikibot.Claim(
+            repo, "P625"
+        )  # Adding coordinate location (P625)
+        coordinate = pywikibot.Coordinate(
+            lat=lat, lon=lon, precision=0.0001, site=site
+        )  # With location markes
+        coordinateclaim.setTarget(coordinate)
+        print("Adding coordinate claim")
+        item.addClaim(coordinateclaim, summary="Adding coordinate claim")
+
+    def wikidata_set_address(self, building_wdid, street_wdid, housenumber):
+
         # Create a site object for wikidata
-        site = pywikibot.Site('wikidata', 'wikidata')
+        site = pywikibot.Site("wikidata", "wikidata")
         repo = site.data_repository()
         # Create an item object from the item ID
         item = pywikibot.ItemPage(site, building_wdid)
 
-        item.get() # load the item data
-        claims = item.claims # get the claims dictionary
-        #CLAIM
-        claim = pywikibot.Claim(repo, 'P669') #located_on_street
+        item.get()  # load the item data
+        claims = item.claims  # get the claims dictionary
+        # CLAIM
+        claim = pywikibot.Claim(repo, "P669")  # located_on_street
         target = pywikibot.ItemPage(repo, street_wdid)
         claim.setTarget(target)  # Set the target value in the local object.
-        
-        item.addClaim(claim, summary="Adding machine readable address for files names generation")
-        #QUALIFIER
-        qualifier = pywikibot.Claim(repo, 'P670')
+
+        item.addClaim(
+            claim, summary="Adding machine readable address for files names generation"
+        )
+        # QUALIFIER
+        qualifier = pywikibot.Claim(repo, "P670")
         qualifier.setTarget(housenumber)
-        claim.addQualifier(qualifier, summary='Adding a housenumber for files names generation')
+        claim.addQualifier(
+            qualifier, summary="Adding a housenumber for files names generation"
+        )
         del claim
         del target
 
-      
         self.reset_cache()
-    
-    
-    
-    def create_wikidata_building(self, data, dry_mode=False, local_wikidata_uuid = None):
+
+    def create_wikidata_building(self, data, dry_mode=False, local_wikidata_uuid=None):
         assert "street_wikidata" in data
 
         # get street data from wikidata
@@ -699,12 +791,10 @@ class Model_wiki:
       }
     }
     """
-        
-        # sample
-       
 
-        data["lat"], data["lon"] = self.location_string_parse(
-            data["latlonstr"])
+        # sample
+
+        data["lat"], data["lon"] = self.location_string_parse(data["latlonstr"])
 
         assert data["lat"] is not None
         assert data["lon"] is not None
@@ -713,19 +803,22 @@ class Model_wiki:
         assert data["housenumber"] is not None
         assert data["street_wikidata"] is not None
         wd_object = json.loads(wikidata_template)
-        wd_object["labels"]["ru"] = data["street_name_ru"] + \
-            " " + data["housenumber"]
+        wd_object["labels"]["ru"] = data["street_name_ru"] + " " + data["housenumber"]
         wd_object["labels"]["en"] = self.address_international(
-        city=city_wd['labels']['en'],
-        street=data["street_name_en"], 
-        housenumber=data["housenumber"]).strip()
+            city=city_wd["labels"]["en"],
+            street=data["street_name_en"],
+            housenumber=data["housenumber"],
+        ).strip()
 
-        wd_object["descriptions"]["ru"] = "Здание в " + city_wd['labels']['ru']
-        wd_object["descriptions"]["en"] = "Building in " + city_wd['labels']['en']
+        wd_object["descriptions"]["ru"] = "Здание в " + city_wd["labels"]["ru"]
+        wd_object["descriptions"]["en"] = "Building in " + city_wd["labels"]["en"]
         wd_object["aliases"] = {"ru": list()}
         wd_object["aliases"]["ru"].append(
-            city_wd['labels']['ru'] + ' ' + data["street_name_ru"] +
-            " дом " + data["housenumber"]
+            city_wd["labels"]["ru"]
+            + " "
+            + data["street_name_ru"]
+            + " дом "
+            + data["housenumber"]
         )
         wd_object["claims"]["P625"]["value"]["latitude"] = round(
             float(data["lat"]), 5
@@ -733,15 +826,24 @@ class Model_wiki:
         wd_object["claims"]["P625"]["value"]["longitude"] = round(
             float(data["lon"]), 5
         )  # coords
-        if data.get("coord_source", None) is not None and data["coord_source"].lower() == "yandex maps":
+        if (
+            data.get("coord_source", None) is not None
+            and data["coord_source"].lower() == "yandex maps"
+        ):
             wd_object["claims"]["P625"]["references"] = list()
             wd_object["claims"]["P625"]["references"].append(dict())
             wd_object["claims"]["P625"]["references"][0]["P248"] = "Q4537980"
-        if data.get("coord_source", None) is not None and data["coord_source"].lower() == "osm":
+        if (
+            data.get("coord_source", None) is not None
+            and data["coord_source"].lower() == "osm"
+        ):
             wd_object["claims"]["P625"]["references"] = list()
             wd_object["claims"]["P625"]["references"].append(dict())
             wd_object["claims"]["P625"]["references"][0]["P248"] = "Q936"
-        if data.get("coord_source", None) is not None and data["coord_source"].lower() == "reforma":
+        if (
+            data.get("coord_source", None) is not None
+            and data["coord_source"].lower() == "reforma"
+        ):
             wd_object["claims"]["P625"]["references"] = list()
             wd_object["claims"]["P625"]["references"].append(dict())
             wd_object["claims"]["P625"]["references"][0]["P248"] = "Q117323686"
@@ -749,19 +851,16 @@ class Model_wiki:
             "value": data["street_wikidata"],
             "qualifiers": {"P670": data["housenumber"]},
         }
-        
-        if "district_wikidata"  in data:
-            wd_object["claims"]["P131"]={
-            "value": data["district_wikidata"]
-            }        
-        if "project"  in data:
-            wd_object["claims"]["P144"]={
-            "value": data["project"]
-            }
+
+        if "district_wikidata" in data:
+            wd_object["claims"]["P131"] = {"value": data["district_wikidata"]}
+        if "project" in data:
+            wd_object["claims"]["P144"] = {"value": data["project"]}
 
         if "year" in data:
             wd_object["claims"]["P729"] = {
-                "value": {"time": {"year":int(str(data["year"])[0:4])},"precision":9}}
+                "value": {"time": {"year": int(str(data["year"])[0:4])}, "precision": 9}
+            }
             if "year_source" or "year_url" in data:
                 wd_object["claims"]["P729"]["references"] = list()
                 wd_object["claims"]["P729"]["references"].append(dict())
@@ -769,19 +868,18 @@ class Model_wiki:
                     wd_object["claims"]["P729"]["references"][0]["P248"] = "Q112119515"
                 if data.get("year_source") == "wikimapia":
                     wd_object["claims"]["P729"]["references"][0]["P248"] = "Q187491"
-                if 'https://2gis.ru' in data.get('year_url', ''):
+                if "https://2gis.ru" in data.get("year_url", ""):
                     wd_object["claims"]["P729"]["references"][0]["P248"] = "Q112119515"
-                if 'reformagkh.ru' in data.get('year_url', ''):
+                if "reformagkh.ru" in data.get("year_url", ""):
                     wd_object["claims"]["P729"]["references"][0]["P248"] = "Q117323686"
 
                 if "year_url" in data:
-                    wd_object["claims"]["P729"]["references"][0]["P854"] = data[
-                        "year_url"
-                    ]
+                    wd_object["claims"]["P729"]["references"][0]["P854"] = data["year_url"]
+                    wd_object["claims"]["P729"]["references"][0]["P813"] = {"value": {"time": {"year": int(datetime.now().strftime('%Y'))}, "precision": 9}}
 
         if "levels" in data:
             wd_object["claims"]["P1101"] = {
-                "value": {"amount": int(data["levels"]), "unit": None,"error":None}
+                "value": {"amount": int(data["levels"]), "unit": None, "error": None}
             }
             if "levels_source" or "levels_url" in data:
                 wd_object["claims"]["P1101"]["references"] = list()
@@ -790,53 +888,57 @@ class Model_wiki:
                     wd_object["claims"]["P1101"]["references"][0]["P248"] = "Q112119515"
                 if data.get("levels_source") == "wikimapia":
                     wd_object["claims"]["P1101"]["references"][0]["P248"] = "Q187491"
-                if 'https://2gis.ru' in data.get('levels_url', ''):
+                if "https://2gis.ru" in data.get("levels_url", ""):
                     wd_object["claims"]["P1101"]["references"][0]["P248"] = "Q112119515"
-                if 'reformagkh.ru' in data.get('levels_url', ''):
+                if "reformagkh.ru" in data.get("levels_url", ""):
                     wd_object["claims"]["P1101"]["references"][0]["P248"] = "Q117323686"
 
             if "levels_url" in data:
-                wd_object["claims"]["P1101"]["references"][0]["P854"] = data["levels_url"]
+                wd_object["claims"]["P1101"]["references"][0]["P854"] = data[
+                    "levels_url"
+                ]
 
-        if 'building' in data and data['building'] is not None:
-            wd_object["claims"]["P31"] = data['building']
-        if 'architect' in data and data['architect'] is not None:
-            wd_object["claims"]["P84"] = data['architect']
-        if 'architecture' in data and data['architecture'] is not None:
-            if data['architecture']=='Q34636': data['architecture']='Q1295040' # art noveau --> art noveau architecture
-            wd_object["claims"]["P149"] = data['architecture']
-
-
-
+        if "building" in data and data["building"] is not None:
+            wd_object["claims"]["P31"] = data["building"]
+        if "architect" in data and data["architect"] is not None:
+            wd_object["claims"]["P84"] = data["architect"]
+        if "architecture" in data and data["architecture"] is not None:
+            if data["architecture"] == "Q34636":
+                data["architecture"] = (
+                    "Q1295040"  # art noveau --> art noveau architecture
+                )
+            wd_object["claims"]["P149"] = data["architecture"]
 
         if dry_mode:
             print(json.dumps(wd_object, indent=1))
             self.logger.info("dry mode, no creating wikidata entity")
             return
 
-        new_item_id = self.create_wikidata_item(wd_object, local_wikidata_uuid = local_wikidata_uuid)
+        new_item_id = self.create_wikidata_item(
+            wd_object, local_wikidata_uuid=local_wikidata_uuid
+        )
         print("created building https://www.wikidata.org/wiki/" + new_item_id)
         print("created _place" + new_item_id)
-        if data.get('category') is not None:
-            self.wikidata_add_commons_category(new_item_id, data.get('category'))
-            self.category_add_template_wikidata_infobox(data.get('category'))
-        
+        if data.get("category") is not None:
+            self.wikidata_add_commons_category(new_item_id, data.get("category"))
+            self.category_add_template_wikidata_infobox(data.get("category"))
+
         return new_item_id
 
     def get_territorial_entity(self, wd_record) -> dict:
-        if 'P131' not in wd_record['claims']:
+        if "P131" not in wd_record["claims"]:
             return None
         object_wd = self.get_wikidata_simplified(
-            wd_record['claims']['P131'][0]['value'])
+            wd_record["claims"]["P131"][0]["value"]
+        )
         return object_wd
-
 
     def validate_street_in_building_record(self, data):
         assert data["street_wikidata"] is not None
         wd_street = self.get_wikidata_simplified(data["street_wikidata"])
         result = None
-        
-        if 'commons' not in wd_street:
+
+        if "commons" not in wd_street:
             self.logger.debug(
                 "street "
                 + wikidata_street_url
@@ -847,13 +949,12 @@ class Model_wiki:
             result = True
         return True
 
-        
     def get_wikidata_simplified(self, entity_id) -> dict:
         assert entity_id is not None
-        assert str(entity_id) != ''
+        assert str(entity_id) != ""
         # get all claims of this wikidata objects
-        if entity_id in self.wikidata_cache['entities_simplified']:
-            return self.wikidata_cache['entities_simplified'][entity_id]
+        if entity_id in self.wikidata_cache["entities_simplified"]:
+            return self.wikidata_cache["entities_simplified"][entity_id]
 
         site = pywikibot.Site("wikidata", "wikidata")
         try:
@@ -861,159 +962,181 @@ class Model_wiki:
             entity.get()
         except:
             traceback.print_exc()
-            self.logger.error('invalid wikidata entity. Open it in browser and try to fix. https://www.wikidata.org/wiki/' +
-                             entity_id)
+            self.logger.error(
+                "invalid wikidata entity. Open it in browser and try to fix. https://www.wikidata.org/wiki/"
+                + entity_id
+            )
             quit()
-             
-        object_record = {'labels': {}}
+
+        object_record = {"labels": {}}
 
         labels_pywikibot = entity.labels.toJSON()
         for lang in labels_pywikibot:
-            object_record['labels'][lang] = labels_pywikibot[lang]['value']
+            object_record["labels"][lang] = labels_pywikibot[lang]["value"]
 
-        object_record['id'] = entity.getID()
+        object_record["id"] = entity.getID()
         claims = dict()
-        if 'claims' not in entity.toJSON():
-            raise ValueError(f'entitiy https://www.wikidata.org/wiki/{entity_id} must has some claims')
-        wb_claims = entity.toJSON()['claims']
+        if "claims" not in entity.toJSON():
+            raise ValueError(
+                f"entitiy https://www.wikidata.org/wiki/{entity_id} must has some claims"
+            )
+        wb_claims = entity.toJSON()["claims"]
 
         for prop_id in wb_claims:
-            
+
             claims[prop_id] = list()
             for claim in wb_claims[prop_id]:
 
-                claim_s=dict()
-                claim_s['rank']=claim.get('rank',None)
-                if prop_id=='P1101':                
+                claim_s = dict()
+                claim_s["rank"] = claim.get("rank", None)
+                if prop_id == "P1101":
                     pass
-                if 'datatype' not in claim['mainsnak']:
+                if "datatype" not in claim["mainsnak"]:
                     pass
                     # this is 'somevalue' claim, skip, because it not simply
-                elif claim['mainsnak']['datatype'] == 'wikibase-item':
-                    claim_s['value'] = 'Q'+str(claim['mainsnak']['datavalue']['value']['numeric-id'])
-                elif claim['mainsnak']['datatype'] == 'time':
-                    claim_s['value'] = claim['mainsnak']['datavalue']['value']['time'][8:]
-                    claim_s['precision'] = claim['mainsnak']['datavalue']['value']['precision']
-                elif claim['mainsnak']['datatype'] == 'external-id':
-                    claim_s['value'] = str(claim['mainsnak']['datavalue']['value'])
-                elif claim['mainsnak']['datatype'] == 'string':
-                    claim_s['value'] = str(claim['mainsnak']['datavalue']['value'])
-                elif claim['mainsnak']['datatype'] == 'quantity':
-                    claim_s['value'] = str(claim['mainsnak']['datavalue']['value'])
-                elif claim['mainsnak']['datatype'] == 'monolingualtext':
-                    claim_s['value'] =  claim['mainsnak']['datavalue']['value']['text'] 
-                    claim_s['language'] = str(claim['mainsnak']['datavalue']['value']['language'])
-                if 'qualifiers' in claim:  claim_s['qualifiers'] = claim['qualifiers']
+                elif claim["mainsnak"]["datatype"] == "wikibase-item":
+                    claim_s["value"] = "Q" + str(
+                        claim["mainsnak"]["datavalue"]["value"]["numeric-id"]
+                    )
+                elif claim["mainsnak"]["datatype"] == "time":
+                    claim_s["value"] = claim["mainsnak"]["datavalue"]["value"]["time"][
+                        8:
+                    ]
+                    claim_s["precision"] = claim["mainsnak"]["datavalue"]["value"][
+                        "precision"
+                    ]
+                elif claim["mainsnak"]["datatype"] == "external-id":
+                    claim_s["value"] = str(claim["mainsnak"]["datavalue"]["value"])
+                elif claim["mainsnak"]["datatype"] == "string":
+                    claim_s["value"] = str(claim["mainsnak"]["datavalue"]["value"])
+                elif claim["mainsnak"]["datatype"] == "quantity":
+                    claim_s["value"] = str(claim["mainsnak"]["datavalue"]["value"])
+                elif claim["mainsnak"]["datatype"] == "monolingualtext":
+                    claim_s["value"] = claim["mainsnak"]["datavalue"]["value"]["text"]
+                    claim_s["language"] = str(
+                        claim["mainsnak"]["datavalue"]["value"]["language"]
+                    )
+                if "qualifiers" in claim:
+                    claim_s["qualifiers"] = claim["qualifiers"]
                 claims[prop_id].append(claim_s)
 
-        object_record['claims'] = claims
+        object_record["claims"] = claims
 
-        wb_sitelinks = entity.toJSON().get('sitelinks', dict())
-        commons_sitelink = ''
-        if 'commonswiki' in wb_sitelinks:
-            commons_sitelink = wb_sitelinks['commonswiki']['title']
+        wb_sitelinks = entity.toJSON().get("sitelinks", dict())
+        commons_sitelink = ""
+        if "commonswiki" in wb_sitelinks:
+            commons_sitelink = wb_sitelinks["commonswiki"]["title"]
 
-        if "P373" in object_record['claims']:
-            object_record['commons'] = object_record["claims"]["P373"][0]["value"]
-        elif 'commonswiki' in wb_sitelinks:
-            object_record['commons'] = wb_sitelinks['commonswiki']['title'].replace(
-                'Category:', '')
+        if "P373" in object_record["claims"]:
+            object_record["commons"] = object_record["claims"]["P373"][0]["value"]
+        elif "commonswiki" in wb_sitelinks:
+            object_record["commons"] = wb_sitelinks["commonswiki"]["title"].replace(
+                "Category:", ""
+            )
         else:
-            object_record['commons'] = None
+            object_record["commons"] = None
 
-        '''if "en" not in object_wd["labels"]:
+        """if "en" not in object_wd["labels"]:
             self.logger.error('object https://www.wikidata.org/wiki/' +
                               wikidata+' must have english label')
             return None
-        '''
+        """
 
-        self.wikidata_cache['entities_simplified'][entity_id] = object_record
-        self.wikidata_cache_save(
-            self.wikidata_cache, self.wikidata_cache_filename)
+        self.wikidata_cache["entities_simplified"][entity_id] = object_record
+        self.wikidata_cache_save(self.wikidata_cache, self.wikidata_cache_filename)
         return object_record
 
-    def page_template_taken_on(self, page, location, dry_run=True, interactive=False, verbose=True,message='set Taken on location for manual set list of images'):
+    def page_template_taken_on(
+        self,
+        page,
+        location,
+        dry_run=True,
+        interactive=False,
+        verbose=True,
+        message="set Taken on location for manual set list of images",
+    ):
         assert page
         texts = dict()
         page_not_need_change = False
         texts[0] = page.text
 
-        if '.svg'.upper() in page.full_url().upper():
+        if ".svg".upper() in page.full_url().upper():
             return False
-        if '.png'.upper() in page.full_url().upper():
+        if ".png".upper() in page.full_url().upper():
             return False
-        if '.ogg'.upper() in page.full_url().upper():
+        if ".ogg".upper() in page.full_url().upper():
             return False
-        
-        if '{{Information'.upper() not in texts[0].upper():
-            self.logger.debug(
-                'template Information not exists in '+page.title())
+
+        if "{{Information".upper() not in texts[0].upper():
+            self.logger.debug("template Information not exists in " + page.title())
             return False
-        if '|location='.upper()+location.upper() in texts[0].upper():
-            self.logger.debug('|location='+location+' already in page')
+        if "|location=".upper() + location.upper() in texts[0].upper():
+            self.logger.debug("|location=" + location + " already in page")
             page_not_need_change = True
             texts[1] = texts[0]
         else:
             try:
                 texts[1] = self._text_add_template_taken_on(texts[0])
             except:
-                raise ValueError('invalid page text in ' + page.full_url())
-        assert 'Taken on'.upper() in texts[1].upper() or 'Taken in'.upper() in texts[1].upper() or 'According to Exif data'.upper(
-        ) in texts[1].upper(), 'wrong text in '+page.title()
+                raise ValueError("invalid page text in " + page.full_url())
+        assert (
+            "Taken on".upper() in texts[1].upper()
+            or "Taken in".upper() in texts[1].upper()
+            or "According to Exif data".upper() in texts[1].upper()
+        ), ("wrong text in " + page.title())
 
         datestr = self.get_date_from_pagetext(texts[1])
         if datestr == False:
             return False
-        if '/' in datestr:
+        if "/" in datestr:
             raise ValueError(
-                'Slash symbols in date causes side-effects. Normalize date in '+page.full_url())
-        if len(datestr) < len('yyyy-mm-dd'):
+                "Slash symbols in date causes side-effects. Normalize date in "
+                + page.full_url()
+            )
+        if len(datestr) < len("yyyy-mm-dd"):
             return False
-        if len(datestr) > len('yyyy-mm-dd'):
-            return False        
-        assert datestr, 'invalid date parce in '+page.full_url()
+        if len(datestr) > len("yyyy-mm-dd"):
+            return False
+        assert datestr, "invalid date parce in " + page.full_url()
 
-        location_value_has_already = self._text_get_template_taken_on_location(
-            texts[1])
+        location_value_has_already = self._text_get_template_taken_on_location(texts[1])
 
         if location_value_has_already is None:
-            texts[2] = self._text_add_template_taken_on_location(
-                texts[1], location)
+            texts[2] = self._text_add_template_taken_on_location(texts[1], location)
         else:
-            texts[2] = self._text_get_template_replace_on_location(
-                texts[1], location)
+            texts[2] = self._text_get_template_replace_on_location(texts[1], location)
 
         if texts[2] == False:
             return False
-        if '|location='+location+'}}' not in texts[2]:
+        if "|location=" + location + "}}" not in texts[2]:
             return False
         # Remove category
-        cat='Russia photographs taken on '+datestr
-        texts[2]=texts[2].replace("[[Category:"+cat+"]]",'')
-        texts[2]=texts[2].replace("[[Category:"+cat.replace(' ','_')+"]]",'')
+        cat = "Russia photographs taken on " + datestr
+        texts[2] = texts[2].replace("[[Category:" + cat + "]]", "")
+        texts[2] = texts[2].replace("[[Category:" + cat.replace(" ", "_") + "]]", "")
 
+        date_obj = datetime.strptime(datestr, "%Y-%m-%d")
+        date_obj.strftime("%B %Y")
+        cat = date_obj.strftime("%B %Y") + " in " + location
+        texts[2] = texts[2].replace("[[Category:" + cat + "]]", "")
+        texts[2] = texts[2].replace("[[Category:" + cat.replace(" ", "_") + "]]", "")
 
-        date_obj = datetime.strptime(datestr, '%Y-%m-%d')
-        date_obj.strftime('%B %Y')
-        cat=date_obj.strftime('%B %Y')+' in '+location
-        texts[2]=texts[2].replace("[[Category:"+cat+"]]",'')
-        texts[2]=texts[2].replace("[[Category:"+cat.replace(' ','_')+"]]",'')
+        cat = date_obj.strftime("%Y") + " in " + location
+        texts[2] = texts[2].replace("[[Category:" + cat + "]]", "")
+        texts[2] = texts[2].replace("[[Category:" + cat.replace(" ", "_") + "]]", "")
 
-        cat=date_obj.strftime('%Y')+' in '+location
-        texts[2]=texts[2].replace("[[Category:"+cat+"]]",'')
-        texts[2]=texts[2].replace("[[Category:"+cat.replace(' ','_')+"]]",'')
-
-        cat=date_obj.strftime('%Y')+' in Russia'
-        texts[2]=texts[2].replace("[[Category:"+cat+"]]",'')
-        texts[2]=texts[2].replace("[[Category:"+cat.replace(' ','_')+"]]",'')
-
+        cat = date_obj.strftime("%Y") + " in Russia"
+        texts[2] = texts[2].replace("[[Category:" + cat + "]]", "")
+        texts[2] = texts[2].replace("[[Category:" + cat.replace(" ", "_") + "]]", "")
 
         self.difftext(texts[0], texts[2])
-        if texts[0]!=texts[2]:page_not_need_change = False
+        if texts[0] != texts[2]:
+            page_not_need_change = False
 
         if verbose:
-            print('----------- proposed page content ----------- ' +
-                  datestr + '--------')
+            print(
+                "----------- proposed page content ----------- " + datestr + "--------"
+            )
 
             print(texts[2])
         if not dry_run and not interactive:
@@ -1022,69 +1145,73 @@ class Model_wiki:
                 page.save(message)
             self.create_category_taken_on_day(location, datestr)
         else:
-            print('page not changing')
+            print("page not changing")
 
         if interactive:
-            answer = input(" do change on  "+page.full_url() + "\n y / n   ? ")
+            answer = input(" do change on  " + page.full_url() + "\n y / n   ? ")
             # Remove white spaces after the answers and convert the characters into lower cases.
             answer = answer.strip().lower()
 
             if answer in ["yes", "y", "1"]:
                 page.text = texts[2]
-                page.save(message+' with manual preview')
+                page.save(message + " with manual preview")
                 self.create_category_taken_on_day(location, datestr)
-
 
     @staticmethod
     def is_wikidata_id(text) -> bool:
         # check if string is valid wikidata id
-        if not isinstance(text,str): return False
-        if len(text) > 1 and text.startswith('Q') and text[1:].isnumeric():
+        if not isinstance(text, str):
+            return False
+        if len(text) > 1 and text.startswith("Q") and text[1:].isnumeric():
             return True
         else:
             return False
 
     @staticmethod
     def search_wikidata_by_string(text, stop_on_error=True) -> str:
-        warnings.warn('use wikidata_input2id',
-                      DeprecationWarning, stacklevel=2)
-        cmd = ['wb', 'search', '--json', text]
+        warnings.warn("use wikidata_input2id", DeprecationWarning, stacklevel=2)
+        cmd = ["wb", "search", "--json", text]
 
         response = subprocess.run(cmd, capture_output=True)
         object_wd = json.loads(response.stdout.decode())
         if stop_on_error:
             if not len(object_wd) > 0:
-                raise ValueError('not found in wikidata: '+text)
+                raise ValueError("not found in wikidata: " + text)
 
-        return object_wd[0]['id']
+        return object_wd[0]["id"]
 
-    def file_add_duplicate_template(self, pagename='',id='',new_filename=''):
-        '''
+    def file_add_duplicate_template(self, pagename="", id="", new_filename=""):
+        """
         append {{Duplicate|new_filename|message}} to old commons file
         pagename formats: File:photoname.jpg  or concept URL https://commons.wikimedia.org/entity/M56911766
-        '''
-        assert new_filename != ''
-        assert pagename != '' or id != ''
-        if id != '': assert id.startswith('M')
-        
+        """
+        assert new_filename != ""
+        assert pagename != "" or id != ""
+        if id != "":
+            assert id.startswith("M")
+
         texts = dict()
         site = pywikibot.Site("commons", "commons")
         site.login()
         site.get_tokens("csrf")  # preload csrf token
-        if pagename != '':
+        if pagename != "":
             page = pywikibot.Page(site, title=pagename)
         else:
-            page = pywikibot.Page(site,id) 
+            page = pywikibot.Page(site, id)
 
         texts[0] = page.text
-		
-        message = '{{Duplicate|'+new_filename+'|Replace Panoramio import with original file from photographer (me) with better name and categories}}'
-        texts[1]=message+"\n"+page.text
-        page.text = texts[1]
-        page.save('add {{duplicate}} template')
 
-    def get_heritage_types(self, country='RU') -> list:
-        template = '''
+        message = (
+            "{{Duplicate|"
+            + new_filename
+            + "|Replace Panoramio import with original file from photographer (me) with better name and categories}}"
+        )
+        texts[1] = message + "\n" + page.text
+        page.text = texts[1]
+        page.save("add {{duplicate}} template")
+
+    def get_heritage_types(self, country="RU") -> list:
+        template = """
         SELECT ?item ?label ?_image WHERE {
   ?item wdt:P279 wd:Q8346700.
   SERVICE wikibase:label {
@@ -1093,29 +1220,29 @@ class Model_wiki:
   }
 }
 
-'''
+"""
         sparql = template
         site = pywikibot.Site("wikidata", "wikidata")
         repo = site.data_repository()
 
         generator = pagegenerators.PreloadingEntityGenerator(
-            pagegenerators.WikidataSPARQLPageGenerator(sparql, site=repo))
+            pagegenerators.WikidataSPARQLPageGenerator(sparql, site=repo)
+        )
         items_ids = list()
         for item in generator:
             items_ids.append(item.id)
-        items_ids.append('Q8346700')    
+        items_ids.append("Q8346700")
         heritage_types = {"RU": items_ids}
         return heritage_types
 
-
     def get_settlements_wdids(self) -> list:
 
-        if len(self.wikidata_cache['cities_ids'])>1:
-            return self.wikidata_cache['cities_ids']
-        '''
+        if len(self.wikidata_cache["cities_ids"]) > 1:
+            return self.wikidata_cache["cities_ids"]
+        """
         return list of settlements types ids
-        '''
-        template = '''
+        """
+        template = """
         SELECT ?item ?label ?_image WHERE {
   ?item wdt:P279 wd:Q7930989.
   SERVICE wikibase:label {
@@ -1124,22 +1251,21 @@ class Model_wiki:
   }
 }
 
-'''
+"""
         sparql = template
         site = pywikibot.Site("wikidata", "wikidata")
         repo = site.data_repository()
 
         generator = pagegenerators.PreloadingEntityGenerator(
-            pagegenerators.WikidataSPARQLPageGenerator(sparql, site=repo))
+            pagegenerators.WikidataSPARQLPageGenerator(sparql, site=repo)
+        )
         items_ids = list()
         for item in generator:
             items_ids.append(item.id)
 
-        self.wikidata_cache['cities_ids'] = items_ids
-        self.wikidata_cache_save(
-            self.wikidata_cache, self.wikidata_cache_filename)
+        self.wikidata_cache["cities_ids"] = items_ids
+        self.wikidata_cache_save(self.wikidata_cache, self.wikidata_cache_filename)
         return items_ids
-
 
     def get_heritage_id_check_heritage_types(self, wdid) -> str:
         # if wikidata object "heritage designation" is one of "culture heritage in Russia" - return russian monument id
@@ -1151,22 +1277,22 @@ class Model_wiki:
         item = pywikibot.ItemPage(site, wdid)
         item.get()
 
-        if 'P1435' not in item.claims:
+        if "P1435" not in item.claims:
             return None
-        if 'P1483' not in item.claims:
+        if "P1483" not in item.claims:
             return None
 
-        heritage_types = self.get_heritage_types('RU')
+        heritage_types = self.get_heritage_types("RU")
         claims = item.claims.get("P1435")
 
         for claim in claims:
-            if claim.getTarget().id in heritage_types['RU']:
+            if claim.getTarget().id in heritage_types["RU"]:
                 heritage_claim = item.claims.get("P1483")[0]
                 return heritage_claim.getTarget()
 
         return None
-    def get_heritage_id_by_check_ruwikivoyage_id(self, wdid) -> str:
 
+    def get_heritage_id_by_check_ruwikivoyage_id(self, wdid) -> str:
 
         site = pywikibot.Site("wikidata", "wikidata")
         site.login()
@@ -1180,7 +1306,7 @@ class Model_wiki:
         except:
             pass
         return None
-    
+
     def get_heritage_id(self, wdid) -> str:
         return self.get_heritage_id_by_check_ruwikivoyage_id(wdid)
 
@@ -1193,7 +1319,7 @@ class Model_wiki:
         # if user print a query - search wikidata
         # returns wikidata id
         inp = self.prepare_wikidata_url(inp)
-        if inp.startswith('Q') and self.is_wikidata_id('Q'):
+        if inp.startswith("Q") and self.is_wikidata_id("Q"):
             return self.normalize_wdid(inp)
 
         site = pywikibot.Site("wikidata", "wikidata")
@@ -1214,37 +1340,48 @@ class Model_wiki:
         for result in results["search"]:
             # Get the entity ID, label, description and URL
             entity_id = result["id"]
-            label = result.get("label",'')
+            label = result.get("label", "")
             description = result.get("description", "No description")
             url = result["url"]
-            candidates.append(result['id']+' '+label +
-                              ' '+result.get("description", "No description"))
-        
-     
-        
+            candidates.append(
+                result["id"]
+                + " "
+                + label
+                + " "
+                + result.get("description", "No description")
+            )
+
         if len(candidates) == 1:
-            selected_url = results["search"][0]['id']
+            selected_url = results["search"][0]["id"]
             return selected_url
         else:
             try:
                 terminal_menu = TerminalMenu(
-                    candidates, title="Select wikidata entity for " + inp)
+                    candidates, title="Select wikidata entity for " + inp
+                )
                 menu_entry_index = terminal_menu.show()
             except:
                 # special for run in temmux
                 menu_entry_index = self.user_select(candidates)
-            selected_url = results["search"][menu_entry_index]['id']
-        print('For '+inp+' selected 【'+selected_url+' ' +
-              results["search"][menu_entry_index].get('description','')+'】')
+            selected_url = results["search"][menu_entry_index]["id"]
+        print(
+            "For "
+            + inp
+            + " selected 【"
+            + selected_url
+            + " "
+            + results["search"][menu_entry_index].get("description", "")
+            + "】"
+        )
 
         return selected_url
 
     def user_select(self, candidates):
         i = 0
         for element in candidates:
-            print(str(i).rjust(3)+': '+element)
-            i = i+1
-        print('Enter a number:')
+            print(str(i).rjust(3) + ": " + element)
+            i = i + 1
+        print("Enter a number:")
         result = input()
         return int(result.strip())
 
@@ -1252,13 +1389,14 @@ class Model_wiki:
         # convert string https://www.wikidata.org/wiki/Q4412648 to Q4412648
 
         wikidata = str(wikidata).strip()
-        #remove # part
-        sharppos = wikidata.find('#')
-        if sharppos != -1: wikidata=wikidata[0:sharppos]
-        
-        wikidata = wikidata.replace('https://www.wikidata.org/wiki/', '')
-        if wikidata[0].isdigit() and not wikidata.upper().startswith('Q'):
-            wikidata = 'Q'+wikidata
+        # remove # part
+        sharppos = wikidata.find("#")
+        if sharppos != -1:
+            wikidata = wikidata[0:sharppos]
+
+        wikidata = wikidata.replace("https://www.wikidata.org/wiki/", "")
+        if wikidata[0].isdigit() and not wikidata.upper().startswith("Q"):
+            wikidata = "Q" + wikidata
         return wikidata
 
     def difftext(self, text1, text2):
@@ -1266,23 +1404,26 @@ class Model_wiki:
         is_triggered = 0
         text1_dict = {i: text1.splitlines()[i] for i in range(len(text1.splitlines()))}
         text2_dict = {i: text2.splitlines()[i] for i in range(len(text2.splitlines()))}
-        
+
         for l in range(0, len(text1.splitlines())):
-            if text1_dict.get(l,' - - - - - void string - - - ') != text2_dict.get(l,' - - - - - void string - - - '):
+            if text1_dict.get(l, " - - - - - void string - - - ") != text2_dict.get(
+                l, " - - - - - void string - - - "
+            ):
                 is_triggered += 1
                 if is_triggered == 1:
                     print()
-                print(text1_dict.get(l,' - - - - - void string - - - '))
-                print(text2_dict.get(l,' - - - - - void string - - - '))
-                print('^^^^^text changed^^^^^')
+                print(text1_dict.get(l, " - - - - - void string - - - "))
+                print(text2_dict.get(l, " - - - - - void string - - - "))
+                print("^^^^^text changed^^^^^")
 
     def _text_get_template_replace_on_location(self, test_str, location):
         import re
 
         regex = r"^.*(?:Information|photograph)[\s\S]*?Date\s*?=.*location=(?P<datecontent>[\s\S]*?)[\|\}}\n].*$"
 
-        matches = re.finditer(regex, test_str, re.UNICODE |
-                              re.MULTILINE | re.IGNORECASE)
+        matches = re.finditer(
+            regex, test_str, re.UNICODE | re.MULTILINE | re.IGNORECASE
+        )
 
         for matchNum, match in enumerate(matches, start=1):
 
@@ -1293,7 +1434,7 @@ class Model_wiki:
                 groupend = match.end(groupNum)
                 content = match.group(groupNum)
 
-        text = test_str[0:groupstart] + location+test_str[groupend:]
+        text = test_str[0:groupstart] + location + test_str[groupend:]
         return text
 
     def _text_get_template_taken_on_location(self, test_str):
@@ -1303,23 +1444,21 @@ class Model_wiki:
 
         regex = r"^.*(?:Information|photograph)[\s\S]*?Date\s*?=.*location=(?P<datecontent>[\s\S]*?)[\|\}}\n].*$"
 
-        matches = re.search(regex, test_str, re.IGNORECASE |
-                            re.UNICODE | re.MULTILINE)
+        matches = re.search(regex, test_str, re.IGNORECASE | re.UNICODE | re.MULTILINE)
 
         if matches:
 
             for groupNum in range(0, len(matches.groups())):
                 groupNum = groupNum + 1
 
-                return (matches.group(groupNum))
+                return matches.group(groupNum)
 
     def is_taken_on_in_text(self, test_str):
         import re
 
         regex = r"^.*(?:Information|photograph)[\s\S]*?Date\s*?=.*?(taken on|According to Exif data)\s*?[\|\n].*$"
 
-        matches = re.search(regex, test_str, re.IGNORECASE |
-                            re.UNICODE | re.MULTILINE)
+        matches = re.search(regex, test_str, re.IGNORECASE | re.UNICODE | re.MULTILINE)
 
         if matches:
 
@@ -1342,8 +1481,9 @@ class Model_wiki:
 
         regex = r"^.*(?:Information|photograph)[\s\S]*?Date\s*?=(?P<datecontent>[\s\S]*?)[\|\n].*$"
 
-        matches = re.finditer(regex, test_str, re.UNICODE |
-                              re.MULTILINE | re.IGNORECASE)
+        matches = re.finditer(
+            regex, test_str, re.UNICODE | re.MULTILINE | re.IGNORECASE
+        )
 
         for matchNum, match in enumerate(matches, start=1):
 
@@ -1354,8 +1494,13 @@ class Model_wiki:
                 groupend = match.end(groupNum)
                 content = match.group(groupNum)
 
-        text = test_str[0:groupstart] + \
-            ' {{Taken on|'+content.strip()+"}}"+test_str[groupend:]
+        text = (
+            test_str[0:groupstart]
+            + " {{Taken on|"
+            + content.strip()
+            + "}}"
+            + test_str[groupend:]
+        )
         return text
 
     def input2list_wikidata(self, inp):
@@ -1363,7 +1508,7 @@ class Model_wiki:
         if inp is None or inp == False:
             return list()
         if isinstance(inp, str):
-            inp = ([inp])
+            inp = [inp]
         secondary_wikidata_ids = list()
         for inp_wikidata in inp:
             wdid = self.wikidata_input2id(inp_wikidata)
@@ -1372,7 +1517,7 @@ class Model_wiki:
 
     def _text_add_template_taken_on_location(self, test_str, location):
 
-        if '|location'.upper() in test_str.upper():
+        if "|location".upper() in test_str.upper():
             return False
         # test_str name comes from onine regex editor
         import re
@@ -1390,12 +1535,13 @@ class Model_wiki:
                 groupend = match.end(groupNum)
                 content = match.group(groupNum)
 
-        text = test_str[0:groupstart] + '|location=' + \
-            location+""+test_str[groupend:]
+        text = (
+            test_str[0:groupstart] + "|location=" + location + "" + test_str[groupend:]
+        )
         return text
 
     def get_date_from_pagetext(self, test_str) -> str:
-        content = ''
+        content = ""
         # test_str name comes from onine regex editor
         import re
 
@@ -1412,148 +1558,178 @@ class Model_wiki:
                 groupend = match.end(groupNum)
                 content = match.group(groupNum)
 
-        if content == '':
-            print("not found date in \n"+test_str)
+        if content == "":
+            print("not found date in \n" + test_str)
             return False
         text = content.strip()
         text = text[:10]
         try:
             parser.parse(text)
         except:
-            print('invalid date: '+text)
+            print("invalid date: " + text)
             return False
         return text
-        
 
-    def make_catagory_texts_by_wikidata(self,geoobject_wikidata:str, city_wikidata:str=None, suffix:str=''):
+    def make_catagory_texts_by_wikidata(
+        self, geoobject_wikidata: str, city_wikidata: str = None, suffix: str = ""
+    ):
         if geoobject_wikidata is None:
             return None, None
-            
+
         street_wd = self.get_wikidata_simplified(geoobject_wikidata)
         if city_wikidata is None:
-            city_wikidata = street_wd['claims']['P131'][0]['value']
+            city_wikidata = street_wd["claims"]["P131"][0]["value"]
         city_wd = self.get_wikidata_simplified(city_wikidata)
-        
+
         # IF this is street: call special function for street
-        #if street_wd['claims']['P31'][0]['value']=='Q79007': return self.create_street_category(geoobject_wikidata,city_wikidata)
-                
+        # if street_wd['claims']['P31'][0]['value']=='Q79007': return self.create_street_category(geoobject_wikidata,city_wikidata)
+
         # MAKE CATEGORY NAME
-        objname = street_wd['labels']['en']
-        cityname = city_wd['labels'].get('en','no english name')
-        catname = f'{objname}'
-        if suffix != '': catname = f'{objname}, {suffix}'
-        
+        objname = street_wd["labels"]["en"]
+        cityname = city_wd["labels"].get("en", "no english name")
+        catname = f"{objname}"
+        if suffix != "":
+            catname = f"{objname}, {suffix}"
+
         # MAKE CATEGORY CONTENT
         content = "{{Wikidata infobox}}"
         content = content + "\n{{GeoGroup}}"
-        wdids=self.get_claims_list(geoobject_wikidata,'P31')
+        wdids = self.get_claims_list(geoobject_wikidata, "P31")
         for wdid in wdids:
-            
-            uppercat = self.get_category_object_in_location(wdid,city_wikidata,verbose=True)
-            if uppercat is None:
-                print('no category for '+street_wd['claims']['P31'][0]['value'])
-                return None, None
-            content += "\n[[Category:"+uppercat+"]]"
-        
-        # PART OF
-        wdids=self.get_claims_list(geoobject_wikidata,'P361')
 
-        if wdids is not None and len(wdids)>0:
+            uppercat = self.get_category_object_in_location(
+                wdid, city_wikidata, verbose=True
+            )
+            if uppercat is None:
+                print("no category for " + street_wd["claims"]["P31"][0]["value"])
+                return None, None
+            content += "\n[[Category:" + uppercat + "]]"
+
+        # PART OF
+        wdids = self.get_claims_list(geoobject_wikidata, "P361")
+
+        if wdids is not None and len(wdids) > 0:
             for wdid in wdids:
                 try:
-                    temp_wd=self.get_wikidata_simplified(wdid)
-                    content += "\n[[Category:"+self.get_wikidata_simplified(wdid)['commons']+"]]"
+                    temp_wd = self.get_wikidata_simplified(wdid)
+                    content += (
+                        "\n[[Category:"
+                        + self.get_wikidata_simplified(wdid)["commons"]
+                        + "]]"
+                    )
                 except:
                     pass
         # ADMINISTRATIVE ENTITY
-        wdid=self.get_best_claim(geoobject_wikidata,'P131')
+        wdid = self.get_best_claim(geoobject_wikidata, "P131")
         try:
-            temp_wd=self.get_wikidata_simplified(wdid)
-            content += "\n[[Category:"+self.get_wikidata_simplified(wdid)['commons']+"]]"
+            temp_wd = self.get_wikidata_simplified(wdid)
+            content += (
+                "\n[[Category:" + self.get_wikidata_simplified(wdid)["commons"] + "]]"
+            )
         except:
             pass
         return catname, content
-        
-    def create_category_by_wikidata(self,geoobject_wikidata:str, city_wikidata:str=None, suffix:str='')-> str:
-        catname, content = self.make_catagory_texts_by_wikidata(geoobject_wikidata,city_wikidata,suffix)
+
+    def create_category_by_wikidata(
+        self, geoobject_wikidata: str, city_wikidata: str = None, suffix: str = ""
+    ) -> str:
+        catname, content = self.make_catagory_texts_by_wikidata(
+            geoobject_wikidata, city_wikidata, suffix
+        )
         if not self.is_category_exists(catname):
-            self.create_category(catname,content)
-            self.wikidata_add_commons_category(geoobject_wikidata,catname)
+            self.create_category(catname, content)
+            self.wikidata_add_commons_category(geoobject_wikidata, catname)
         else:
-            print('category already exists')
+            print("category already exists")
 
         return catname
-        
-    def create_street_category(self,street_wikidata:str, city_wikidata:str=None)-> str:
+
+    def create_street_category(
+        self, street_wikidata: str, city_wikidata: str = None
+    ) -> str:
         if street_wikidata is None:
             return None
         assert street_wikidata.startswith("Q")
         street_wd = self.get_wikidata_simplified(street_wikidata)
-        if 'en' not in street_wd['labels']:
-            self.logger.error('object https://www.wikidata.org/wiki/' +
-                              street_wikidata+' must have english label')
+        if "en" not in street_wd["labels"]:
+            self.logger.error(
+                "object https://www.wikidata.org/wiki/"
+                + street_wikidata
+                + " must have english label"
+            )
             return None
 
-        if city_wikidata is not None:      
+        if city_wikidata is not None:
             assert city_wikidata.startswith("Q")
             city_wd = self.get_wikidata_simplified(city_wikidata)
-            if 'en' not in city_wd['labels']:
-                self.logger.error('object https://www.wikidata.org/wiki/' +
-                                city_wikidata+' must have english label')
+            if "en" not in city_wd["labels"]:
+                self.logger.error(
+                    "object https://www.wikidata.org/wiki/"
+                    + city_wikidata
+                    + " must have english label"
+                )
                 return None
         else:
-            city_wikidata = street_wd['claims']['P131'][0]['value']
+            city_wikidata = street_wd["claims"]["P131"][0]["value"]
             city_wd = self.get_wikidata_simplified(city_wikidata)
 
-                
         # MAKE CATEGORY NAME
-        streetname = street_wd['labels']['en']
-        cityname = city_wd['labels']['en']
-        catname = f'{streetname}, {cityname}'
-        uppercat = self.get_category_object_in_location('Q79007',city_wikidata,verbose=True)
+        streetname = street_wd["labels"]["en"]
+        cityname = city_wd["labels"]["en"]
+        catname = f"{streetname}, {cityname}"
+        uppercat = self.get_category_object_in_location(
+            "Q79007", city_wikidata, verbose=True
+        )
         content = """{{Wikidata infobox}}
         {{GeoGroup}}
         [[Category:%uppercat%]]
         """
-        content = content.replace('%uppercat%',uppercat)
-        content = content.replace('%cityname%',cityname)
+        content = content.replace("%uppercat%", uppercat)
+        content = content.replace("%cityname%", cityname)
         if not self.is_category_exists(catname):
-            self.create_category(catname,content)
-            self.wikidata_add_commons_category(street_wikidata,catname)
+            self.create_category(catname, content)
+            self.wikidata_add_commons_category(street_wikidata, catname)
         else:
-            print('category already exists')
+            print("category already exists")
 
         return catname
-        
-    def address_international(self,city:str,street:str, housenumber:str)->str:
+
+    def address_international(self, city: str, street: str, housenumber: str) -> str:
         """
-        from [Riga, Gertrudes street, 25] return "Gertrudes street 25, Riga" 
-        House number translitireted from RU to LAT 
+        from [Riga, Gertrudes street, 25] return "Gertrudes street 25, Riga"
+        House number translitireted from RU to LAT
         """
-        if city.strip() == '':
-            template = '{street} {housenumber}'
+        if city.strip() == "":
+            template = "{street} {housenumber}"
         else:
-            template='{street} {housenumber}, {city}'
-        
-        result = template.format(city=city,
-                                                       street=street,
-                                                       housenumber=translit(housenumber,"ru",reversed=True,
-                ))
-        return result 
-               
-    def get_amount_as_digit(self,s):
+            template = "{street} {housenumber}, {city}"
+
+        result = template.format(
+            city=city,
+            street=street,
+            housenumber=translit(
+                housenumber,
+                "ru",
+                reversed=True,
+            ),
+        )
+        return result
+
+    def get_amount_as_digit(self, s):
         """
-        from string 
+        from string
         "{'amount': '+5', 'upperBound': None, 'lowerBound': None, 'unit': '1'}"
         return 5
         """
         # Safely evaluate the string to a dictionary
         data = ast.literal_eval(s)
         # Extract the 'amount' value and convert it to an integer
-        amount = int(data['amount'])
+        amount = int(data["amount"])
         return amount
-    
-    def create_building_category(self, wikidata:str, city_wikidata:str, dry_mode=False ) -> str:
+
+    def create_building_category(
+        self, wikidata: str, city_wikidata: str, dry_mode=False
+    ) -> str:
         """
         Create wikimedia commons category for wikidata building entity
 
@@ -1565,9 +1741,8 @@ class Model_wiki:
 
         assert self.is_wikidata_id(wikidata)
         assert self.is_wikidata_id(city_wikidata)
-        building_dict_wd=self.get_wikidata_simplified(wikidata)
-        city_dict_wd=self.get_wikidata_simplified(city_wikidata)
-       
+        building_dict_wd = self.get_wikidata_simplified(wikidata)
+        city_dict_wd = self.get_wikidata_simplified(city_wikidata)
 
         assert "P669" in building_dict_wd["claims"], (
             "https://www.wikidata.org/wiki/"
@@ -1575,36 +1750,44 @@ class Model_wiki:
             + " must have P669 street name and housenumber"
         )
         # retrive category name for street
-        #in saint petersburg one building trasitionaly may has 2 or 4 street addresses in located in street crossing
-        #cycle for all streets
-        
-        category_streets=list()
+        # in saint petersburg one building trasitionaly may has 2 or 4 street addresses in located in street crossing
+        # cycle for all streets
 
-        for street_counter in range(0,len(building_dict_wd['claims']['P669'])):
-            street_dict_wd = self.get_wikidata_simplified(building_dict_wd['claims']['P669'][street_counter]['value'])
-            housenumber = building_dict_wd["claims"]["P669"][street_counter]['qualifiers']['P670'][0]["datavalue"]["value"]
-            
+        category_streets = list()
+
+        for street_counter in range(0, len(building_dict_wd["claims"]["P669"])):
+            street_dict_wd = self.get_wikidata_simplified(
+                building_dict_wd["claims"]["P669"][street_counter]["value"]
+            )
+            housenumber = building_dict_wd["claims"]["P669"][street_counter][
+                "qualifiers"
+            ]["P670"][0]["datavalue"]["value"]
+
             ALLOW_STREET_HAS_NO_CATEGORY = True
-            if not ALLOW_STREET_HAS_NO_CATEGORY:            
-                assert street_dict_wd['commons'] is not None
-            elif street_dict_wd['commons'] is not None:
-                category_street = street_dict_wd['commons']     
-                category_street +='|'+housenumber.zfill(2)
+            if not ALLOW_STREET_HAS_NO_CATEGORY:
+                assert street_dict_wd["commons"] is not None
+            elif street_dict_wd["commons"] is not None:
+                category_street = street_dict_wd["commons"]
+                category_street += "|" + housenumber.zfill(2)
                 category_streets.append(category_street)
                 del category_street
             del housenumber
             del street_dict_wd
-        #get one prefered street for category name
+        # get one prefered street for category name
 
-        street_dict_wd = self.get_wikidata_simplified(building_dict_wd['claims']['P669'][0]['value'])
-        housenumber = building_dict_wd["claims"]["P669"][0]['qualifiers']['P670'][0]["datavalue"]["value"]
+        street_dict_wd = self.get_wikidata_simplified(
+            building_dict_wd["claims"]["P669"][0]["value"]
+        )
+        housenumber = building_dict_wd["claims"]["P669"][0]["qualifiers"]["P670"][0][
+            "datavalue"
+        ]["value"]
 
-        category_name = self.address_international(city=city_dict_wd['labels']['en'],
-                                       street=street_dict_wd['labels']['en'],
-                                       housenumber=housenumber)
+        category_name = self.address_international(
+            city=city_dict_wd["labels"]["en"],
+            street=street_dict_wd["labels"]["en"],
+            housenumber=housenumber,
+        )
 
-
-        
         year = ""
         decade = ""
         year_field = None
@@ -1623,8 +1806,7 @@ class Model_wiki:
                     year = building_dict_wd["claims"][year_field][0]["value"][0:4]
                 if building_dict_wd["claims"][year_field][0]["precision"] == 8:
                     decade = (
-                        building_dict_wd["claims"][year_field][0]["value"][0:3]
-                        + "0"
+                        building_dict_wd["claims"][year_field][0]["value"][0:3] + "0"
                     )
             except:
                 pass
@@ -1635,11 +1817,13 @@ class Model_wiki:
         levels = 0
 
         try:
-            levels = self.get_amount_as_digit(building_dict_wd["claims"]["P1101"][0]["value"])
+            levels = self.get_amount_as_digit(
+                building_dict_wd["claims"]["P1101"][0]["value"]
+            )
         except:
             pass
             # no levels in building
-            
+
         assert isinstance(levels, int)
         assert levels == 0 or levels > 0, "invalid levels:" + str(levels)
 
@@ -1650,18 +1834,24 @@ class Model_wiki:
 
 """
         # CULTURAL HERITAGE RUSSIA
-        prop='P1483'
+        prop = "P1483"
         if prop in building_dict_wd["claims"]:
-            wlm_ru_code = self.get_best_claim(wikidata,prop)
-            wlm_district_wdid = self.get_best_claim(wikidata,'P131')
-            wlm_district_wd=self.get_wikidata_simplified(wlm_district_wdid)
-            wlm_district_category=wlm_district_wd['commons']
+            wlm_ru_code = self.get_best_claim(wikidata, prop)
+            wlm_district_wdid = self.get_best_claim(wikidata, "P131")
+            wlm_district_wd = self.get_wikidata_simplified(wlm_district_wdid)
+            wlm_district_category = wlm_district_wd["commons"]
             if wlm_district_category is None:
-                quit('cant detect wlm category for district '+wlm_district_wdid)
-            code += "{{Cultural Heritage Russia|id="+wlm_ru_code+"|category="+wlm_district_category+"}}" + "\n"
-        
-        
-        # Make category text    
+                quit("cant detect wlm category for district " + wlm_district_wdid)
+            code += (
+                "{{Cultural Heritage Russia|id="
+                + wlm_ru_code
+                + "|category="
+                + wlm_district_category
+                + "}}"
+                + "\n"
+            )
+
+        # Make category text
         if year != "":
             code += "[[Category:Built in %city% in %year%]]" + "\n"
 
@@ -1671,84 +1861,94 @@ class Model_wiki:
         if levels > 0:
             code += "[[Category:%levelstr%-story buildings in %city%]]" + "\n"
 
-        blacklist_categories=['Q2319498']
+        blacklist_categories = ["Q2319498"]
         for instance in building_dict_wd["claims"]["P31"]:
-            #if instance['value'] in ('Q1081138')
+            # if instance['value'] in ('Q1081138')
             try:
-                if instance['value'] not in blacklist_categories:
-                    cat=self.get_category_object_in_location(instance['value'],street_dict_wd['id'],verbose=True)
-                    assert cat is not None 
+                if instance["value"] not in blacklist_categories:
+                    cat = self.get_category_object_in_location(
+                        instance["value"], street_dict_wd["id"], verbose=True
+                    )
+                    assert cat is not None
                     code += f"[[Category:{cat}]]" + "\n"
             except:
-                self.logger.info('no category found for '+self.get_wikidata_simplified(instance['value'])['labels']['en'])
+                self.logger.info(
+                    "no category found for "
+                    + self.get_wikidata_simplified(instance["value"])["labels"]["en"]
+                )
 
-        code = code.replace("%city%", city_dict_wd['labels']['en'])
-        #code = code.replace("%city_loc%", city_ru)
+        code = code.replace("%city%", city_dict_wd["labels"]["en"])
+        # code = code.replace("%city_loc%", city_ru)
         code = code.replace("%street%", street_dict_wd["labels"]["en"])
         code = code.replace("%year%", year)
         code = code.replace("%housenumber%", housenumber)
         code = code.replace("%decade%", decade)
-        
+
         for category_street in category_streets:
-            code += "[[Category:%cat%]]".replace('%cat%',category_street) + "\n"
-        
-        
+            code += "[[Category:%cat%]]".replace("%cat%", category_street) + "\n"
+
         if levels > 0 and levels < 21:
             code = code.replace("%levelstr%", str(num2words(levels).capitalize()))
         elif levels > 20:
             code = code.replace("%levelstr%", str(levels))
 
-
-
         # architector
-        prop='P84'
+        prop = "P84"
         if prop in building_dict_wd["claims"]:
-            architector_value = self.get_best_claim(wikidata,prop)
-            category = self.get_category_object_in_location(architector_value,street_dict_wd['id'])
+            architector_value = self.get_best_claim(wikidata, prop)
+            category = self.get_category_object_in_location(
+                architector_value, street_dict_wd["id"]
+            )
             if category is not None:
-                code += "\n[[Category:"+category+"]]"
+                code += "\n[[Category:" + category + "]]"
             else:
                 category = self.get_wikidata_simplified(architector_value)["commons"]
-                assert category is not None, f'not found architector category for https://www.wikidata.org/wiki/{architector_value}'
-                code += "\n[[Category:"+category+"]]"
+                assert (
+                    category is not None
+                ), f"not found architector category for https://www.wikidata.org/wiki/{architector_value}"
+                code += "\n[[Category:" + category + "]]"
             del category
             del architector_value
-            
+
         # architectural style
-        prop='P149'
+        prop = "P149"
         if prop in building_dict_wd["claims"]:
-            style_value = self.get_best_claim(wikidata,prop)
-            category = self.get_category_object_in_location(style_value,street_dict_wd['id'])
+            style_value = self.get_best_claim(wikidata, prop)
+            category = self.get_category_object_in_location(
+                style_value, street_dict_wd["id"]
+            )
             if category is not None:
-                code += "\n[[Category:"+category+"]]"
+                code += "\n[[Category:" + category + "]]"
             else:
                 category = self.get_wikidata_simplified(style_value)["commons"]
-                code += "\n[[Category:"+category+"]]"
+                code += "\n[[Category:" + category + "]]"
             del category
             del style_value
-            
+
         # project
-        prop='P144'
+        prop = "P144"
         if prop in building_dict_wd["claims"]:
-            project_value = self.get_best_claim(wikidata,prop)
-            category = self.get_category_object_in_location(project_value,street_dict_wd['id'],verbose=True)
+            project_value = self.get_best_claim(wikidata, prop)
+            category = self.get_category_object_in_location(
+                project_value, street_dict_wd["id"], verbose=True
+            )
             if category is not None:
-                code += "\n[[Category:"+category+"]]"
+                code += "\n[[Category:" + category + "]]"
             else:
                 category = self.get_wikidata_simplified(project_value)["commons"]
-                code += "\n[[Category:"+category+"]]"
+                code += "\n[[Category:" + category + "]]"
             del category
             del project_value
-        
+
         # part of
-        prop='P361'
+        prop = "P361"
         if prop in building_dict_wd["claims"]:
-            partof_value = self.get_best_claim(wikidata,prop)
+            partof_value = self.get_best_claim(wikidata, prop)
             category = self.get_wikidata_simplified(partof_value)["commons"]
-            code += "\n[[Category:"+category+"]]"
+            code += "\n[[Category:" + category + "]]"
             del category
-            del partof_value         
-        
+            del partof_value
+
         if dry_mode:
             print()
             print(category_name)
@@ -1760,61 +1960,56 @@ class Model_wiki:
         category_name_building = category_name
 
         if year != "":
-            city = city_dict_wd['labels']['en']
-            category_name='Built in %city% in %year%'
+            city = city_dict_wd["labels"]["en"]
+            category_name = "Built in %city% in %year%"
             category_name = category_name.replace("%year%", year)
             category_name = category_name.replace("%city%", city)
-            country_wdid = self.get_best_claim(city_dict_wd['id'],'P17')
+            country_wdid = self.get_best_claim(city_dict_wd["id"], "P17")
             country_wd = self.get_wikidata_simplified(country_wdid)
-            country = country_wd['labels']['en']
+            country = country_wd["labels"]["en"]
             code = """[[Category:Built in %country% in %year%| %city%]]
 [[Category:Buildings in %city% by year of completion]]"""
-            code =  code.replace("%year%", year)
-            code =  code.replace("%city%", city)
-            code =  code.replace("%country%", country)
+            code = code.replace("%year%", year)
+            code = code.replace("%city%", city)
+            code = code.replace("%country%", country)
 
             print(category_name)
             print(code)
             commonscat_create_result = self.create_category(category_name, code)
 
-
-            category_name=f'Buildings in {city} by year of completion'
+            category_name = f"Buildings in {city} by year of completion"
             code = """
 {{metacat|year of completion}}
 [[Category:Buildings in %city%| Year]]
 [[Category:%city% by year|  ]]
 [[Category:Buildings in %country% by year of completion by city|%city%]]
 """
-            code =  code.replace("%year%", year)
-            code =  code.replace("%city%", city)
-            code =  code.replace("%country%", country)
+            code = code.replace("%year%", year)
+            code = code.replace("%city%", city)
+            code = code.replace("%country%", country)
 
             print(category_name)
             print(code)
             commonscat_create_result = self.create_category(category_name, code)
-            
+
         if levels is not None and int(levels) > 0:
-            city = city_dict_wd['labels']['en']
-                    
+            city = city_dict_wd["labels"]["en"]
+
             if levels > 0 and levels < 21:
                 levelstr = str(num2words(levels).capitalize())
             elif levels > 20:
                 levelstr = str(levels)
-            
-            category_name=f'{levelstr}-story buildings in {city}'
-            code = f'[[Category:{levelstr}-story buildings in {country}]]'
-            
+
+            category_name = f"{levelstr}-story buildings in {city}"
+            code = f"[[Category:{levelstr}-story buildings in {country}]]"
 
             print(category_name)
             print(code)
             commonscat_create_result = self.create_category(category_name, code)
 
-
-            
-
         return category_name_building
-    
-    def create_number_on_vehicles_category(self,vehicle:str,number:str):
+
+    def create_number_on_vehicles_category(self, vehicle: str, number: str):
         """
         Create commons category for vehicle number:
         Number 7854 on trolleybuses
@@ -1822,44 +2017,49 @@ class Model_wiki:
 
         """
 
-        number=str(number)
+        number = str(number)
 
-        if vehicle=='bus':
-            name = f'Number {number} on buses'
-            content = '{{Numbercategory-buses|'+number+'}}'
+        if vehicle == "bus":
+            name = f"Number {number} on buses"
+            content = "{{Numbercategory-buses|" + number + "}}"
             self.create_category(name, content)
 
-            name = f'Number {number} on vehicles'
-            content = '{{Numbercategory-vehicle|'+number+'|vehicle|Number '+number+' on objects|Vehicle}}'
+            name = f"Number {number} on vehicles"
+            content = (
+                "{{Numbercategory-vehicle|"
+                + number
+                + "|vehicle|Number "
+                + number
+                + " on objects|Vehicle}}"
+            )
             self.create_category(name, content)
 
-            name = f'Number {number} on objects'
-            content = '{{number on object|n='+number+'}}'
-            self.create_category(name, content)
-        
-        if vehicle=='trolleybus':
-            name = f'Number {number} on trolleybuses'
-            content = '{{Numbercategory-trolleybuses|'+number+'}}'
-            self.create_category(name, content)
-            self.create_number_on_vehicles_category('bus',number)
-        
-        if vehicle=='tram':
-            name = f'Trams with fleet number {number}'
-            content = '{{tram fleet number|'+number+'|image=}}'
-            self.create_category(name, content)
-            
-            name = f'Items numbered {number}'
-            content = '{{number cat|nt=nom|n='+number+'}}'
+            name = f"Number {number} on objects"
+            content = "{{number on object|n=" + number + "}}"
             self.create_category(name, content)
 
-                        
-            name = f'Number {number} on trams'
-            content = '{{numbercategoryTram|'+number+'}}'
+        if vehicle == "trolleybus":
+            name = f"Number {number} on trolleybuses"
+            content = "{{Numbercategory-trolleybuses|" + number + "}}"
+            self.create_category(name, content)
+            self.create_number_on_vehicles_category("bus", number)
+
+        if vehicle == "tram":
+            name = f"Trams with fleet number {number}"
+            content = "{{tram fleet number|" + number + "|image=}}"
             self.create_category(name, content)
 
+            name = f"Items numbered {number}"
+            content = "{{number cat|nt=nom|n=" + number + "}}"
+            self.create_category(name, content)
 
+            name = f"Number {number} on trams"
+            content = "{{numbercategoryTram|" + number + "}}"
+            self.create_category(name, content)
 
-    def create_vehicle_in_city_category(self,vehicle:str, number:str,city_name:str,model_name:str)->str:
+    def create_vehicle_in_city_category(
+        self, vehicle: str, number: str, city_name: str, model_name: str
+    ) -> str:
         """
         create category for vehicle in city like "Moscow tram 1220"
 
@@ -1867,8 +2067,8 @@ class Model_wiki:
         """
         city_name = city_name.capitalize()
 
-        if vehicle == 'trolleybus':
-            name = f'{city_name} trolleybus {number}'
+        if vehicle == "trolleybus":
+            name = f"{city_name} trolleybus {number}"
             content = """{{GeoGroup}}
 [[Category:%model_name% in %city_name%|%number%]]
 [[Category:Trolleybuses in %city_name% by registration number]]
@@ -1877,14 +2077,14 @@ class Model_wiki:
 
 {{DEFAULTSORT:%number% }}
 """
-            content = content.replace('%number%',number)
-            content = content.replace('%model_name%',model_name)
-            content = content.replace('%city_name%',city_name)
+            content = content.replace("%number%", number)
+            content = content.replace("%model_name%", model_name)
+            content = content.replace("%city_name%", city_name)
 
             self.create_category(name, content)
-            self.create_number_on_vehicles_category('trolleybus',number)
-        elif vehicle == 'tram':
-            name = f'{city_name} tram {number}'
+            self.create_number_on_vehicles_category("trolleybus", number)
+        elif vehicle == "tram":
+            name = f"{city_name} tram {number}"
             content = """{{GeoGroup}}
 [[Category:%model_name% in %city_name%|%number%]]
 [[Category:Trams in %city_name% by fleet number]]
@@ -1893,18 +2093,17 @@ class Model_wiki:
 
 {{DEFAULTSORT:%number% }}
 """
-            content = content.replace('%number%',number)
-            content = content.replace('%model_name%',model_name)
-            content = content.replace('%city_name%',city_name)
+            content = content.replace("%number%", number)
+            content = content.replace("%model_name%", model_name)
+            content = content.replace("%city_name%", city_name)
 
             self.create_category(name, content)
-            self.create_number_on_vehicles_category('tram',number)
+            self.create_number_on_vehicles_category("tram", number)
         else:
-            self.logger.error(vehicle +' not implemented')
+            self.logger.error(vehicle + " not implemented")
         return name
-    
-    
-    def wikidata_add_commons_category(self,item_id:str, category_name:str):
+
+    def wikidata_add_commons_category(self, item_id: str, category_name: str):
         """
         Set a sitelink to a commons category in a wikidata item.
 
@@ -1915,34 +2114,36 @@ class Model_wiki:
         Returns:
         None
         """
-        if not category_name.startswith('Category:'):
-            category_name = 'Category:'+category_name
+        if not category_name.startswith("Category:"):
+            category_name = "Category:" + category_name
 
         # Create a site object for wikidata
-        site = pywikibot.Site('wikidata', 'wikidata')
+        site = pywikibot.Site("wikidata", "wikidata")
         # Create an item object from the item ID
         item = pywikibot.ItemPage(site, item_id)
         # Create a site object for commons
-        commons = pywikibot.Site('commons', 'commons')
+        commons = pywikibot.Site("commons", "commons")
         # Create a page object from the category name
         category = pywikibot.Page(commons, category_name)
         # Check if the category exists and is a category page
         if not category.exists():
-            self.logger.error('category not exists:'+category_name)
+            self.logger.error("category not exists:" + category_name)
             return None
         if category.exists() and category.is_categorypage():
             # Set the sitelink to the category
-            item.setSitelink(category, summary='Set sitelink to commons category')
+            item.setSitelink(category, summary="Set sitelink to commons category")
             # Delete old commons category link claim P373 if exist
-            item.get() # load the item data
-            claims = item.claims # get the claims dictionary
-            if "P373" in claims: # check if the item has the property
-                claim = claims["P373"][0] # get the first (and only) claim for that property
-                item.removeClaims([claim]) # remove the claim
+            item.get()  # load the item data
+            claims = item.claims  # get the claims dictionary
+            if "P373" in claims:  # check if the item has the property
+                claim = claims["P373"][
+                    0
+                ]  # get the first (and only) claim for that property
+                item.removeClaims([claim])  # remove the claim
                 print("Claim P373 removed")
         else:
             # Print an error message
-            print('Invalid category name')
+            print("Invalid category name")
         self.reset_cache()
 
     def create_category_taken_on_day(self, location, yyyymmdd):
@@ -1950,21 +2151,38 @@ class Model_wiki:
         if len(yyyymmdd) != 10:
             return False
 
-        categoryname = '{location}_photographs_taken_on_{yyyymmdd}'.format(
-            location=location, yyyymmdd=yyyymmdd)
+        categoryname = "{location}_photographs_taken_on_{yyyymmdd}".format(
+            location=location, yyyymmdd=yyyymmdd
+        )
 
-        pagename = 'Category:'+categoryname
+        pagename = "Category:" + categoryname
 
-        if location == 'Moscow':
-            content = '{{Moscow photographs taken on navbox}}'
+        if location == "Moscow":
+            content = "{{Moscow photographs taken on navbox}}"
         else:
-            content = '{{'+location+' photographs taken on navbox|' + \
-                yyyymmdd[0:4]+'|'+yyyymmdd[5:7]+'|'+yyyymmdd[8:10]+'}}'
+            content = (
+                "{{"
+                + location
+                + " photographs taken on navbox|"
+                + yyyymmdd[0:4]
+                + "|"
+                + yyyymmdd[5:7]
+                + "|"
+                + yyyymmdd[8:10]
+                + "}}"
+            )
         # self.create_page(pagename, content, 'create category')
         self.create_category(pagename, content)
 
-        if location in ('Moscow', 'Moscow Oblast', 'Saint Petersburg','Tatarstan','Nizhny Novgorod Oblast','Leningrad Oblast'):
-            self.create_category_taken_on_day('Russia', yyyymmdd)
+        if location in (
+            "Moscow",
+            "Moscow Oblast",
+            "Saint Petersburg",
+            "Tatarstan",
+            "Nizhny Novgorod Oblast",
+            "Leningrad Oblast",
+        ):
+            self.create_category_taken_on_day("Russia", yyyymmdd)
 
     def create_category(self, pagename: str, content: str):
         """
@@ -1973,32 +2191,31 @@ class Model_wiki:
         pagename:   with or without category
         content:    text content
         """
-        if not pagename.startswith('Category:'):
-            pagename = 'Category:'+pagename
+        if not pagename.startswith("Category:"):
+            pagename = "Category:" + pagename
         if not self.is_category_exists(pagename):
-            self.create_page(pagename, content, 'create category')
-            print('Created new category with content')
+            self.create_page(pagename, content, "create category")
+            print("Created new category with content")
             print(content)
         else:
-            self.logger.info('page already exists '+pagename)
-    
-    def wikidata2instanceof_list(self,wdid)->list:
+            self.logger.info("page already exists " + pagename)
+
+    def wikidata2instanceof_list(self, wdid) -> list:
         """
         from wikidata id return list of instance of wikidata ids
-        """ 
-        claims_list=list()
+        """
+        claims_list = list()
         wikidata = self.get_wikidata_simplified(wdid)
-        for instance in wikidata["claims"].get("P31",list()):
-            claims_list.append(instance['value'])
-            
+        for instance in wikidata["claims"].get("P31", list()):
+            claims_list.append(instance["value"])
+
         return claims_list
-    
-    
+
     def is_category_exists(self, categoryname):
-        if not categoryname.startswith('Category:'):
-            categoryname = 'Category:'+categoryname
+        if not categoryname.startswith("Category:"):
+            categoryname = "Category:" + categoryname
         # check in cache
-        if categoryname in self.wikidata_cache['commonscat_exists_set']:
+        if categoryname in self.wikidata_cache["commonscat_exists_set"]:
             return True
 
         site = pywikibot.Site("commons", "commons")
@@ -2007,9 +2224,8 @@ class Model_wiki:
         page = pywikibot.Page(site, title=categoryname)
 
         if page.exists():
-            self.wikidata_cache['commonscat_exists_set'].add(categoryname)
-            self.wikidata_cache_save(
-                self.wikidata_cache, self.wikidata_cache_filename)
+            self.wikidata_cache["commonscat_exists_set"].add(categoryname)
+            self.wikidata_cache_save(self.wikidata_cache, self.wikidata_cache_filename)
 
         return page.exists()
 
@@ -2025,8 +2241,14 @@ class Model_wiki:
 
     def search_files_geo(self, lat, lon):
         site = pywikibot.Site("commons", "commons")
-        pages = pagegenerators.SearchPageGenerator('Svetlov Artem filetype:bitmap nearcoord:2km,{lat},{lon}'.format(
-            lat=lat, lon=lon), total=8, namespaces=None, site=site)
+        pages = pagegenerators.SearchPageGenerator(
+            "Svetlov Artem filetype:bitmap nearcoord:2km,{lat},{lon}".format(
+                lat=lat, lon=lon
+            ),
+            total=8,
+            namespaces=None,
+            site=site,
+        )
 
         return pages
 
@@ -2045,87 +2267,99 @@ class Model_wiki:
                 return None
 
         street_wd = self.get_wikidata_simplified(
-            building_wd["claims"]["P669"][0]["value"])
+            building_wd["claims"]["P669"][0]["value"]
+        )
 
-        if 'qualifiers' not in building_wd["claims"]["P669"][0]:
-            self.logger.warning( "object https://www.wikidata.org/wiki/"
-                    + wikidata
-                    + "#P669 has [P669 Located on street]. If it has qualifier [P670 house number], this page name will improved. Upload without address text now")
+        if "qualifiers" not in building_wd["claims"]["P669"][0]:
+            self.logger.warning(
+                "object https://www.wikidata.org/wiki/"
+                + wikidata
+                + "#P669 has [P669 Located on street]. If it has qualifier [P670 house number], this page name will improved. Upload without address text now"
+            )
             return None
         try:
             building_record = {
                 "building": "yes",
                 "addr:street:ru": street_wd["labels"]["ru"],
                 "addr:street:en": street_wd["labels"]["en"],
-                "addr:housenumber:local": building_wd["claims"]["P669"][0]["qualifiers"][
+                "addr:housenumber:local": building_wd["claims"]["P669"][0][
+                    "qualifiers"
+                ]["P670"][0]["datavalue"]["value"],
+                "addr:housenumber:en": building_wd["claims"]["P669"][0]["qualifiers"][
                     "P670"
-                ][0]['datavalue']["value"],
-                "addr:housenumber:en": building_wd["claims"]["P669"][0]["qualifiers"]["P670"][0]['datavalue']["value"],
+                ][0]["datavalue"]["value"],
             }
-            building_record["addr:housenumber:en"] = translit(building_record["addr:housenumber:en"],'ru',reversed=True)
-            building_record['commons'] = building_wd["commons"]
+            building_record["addr:housenumber:en"] = translit(
+                building_record["addr:housenumber:en"], "ru", reversed=True
+            )
+            building_record["commons"] = building_wd["commons"]
         except:
             return None
 
         return building_record
-    
-    def get_claims_list(self, wdid:str, prop:str) -> list:
-        assert prop.startswith('P')
-        entity=self.get_wikidata_simplified(wdid)
-        claims=entity['claims'].get(prop)
-        if claims is None: return None
-        claims_list=list()
-        if len(claims)==1:
-            claims_list.append(self.get_best_claim(wdid,prop))
-            return  claims_list
+
+    def get_claims_list(self, wdid: str, prop: str) -> list:
+        assert prop.startswith("P")
+        entity = self.get_wikidata_simplified(wdid)
+        claims = entity["claims"].get(prop)
+        if claims is None:
+            return None
+        claims_list = list()
+        if len(claims) == 1:
+            claims_list.append(self.get_best_claim(wdid, prop))
+            return claims_list
         try:
             for claim in claims:
-                if claim['rank']=='preferred':
-                    claims_list.append(claim['value'])
+                if claim["rank"] == "preferred":
+                    claims_list.append(claim["value"])
                     return claims_list
             for claim in claims:
-                if claim['rank']=='normal':
-                    claims_list.append(claim['value'])
+                if claim["rank"] == "normal":
+                    claims_list.append(claim["value"])
             return claims_list
-        
+
         except:
-            self.logger.error(f'can not get claims from https://www.wikidata.org/wiki/{wdid}')
-            self.pp.pprint(entity['claims'])
+            self.logger.error(
+                f"can not get claims from https://www.wikidata.org/wiki/{wdid}"
+            )
+            self.pp.pprint(entity["claims"])
 
             quit()
-            
-    def get_best_claim(self, wdid:str, prop:str) -> str:
-        assert prop.startswith('P')
-        entity=self.get_wikidata_simplified(wdid)
-        claims=entity['claims'].get(prop)
+
+    def get_best_claim(self, wdid: str, prop: str) -> str:
+        assert prop.startswith("P")
+        entity = self.get_wikidata_simplified(wdid)
+        claims = entity["claims"].get(prop)
         try:
             for claim in claims:
-                if claim['rank']=='preferred':
-                    return claim['value']
+                if claim["rank"] == "preferred":
+                    return claim["value"]
             for claim in claims:
-                if claim['rank']=='normal':
-                    return claim['value']
+                if claim["rank"] == "normal":
+                    return claim["value"]
         except:
-            self.logger.error(f'can not get claims from https://www.wikidata.org/wiki/{wdid}')
-            self.pp.pprint(entity['claims'])
+            self.logger.error(
+                f"can not get claims from https://www.wikidata.org/wiki/{wdid}"
+            )
+            self.pp.pprint(entity["claims"])
 
             quit()
 
     def get_upper_location_wdid(self, wdobj):
-        if 'P131' in wdobj['claims']:
-            return self.get_best_claim(wdobj['id'], 'P131')
+        if "P131" in wdobj["claims"]:
+            return self.get_best_claim(wdobj["id"], "P131")
             # return self.get_wd_by_wdid(wdobj['claims']['P131'][0]['value'])
 
         return None
 
     def normalize_wdid(self, object_wdid: str) -> str:
         # convert Q1021645#office_building to Q1021645
-        if '#' not in object_wdid:
+        if "#" not in object_wdid:
             return object_wdid
         else:
-            return object_wdid[0:object_wdid.find('#')]
+            return object_wdid[0 : object_wdid.find("#")]
 
-    def get_settlement_for_object(self,location_wdid, verbose=False)->str:
+    def get_settlement_for_object(self, location_wdid, verbose=False) -> str:
         """
         for wikidata object run by P131 properties and find its settlement object
         return None if not found
@@ -2139,26 +2373,29 @@ class Model_wiki:
         geoobject_wd = self.get_wikidata_simplified(location_wdid)
         settlements_ids = self.get_settlements_wdids()
         while not stop_hieraechy_walk:
-            cnt = cnt+1
+            cnt = cnt + 1
             if cnt > 9:
                 stop_hieraechy_walk = True
             if verbose:
-                print('check if settlement is '+geoobject_wd['labels'].get('en',' no english name'))
+                print(
+                    "check if settlement is "
+                    + geoobject_wd["labels"].get("en", " no english name")
+                )
             # is one of p31 is settlements?
-            for instance in  geoobject_wd["claims"]["P31"]:
-                if instance['value'] in  settlements_ids:
+            for instance in geoobject_wd["claims"]["P31"]:
+                if instance["value"] in settlements_ids:
                     if verbose:
-                        print('this is settlement')
-                    self.cache_settlement_for_object[cache_key]=geoobject_wd['id'] 
-                    return geoobject_wd['id']  
+                        print("this is settlement")
+                    self.cache_settlement_for_object[cache_key] = geoobject_wd["id"]
+                    return geoobject_wd["id"]
 
             upper_wdid = self.get_upper_location_wdid(geoobject_wd)
             if upper_wdid is None:
                 stop_hieraechy_walk = True
                 return None
             geoobject_wd = self.get_wikidata_simplified(upper_wdid)
-            
-    def get_administrative_names_for_object(self,location_wdid, verbose=False)->str:
+
+    def get_administrative_names_for_object(self, location_wdid, verbose=False) -> str:
         """
         for wikidata object run by P131 properties and return list of names of administrative objects
         """
@@ -2172,65 +2409,84 @@ class Model_wiki:
         settlements_ids = self.get_settlements_wdids()
         administrative_names = list()
         while not stop_hieraechy_walk:
-            cnt = cnt+1
+            cnt = cnt + 1
             if cnt > 9:
                 stop_hieraechy_walk = True
             if verbose:
-                print('found that upper level is called '+geoobject_wd['labels'].get('en',' no english name'))
+                print(
+                    "found that upper level is called "
+                    + geoobject_wd["labels"].get("en", " no english name")
+                )
 
-            administrative_names.append(geoobject_wd['labels'].get('en',' no english name'))
+            administrative_names.append(
+                geoobject_wd["labels"].get("en", " no english name")
+            )
             upper_wdid = self.get_upper_location_wdid(geoobject_wd)
             if upper_wdid is None:
                 stop_hieraechy_walk = True
                 break
-            geoobject_wd = self.get_wikidata_simplified(upper_wdid)            
+            geoobject_wd = self.get_wikidata_simplified(upper_wdid)
         return administrative_names[1:]
 
-    def get_category_object_in_location(self, object_wdid, location_wdid, order: str = None, verbose=False) -> str:
+    def get_category_object_in_location(
+        self, object_wdid, location_wdid, order: str = None, verbose=False
+    ) -> str:
         """
         search existing category in commons by administrative tree
         """
         object_wdid = self.normalize_wdid(object_wdid)
-        cache_key = str(object_wdid)+'/'+location_wdid
+        cache_key = str(object_wdid) + "/" + location_wdid
         if cache_key in self.cache_category_object_in_location:
-            text = ''+self.cache_category_object_in_location[cache_key]+''
+            text = "" + self.cache_category_object_in_location[cache_key] + ""
             if order:
-                text = text+'|'+order
+                text = text + "|" + order
             return text
         stop_hieraechy_walk = False
         cnt = 0
         object_wd = self.get_wikidata_simplified(object_wdid)
         geoobject_wd = self.get_wikidata_simplified(location_wdid)
         while not stop_hieraechy_walk:
-            cnt = cnt+1
+            cnt = cnt + 1
             if cnt > 9:
                 stop_hieraechy_walk = True
             if verbose:
-                info = 'search category for union ' + \
-                    str(object_wd['labels'].get('en', object_wd['id']))+' ' + \
-                    str(geoobject_wd['labels'].get(
-                        'en', geoobject_wd['id'])[0:35].rjust(35))
+                info = (
+                    "search category for union "
+                    + str(object_wd["labels"].get("en", object_wd["id"]))
+                    + " "
+                    + str(
+                        geoobject_wd["labels"]
+                        .get("en", geoobject_wd["id"])[0:35]
+                        .rjust(35)
+                    )
+                )
                 print(info)
                 # self.logger.info(info)
 
             # search category "objects in city/country" by name
-            if object_wd.get('commons') is not None and geoobject_wd.get('commons') is not None:
-                suggested_category=object_wd['commons'] + ' in '+geoobject_wd['commons']
+            if (
+                object_wd.get("commons") is not None
+                and geoobject_wd.get("commons") is not None
+            ):
+                suggested_category = (
+                    object_wd["commons"] + " in " + geoobject_wd["commons"]
+                )
                 if self.is_category_exists(suggested_category):
-                    text=suggested_category
+                    text = suggested_category
                     if order:
-                        text = text+'|'+order
+                        text = text + "|" + order
                     return text
 
             # search category by wikidata
             union_category_name = self.search_commonscat_by_2_wikidata(
-                object_wdid, geoobject_wd['id'])
+                object_wdid, geoobject_wd["id"]
+            )
             if union_category_name is not None:
-                print('found ' + '[[Category:'+union_category_name+']]')
+                print("found " + "[[Category:" + union_category_name + "]]")
                 self.cache_category_object_in_location[cache_key] = union_category_name
-                text = ''+union_category_name+''
+                text = "" + union_category_name + ""
                 if order:
-                    text = text+'|'+order
+                    text = text + "|" + order
                 return text
 
             upper_wdid = self.get_upper_location_wdid(geoobject_wd)
@@ -2241,65 +2497,80 @@ class Model_wiki:
             geoobject_wd = upper_wd
 
         return None
-    
-    def category_tree_upwalk(self, object_wdid, location_wdid, order: str = None, verbose=False) -> str:
+
+    def category_tree_upwalk(
+        self, object_wdid, location_wdid, order: str = None, verbose=False
+    ) -> str:
         """
         generate proposed names and content for missing categories
         """
-        proposed_categories=list()
-        suggested_category = ''
-        
+        proposed_categories = list()
+        suggested_category = ""
+
         object_wdid = self.normalize_wdid(object_wdid)
-        cache_key = str(object_wdid)+'/'+location_wdid
+        cache_key = str(object_wdid) + "/" + location_wdid
         if cache_key in self.cache_category_object_in_location:
-            text = ''+self.cache_category_object_in_location[cache_key]+''
+            text = "" + self.cache_category_object_in_location[cache_key] + ""
             if order:
-                text = text+'|'+order
+                text = text + "|" + order
             return text, proposed_categories
-        
-             
+
         object_wd = self.get_wikidata_simplified(object_wdid)
         geoobject_wd = self.get_wikidata_simplified(location_wdid)
-        
+
         # both id are same
         if object_wdid == location_wdid:
-            if object_wd.get('commons') is not None:
-                self.cache_category_object_in_location[cache_key] = object_wd.get('commons')
-                return object_wd['commons'], proposed_categories
+            if object_wd.get("commons") is not None:
+                self.cache_category_object_in_location[cache_key] = object_wd.get(
+                    "commons"
+                )
+                return object_wd["commons"], proposed_categories
         stop_hieraechy_walk = False
         cnt = 0
 
         while not stop_hieraechy_walk:
-            cnt = cnt+1
+            cnt = cnt + 1
             if cnt > 9:
                 stop_hieraechy_walk = True
             if verbose:
-                info = 'search category for union ' + \
-                    str(object_wd['labels'].get('en', object_wd['id']))+' ' + \
-                    str(geoobject_wd['labels'].get(
-                        'en', geoobject_wd['id'])[0:35].rjust(35))
+                info = (
+                    "search category for union "
+                    + str(object_wd["labels"].get("en", object_wd["id"]))
+                    + " "
+                    + str(
+                        geoobject_wd["labels"]
+                        .get("en", geoobject_wd["id"])[0:35]
+                        .rjust(35)
+                    )
+                )
                 print(info)
                 # self.logger.info(info)
 
             # search category "objects in city/country" by name
-            if object_wd.get('commons') is not None and geoobject_wd.get('commons') is not None:
-                suggested_category=object_wd['commons'] + ' in '+geoobject_wd['commons']
+            if (
+                object_wd.get("commons") is not None
+                and geoobject_wd.get("commons") is not None
+            ):
+                suggested_category = (
+                    object_wd["commons"] + " in " + geoobject_wd["commons"]
+                )
                 if self.is_category_exists(suggested_category):
-                    text=suggested_category
+                    text = suggested_category
                     if order:
-                        text = text+'|'+order
+                        text = text + "|" + order
                     return text, proposed_categories
-            
 
             # search category by wikidata
             union_category_name = self.search_commonscat_by_2_wikidata(
-                object_wdid, geoobject_wd['id'])
+                object_wdid, geoobject_wd["id"]
+            )
             if union_category_name is not None:
-                if verbose: print('found ' + '[[Category:'+union_category_name+']]')
+                if verbose:
+                    print("found " + "[[Category:" + union_category_name + "]]")
                 self.cache_category_object_in_location[cache_key] = union_category_name
-                text = ''+union_category_name+''
+                text = "" + union_category_name + ""
                 if order:
-                    text = text+'|'+order
+                    text = text + "|" + order
                 return text, proposed_categories
 
             # save proposed category for optional manual creation
@@ -2309,29 +2580,32 @@ class Model_wiki:
                 stop_hieraechy_walk = True
                 continue
             upper_wd = self.get_wikidata_simplified(upper_wdid)
-            proposed_cat={'name':'Category:'+suggested_category,'object_wdid':object_wdid,'location_wdid':geoobject_wd['id'],'upper_location_wdid':upper_wdid}
+            proposed_cat = {
+                "name": "Category:" + suggested_category,
+                "object_wdid": object_wdid,
+                "location_wdid": geoobject_wd["id"],
+                "upper_location_wdid": upper_wdid,
+            }
             proposed_categories.append(proposed_cat)
-            
 
             geoobject_wd = upper_wd
 
         return None
 
-
-
-        
-    def append_image_descripts_claim(self, commonsfilename, entity_list, dry_run=False)->bool:
+    def append_image_descripts_claim(
+        self, commonsfilename, entity_list, dry_run=False
+    ) -> bool:
 
         assert isinstance(entity_list, list)
         assert len(entity_list) > 0
         if dry_run:
-            print('simulate add entities')
+            print("simulate add entities")
             self.pp.pprint(entity_list)
             return
         from fileprocessor import Fileprocessor
+
         fileprocessor = Fileprocessor()
-        commonsfilename = fileprocessor.prepare_commonsfilename(
-            commonsfilename)
+        commonsfilename = fileprocessor.prepare_commonsfilename(commonsfilename)
 
         site = pywikibot.Site("commons", "commons")
         site.login()
@@ -2341,8 +2615,7 @@ class Model_wiki:
 
         # fetch exist structured data
 
-        request = site.simple_request(
-            action="wbgetentities", ids=media_identifier)
+        request = site.simple_request(action="wbgetentities", ids=media_identifier)
         try:
             raw = request.submit()
         except:
@@ -2412,23 +2685,26 @@ class Model_wiki:
                 print("Error: {}".format(e))
 
         return True
-        
-    def append_location_of_creation(self, commonsfilename, entity, dry_run=False)->bool:
-        entity=entity.strip()
-        if entity=='': return True
+
+    def append_location_of_creation(
+        self, commonsfilename, entity, dry_run=False
+    ) -> bool:
+        entity = entity.strip()
+        if entity == "":
+            return True
         entity_list = list()
         entity_list.append(entity)
 
         assert isinstance(entity_list, list)
         assert len(entity_list) > 0
         if dry_run:
-            print('simulate add entities')
+            print("simulate add entities")
             self.pp.pprint(entity_list)
             return
         from fileprocessor import Fileprocessor
+
         fileprocessor = Fileprocessor()
-        commonsfilename = fileprocessor.prepare_commonsfilename(
-            commonsfilename)
+        commonsfilename = fileprocessor.prepare_commonsfilename(commonsfilename)
 
         site = pywikibot.Site("commons", "commons")
         site.login()
@@ -2438,8 +2714,7 @@ class Model_wiki:
 
         # fetch exist structured data
 
-        request = site.simple_request(
-            action="wbgetentities", ids=media_identifier)
+        request = site.simple_request(action="wbgetentities", ids=media_identifier)
         try:
             raw = request.submit()
         except:
@@ -2510,8 +2785,10 @@ class Model_wiki:
 
         return True
 
-    def wikidata_set_building_entity_name(self, wdid, city_wdid,skip_en, prepend_names=False):
-        '''
+    def wikidata_set_building_entity_name(
+        self, wdid, city_wdid, skip_en, prepend_names=False
+    ):
+        """
         change names and aliaces of wikidata entity for building created by SNOW tool: https://ru-monuments.toolforge.org/snow/index.php?id=6330122000
 
         User should manually enter LOCATED ON STREET with HOUSE NUMBER
@@ -2525,38 +2802,42 @@ class Model_wiki:
         name en     Tver Dostoevskogo street 30
         alias (ru)  [Жилой дом (Тверь)]
 
-        '''
+        """
         site = pywikibot.Site("wikidata", "wikidata")
         site.login()
         site.get_tokens("csrf")  # preload csrf token
         item = pywikibot.ItemPage(site, wdid)
         item.get()
-        
+
         city_wd = self.get_wikidata_simplified(city_wdid)
 
-        assert 'P669' in item.claims, 'you should set P669 en at https://www.wikidata.org/wiki/'+wdid+''
+        assert "P669" in item.claims, (
+            "you should set P669 en at https://www.wikidata.org/wiki/" + wdid + ""
+        )
         claims = item.claims.get("P669")
 
-        # GET BEST CLAIM 
-        best_claim=None
+        # GET BEST CLAIM
+        best_claim = None
         for claim in claims:
-            if claim.rank=='preferred':
-                best_claim=claim
+            if claim.rank == "preferred":
+                best_claim = claim
                 break
         if best_claim is None:
-            best_claim=claims[0]
+            best_claim = claims[0]
         claim = best_claim
         del best_claim
 
-
         street_id = claim.getTarget().id
         try:
-            street_name_en = claim.getTarget().labels['en']
+            street_name_en = claim.getTarget().labels["en"]
         except:
             raise ValueError(
-                'you should set label en at https://www.wikidata.org/wiki/'+claim.getTarget().id+'')
+                "you should set label en at https://www.wikidata.org/wiki/"
+                + claim.getTarget().id
+                + ""
+            )
             quit()
-        street_name_ru = claim.getTarget().labels['ru']
+        street_name_ru = claim.getTarget().labels["ru"]
 
         # Get the qualifiers of P670
         qualifiers = claim.qualifiers.get("P670")
@@ -2566,54 +2847,68 @@ class Model_wiki:
             # Print the postal code value
             housenumber = qualifier.getTarget()
 
-        self.logger.info(f'{street_name_en} {street_name_ru} {housenumber}')
-
+        self.logger.info(f"{street_name_en} {street_name_ru} {housenumber}")
 
         entitynames = dict()
         labels = dict()
-        change_langs=dict()
-        new_label = self.address_international(city='',street=street_name_en, housenumber=housenumber).strip()
-        if prepend_names and len(item.labels.get('en','')) < 50 and len(item.labels.get('en','')) > 6: new_label=new_label+', '+item.labels['en']
-        if new_label != item.labels.get('en','') and not skip_en:
-            labels['en'] = new_label
-            change_langs['en']=True
-        
-        new_label = street_name_ru+' '+housenumber
-        if prepend_names and len(item.labels.get('ru','')) < 50 and len(item.labels.get('ru','')) > 6: new_label=new_label+', '+item.labels['ru']
-        if new_label != item.labels.get('ru',''): 
-            labels['ru'] = new_label
-            change_langs['ru']=True
-        
+        change_langs = dict()
+        new_label = self.address_international(
+            city="", street=street_name_en, housenumber=housenumber
+        ).strip()
+        if (
+            prepend_names
+            and len(item.labels.get("en", "")) < 50
+            and len(item.labels.get("en", "")) > 6
+        ):
+            new_label = new_label + ", " + item.labels["en"]
+        if new_label != item.labels.get("en", "") and not skip_en:
+            labels["en"] = new_label
+            change_langs["en"] = True
+
+        new_label = street_name_ru + " " + housenumber
+        if (
+            prepend_names
+            and len(item.labels.get("ru", "")) < 50
+            and len(item.labels.get("ru", "")) > 6
+        ):
+            new_label = new_label + ", " + item.labels["ru"]
+        if new_label != item.labels.get("ru", ""):
+            labels["ru"] = new_label
+            change_langs["ru"] = True
+
         # move names to aliaces
         aliases = item.aliases
-        if 'ru' not in aliases:
-            aliases['ru'] = list()
-        if 'en' not in aliases:
-            aliases['en'] = list()
-        if change_langs.get('ru')==True:
-            if 'ru' in item.labels:
-                aliases['ru'].append(item.labels['ru'])
-        if 'en' in item.labels:
-            if change_langs.get('en')==True and not skip_en and 'en' in item.labels:
-                aliases['en'].append(item.labels['en'])
+        if "ru" not in aliases:
+            aliases["ru"] = list()
+        if "en" not in aliases:
+            aliases["en"] = list()
+        if change_langs.get("ru") == True:
+            if "ru" in item.labels:
+                aliases["ru"].append(item.labels["ru"])
+        if "en" in item.labels:
+            if change_langs.get("en") == True and not skip_en and "en" in item.labels:
+                aliases["en"].append(item.labels["en"])
         item.editAliases(aliases=aliases, summary="Move name to alias")
-        
-        item.editLabels(
-            labels=labels, summary="Set name from address P669+P670")
+
+        item.editLabels(labels=labels, summary="Set name from address P669+P670")
         item.editDescriptions(
-            descriptions={"en": "Building in "+city_wd['labels']['en']}, summary="Edit description")
-        
+            descriptions={"en": "Building in " + city_wd["labels"]["en"]},
+            summary="Edit description",
+        )
+
         self.reset_cache()
 
         return
 
-
-    def create_wikidata_object_for_bylocation_category(self, category, wikidata1, wikidata2):
+    def create_wikidata_object_for_bylocation_category(
+        self, category, wikidata1, wikidata2
+    ):
         assert category.startswith(
-            'Category:'), 'category should start with Category:  only'
-        assert self.is_wikidata_id(wikidata1)     
-        assert self.is_wikidata_id(wikidata2)     
-        category_name = category.replace('Category:', '')
+            "Category:"
+        ), "category should start with Category:  only"
+        assert self.is_wikidata_id(wikidata1)
+        assert self.is_wikidata_id(wikidata2)
+        category_name = category.replace("Category:", "")
 
         site = pywikibot.Site("wikidata", "wikidata")
         repo = site.data_repository()
@@ -2622,32 +2917,32 @@ class Model_wiki:
         new_item.editLabels(labels=label_dict, summary="Setting labels")
 
         # CLAIM
-        claim = pywikibot.Claim(repo, 'P31')
+        claim = pywikibot.Claim(repo, "P31")
         # This is Wikimedia category
         target = pywikibot.ItemPage(repo, "Q4167836")
         claim.setTarget(target)  # Set the target value in the local object.
         # Inserting value with summary to Q210194
-        new_item.addClaim(claim, summary='This is 	Wikimedia category')
+        new_item.addClaim(claim, summary="This is 	Wikimedia category")
         del claim
         del target
 
         # CLAIM
-        claim = pywikibot.Claim(repo, 'P971')
+        claim = pywikibot.Claim(repo, "P971")
         # category combines topics
         target = pywikibot.ItemPage(repo, wikidata1)
         claim.setTarget(target)  # Set the target value in the local object.
         # Inserting value with summary to Q210194
-        new_item.addClaim(claim, summary='This is 	Wikimedia category')
-        claim = pywikibot.Claim(repo, 'P971')
+        new_item.addClaim(claim, summary="This is 	Wikimedia category")
+        claim = pywikibot.Claim(repo, "P971")
         # category combines topics
         target = pywikibot.ItemPage(repo, wikidata2)
         claim.setTarget(target)  # Set the target value in the local object.
         # Inserting value with summary to Q210194
-        new_item.addClaim(claim, summary='This is 	Wikimedia category')
+        new_item.addClaim(claim, summary="This is 	Wikimedia category")
 
         # SITELINK
-        sitedict = {'site': 'commonswiki', 'title': category}
-        new_item.setSitelink(sitedict, summary=u'Setting commons sitelink.')
+        sitedict = {"site": "commonswiki", "title": category}
+        new_item.setSitelink(sitedict, summary="Setting commons sitelink.")
         wikidata_id = new_item.getID()
 
         # ADD Wikidata infobox to commons
@@ -2658,17 +2953,17 @@ class Model_wiki:
         page = pywikibot.Page(site, title=pagename)
 
         commons_pagetext = page.text
-        if '{{Wikidata infobox}}' not in commons_pagetext:
-            commons_pagetext = "{{Wikidata infobox}}\n"+commons_pagetext
+        if "{{Wikidata infobox}}" not in commons_pagetext:
+            commons_pagetext = "{{Wikidata infobox}}\n" + commons_pagetext
         page.text = commons_pagetext
-        page.save('add {{Wikidata infobox}} template')
+        page.save("add {{Wikidata infobox}} template")
 
-    
-    def is_subclass_of_building(self, wikidata_id:str)-> bool:
-        return self.is_subclass_of(wikidata_id,'Q41176')
-    
-    def is_subclass_of(self,wikidata_id:str,class_wdid:str)-> bool:
+    def is_subclass_of_building(self, wikidata_id: str) -> bool:
+        return self.is_subclass_of(wikidata_id, "Q41176")
+
+    def is_subclass_of(self, wikidata_id: str, class_wdid: str) -> bool:
         import requests
+
         # construct the SPARQL query using the wikidata id
         query = f"""
         ASK {{
@@ -2692,25 +2987,34 @@ class Model_wiki:
             print(f"Error: {response.status_code}")
             return None
 
-    def pagename_from_id(self,id:str)->str:
-        '''
+    def pagename_from_id(self, id: str) -> str:
+        """
         id: digit
-        '''
-        if id.startswith('https://commons.wikimedia.org/entity/M'):
-            id=id.replace('https://commons.wikimedia.org/entity/M','')
-        if id.startswith('M'):
-            id=id.replace('M','')
-        site = pywikibot.Site('commons', 'commons') # create a Site object for Wikimedia Commons
-        pages = pagegenerators.PagesFromPageidGenerator([id], site) # create a page generator with the page ID
-        for page in pages: # iterate over the pages
-            return page.title() # print the full page title
+        """
+        if id.startswith("https://commons.wikimedia.org/entity/M"):
+            id = id.replace("https://commons.wikimedia.org/entity/M", "")
+        if id.startswith("M"):
+            id = id.replace("M", "")
+        site = pywikibot.Site(
+            "commons", "commons"
+        )  # create a Site object for Wikimedia Commons
+        pages = pagegenerators.PagesFromPageidGenerator(
+            [id], site
+        )  # create a page generator with the page ID
+        for page in pages:  # iterate over the pages
+            return page.title()  # print the full page title
 
     def search_commonscat_by_2_wikidata(self, abstract_wdid, geo_wdid):
-        if abstract_wdid==geo_wdid:
+        if abstract_wdid == geo_wdid:
             return None
-        if abstract_wdid in self.wikidata_cache['commonscat_by_2_wikidata']:
-            if geo_wdid in self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid]:
-                return self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid][geo_wdid]
+        if abstract_wdid in self.wikidata_cache["commonscat_by_2_wikidata"]:
+            if (
+                geo_wdid
+                in self.wikidata_cache["commonscat_by_2_wikidata"][abstract_wdid]
+            ):
+                return self.wikidata_cache["commonscat_by_2_wikidata"][abstract_wdid][
+                    geo_wdid
+                ]
 
         sample = """
                         SELECT DISTINCT ?item ?itemLabel WHERE {
@@ -2728,7 +3032,7 @@ class Model_wiki:
 
         """
 
-        template = '''
+        template = """
         SELECT DISTINCT ?item ?itemLabel WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE]". }
   {
@@ -2741,81 +3045,98 @@ class Model_wiki:
     LIMIT 100
   }
 }
-'''
+"""
         sparql = template
-        sparql = sparql.replace('$SUBJECT', abstract_wdid)
-        sparql = sparql.replace('$COUNTRY', geo_wdid)
+        sparql = sparql.replace("$SUBJECT", abstract_wdid)
+        sparql = sparql.replace("$COUNTRY", geo_wdid)
 
         site = pywikibot.Site("wikidata", "wikidata")
         repo = site.data_repository()
 
         generator = pagegenerators.PreloadingEntityGenerator(
-            pagegenerators.WikidataSPARQLPageGenerator(sparql, site=repo))
+            pagegenerators.WikidataSPARQLPageGenerator(sparql, site=repo)
+        )
         for item in generator:
             item_dict = item.get()
             commonscat = None
             try:
-                commonscat = item.getSitelink('commonswiki')
+                commonscat = item.getSitelink("commonswiki")
             except:
-                claim_list = item_dict["claims"].get('P373', ())
-                assert claim_list is not None, 'https://www.wikidata.org/wiki/' + \
-                    abstract_wdid + ' must have P373'
+                claim_list = item_dict["claims"].get("P373", ())
+                assert claim_list is not None, (
+                    "https://www.wikidata.org/wiki/" + abstract_wdid + " must have P373"
+                )
                 for claim in claim_list:
                     commonscat = claim.getTarget()
-            assert commonscat is not None, 'invalid entity '+str(item) + "\n"+sparql
-            commonscat = commonscat.replace('Category:', '')
+            assert commonscat is not None, "invalid entity " + str(item) + "\n" + sparql
+            commonscat = commonscat.replace("Category:", "")
 
-            if abstract_wdid not in self.wikidata_cache['commonscat_by_2_wikidata']:
-                self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid] = {
-                }
-            self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid][geo_wdid] = commonscat
-            self.wikidata_cache_save(
-                self.wikidata_cache, self.wikidata_cache_filename)
+            if abstract_wdid not in self.wikidata_cache["commonscat_by_2_wikidata"]:
+                self.wikidata_cache["commonscat_by_2_wikidata"][abstract_wdid] = {}
+            self.wikidata_cache["commonscat_by_2_wikidata"][abstract_wdid][
+                geo_wdid
+            ] = commonscat
+            self.wikidata_cache_save(self.wikidata_cache, self.wikidata_cache_filename)
             return commonscat
-        if abstract_wdid not in self.wikidata_cache['commonscat_by_2_wikidata']:
-            self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid] = {}
-        self.wikidata_cache['commonscat_by_2_wikidata'][abstract_wdid][geo_wdid] = None
-        self.wikidata_cache_save(
-            self.wikidata_cache, self.wikidata_cache_filename)
+        if abstract_wdid not in self.wikidata_cache["commonscat_by_2_wikidata"]:
+            self.wikidata_cache["commonscat_by_2_wikidata"][abstract_wdid] = {}
+        self.wikidata_cache["commonscat_by_2_wikidata"][abstract_wdid][geo_wdid] = None
+        self.wikidata_cache_save(self.wikidata_cache, self.wikidata_cache_filename)
         return None
-        
-    def print_category_filenames(self,categoryname, start:int=None, total:int=None):
-        """ print list of files in category to terminal for bash pipelines"""
-        
+
+    def print_category_filenames(
+        self, categoryname, start: int = None, total: int = None
+    ):
+        """print list of files in category to terminal for bash pipelines"""
+
         site = pywikibot.Site("commons", "commons")
         site.login()
         site.get_tokens("csrf")  # preload csrf token
         category = pywikibot.Category(site, categoryname)
-        
 
         gen1 = pagegenerators.CategorizedPageGenerator(
-            category, recurse=0, start=start, total=total, content=False, namespaces=None)
+            category,
+            recurse=0,
+            start=start,
+            total=total,
+            content=False,
+            namespaces=None,
+        )
         for page in gen1:
-            print(page.title().replace('File:',''))
-    
-    def print_wikidata_category_filenames(self,wdid:str, start:int=None, total:int=None):
+            print(page.title().replace("File:", ""))
+
+    def print_wikidata_category_filenames(
+        self, wdid: str, start: int = None, total: int = None
+    ):
         wd = self.get_wikidata_simplified(wdid)
-        if wd['commons'] is None:
+        if wd["commons"] is None:
             return None
         else:
-            self.print_category_filenames(wd['commons'])
-    
-    def list_category_by_wikidata(self,wdid:str, start:int=None, total:int=None)->list:
+            self.print_category_filenames(wd["commons"])
+
+    def list_category_by_wikidata(
+        self, wdid: str, start: int = None, total: int = None
+    ) -> list:
         wd = self.get_wikidata_simplified(wdid)
-        if wd['commons'] is None:
+        if wd["commons"] is None:
             return None
         else:
 
-            pagenames=list()
+            pagenames = list()
             site = pywikibot.Site("commons", "commons")
             site.login()
             site.get_tokens("csrf")  # preload csrf token
-            category = pywikibot.Category(site, wd['commons'])
-            
+            category = pywikibot.Category(site, wd["commons"])
 
             gen1 = pagegenerators.CategorizedPageGenerator(
-                category, recurse=0, start=start, total=total, content=False, namespaces=None)
+                category,
+                recurse=0,
+                start=start,
+                total=total,
+                content=False,
+                namespaces=None,
+            )
             for page in gen1:
-                if page.title().startswith('File:'):
+                if page.title().startswith("File:"):
                     pagenames.append(page.title())
             return pagenames

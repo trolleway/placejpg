@@ -874,8 +874,37 @@ class Model_wiki:
                     wd_object["claims"]["P729"]["references"][0]["P248"] = "Q117323686"
 
                 if "year_url" in data:
-                    wd_object["claims"]["P729"]["references"][0]["P854"] = data["year_url"]
-                    wd_object["claims"]["P729"]["references"][0]["P813"] = {"value": {"time": {"year": int(datetime.now().strftime('%Y'))}, "precision": 9}}
+                    wd_object["claims"]["P729"]["references"][0]["P854"] = data[
+                        "year_url"
+                    ]
+                    wd_object["claims"]["P729"]["references"][0]["P813"] = {
+                        "value": {
+                            "time": {"year": int(datetime.now().strftime("%Y"))},
+                            "precision": 9,
+                        }
+                    }
+
+        if "demolished" in data:
+            wd_object["claims"]["P5817"] = "Q56556915"
+            wd_object["claims"]["P576"] = {
+                "value": {
+                    "time": {"year": int(str(data["demolished"])[0:4])},
+                    "precision": 9,
+                }
+            }
+            if "demolished_url" in data:
+                wd_object["claims"]["P576"]["references"] = list()
+                wd_object["claims"]["P576"]["references"].append(dict())
+
+                wd_object["claims"]["P576"]["references"][0]["P854"] = data[
+                    "demolished_url"
+                ]
+                wd_object["claims"]["P576"]["references"][0]["P813"] = {
+                    "value": {
+                        "time": {"year": int(datetime.now().strftime("%Y"))},
+                        "precision": 9,
+                    }
+                }
 
         if "levels" in data:
             wd_object["claims"]["P1101"] = {
@@ -1811,6 +1840,21 @@ class Model_wiki:
             except:
                 pass
             # no year in building
+        demolished = ""
+        if "P576" in building_dict_wd["claims"]:
+            year_field = "P576"
+            try:
+                if building_dict_wd["claims"][year_field][0]["precision"] >= 9:
+                    year_demolition = building_dict_wd["claims"][year_field][0][
+                        "value"
+                    ][0:4]
+                if building_dict_wd["claims"][year_field][0]["precision"] == 8:
+                    decade_demolition = (
+                        building_dict_wd["claims"][year_field][0]["value"][0:3] + "0"
+                    )
+            except:
+                pass
+            # no demolishion year in building
         assert isinstance(year, str)
         assert year == "" or len(year) == 4, "invalid year:" + str(year)
         assert decade == "" or len(decade) == 4, "invalid decade:" + str(decade)
@@ -1857,6 +1901,8 @@ class Model_wiki:
 
         if decade != "":
             code += "[[Category:%decade%s architecture in %city%]]" + "\n"
+        if year_demolition != "":
+            code += "[[Category:Demolished buildings in %city%]]" + "\n"
 
         if levels > 0:
             code += "[[Category:%levelstr%-story buildings in %city%]]" + "\n"

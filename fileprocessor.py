@@ -63,6 +63,7 @@ class Fileprocessor:
         destination = os.path.splitext(filepath)[0] + ".webp"
 
         image = PILImage.open(filepath)  # Open image
+        image.MAX_IMAGE_PIXELS = None #supress DecompressionBombWarning
         image.save(
             destination, format="webp", lossless=False, quality=98
         )  # Convert image to webp
@@ -259,7 +260,6 @@ class Fileprocessor:
         """
         from model_wiki import Model_wiki as Model_wiki_ask
 
-
         modelwiki = Model_wiki_ask()
 
         # take place from filename if present
@@ -290,7 +290,7 @@ class Fileprocessor:
             street_wdid = modelgeo.identify_deodata(
                 lat, lon, regions_filepath, layer=layer, fieldname=geodata_attribute
             )
-            
+
             if street_wdid is None:
                 msg = f"not found in file:{regions_filepath} https://geohack.toolforge.org/geohack.php?params={lat};{lon}_type:camera"
                 self.logger.error(filename.ljust(40) + " " + msg + "")
@@ -1748,11 +1748,14 @@ class Fileprocessor:
         self,
         filename,
         wikidata,
-        country="",
+        country="countries.gpkg",
         rail="",
         secondary_wikidata_ids=list(),
         custom_categories=list(),
         suffix="",
+        city_polygons="",
+        street_polygons="",
+        addr_polygons="",
     ) -> dict:
         # return file description texts
         # there is no excact 'city' in wikidata, use manual input cityname
@@ -2203,16 +2206,87 @@ class Fileprocessor:
             skip_unixtime = False
         else:
             skip_unixtime = True
-        commons_filename = self.commons_filename(
-            filename,
-            objectnames,
-            wikidata,
-            dt_obj,
-            add_administrative_name=False,
-            prefix=prefix,
-            suffix=suffix,
-            skip_unixtime=skip_unixtime,
+
+        # Make commons filename
+
+        # filename_base = os.path.splitext(os.path.basename(filename))[0]
+        filename_extension = os.path.splitext(os.path.basename(filename))[1]
+        # if this is building: try get machine-reading address from https://www.wikidata.org/wiki/Property:P669
+        building_info = modelwiki.get_building_record_wikidata(
+            wikidata, stop_on_error=False
         )
+        if building_info is not None:
+
+            objectnames["en"] = (
+                building_info["addr:street:en"]
+                + " "
+                + building_info["addr:housenumber:en"]
+            )
+
+        commons_filename = ""
+
+        if prefix != "":
+            if prefix not in objectnames["en"]:
+                commons_filename = f"{prefix}_"
+                prefix = prefix + "_"
+            else:
+                prefix = ""
+        if suffix != "":
+            suffix = "_" + suffix
+            skip_unixtime = True
+
+        if skip_unixtime:
+            time_suffix_format = "%Y-%m"
+        else:
+            time_suffix_format = "%Y-%m %s"
+        dt = dt_obj.strftime(time_suffix_format)
+        commons_filename = (
+            f'{prefix}{objectnames["en"]} {dt}{suffix}{filename_extension}'
+        )
+
+        commons_filename = commons_filename.replace("/", " drob ")
+
+        if (
+            os.path.isfile(city_polygons)
+            and os.path.isfile(street_polygons)
+            and os.path.isfile(addr_polygons)
+        ):
+            from model_geo import Model_Geo as Model_geo_ask
+
+            modelgeo = Model_geo_ask()
+            if "dest_lat" in geo_dict and "dest_lon" in geo_dict:
+                lat = geo_dict.get("dest_lat")
+                lon = geo_dict.get("dest_lon")
+            else:
+                lat = geo_dict.get("lat")
+                lon = geo_dict.get("lon")
+            city_wdid = modelgeo.identify_deodata(
+                lat, lon, city_polygons, layer="cities", fieldname="wikidata"
+            )
+            street_wdid = modelgeo.identify_deodata(
+                lat, lon, street_polygons, fieldname="wikidata"
+            )
+            addr_housenumber = modelgeo.identify_deodata(
+                lat, lon, addr_polygons, fieldname="addr:housenumber"
+            )
+            assert city_wdid is not None
+            assert street_wdid is not None
+            assert addr_housenumber is not None
+
+            city_wd = modelwiki.get_wikidata_simplified(city_wdid)
+            city = city_wd["labels"]["en"]
+            street_wd = modelwiki.get_wikidata_simplified(street_wdid)
+            street = street_wd["labels"]["en"]
+            addr = translit(addr_housenumber, "ru", reversed=True)
+
+            commons_filename = "{city} {street} {addr} {dt}{suffix}{extension}".format(
+                city=city,
+                street=street,
+                addr=addr,
+                dt=dt,
+                suffix=suffix,
+                extension=filename_extension,
+            )
 
         return {
             "name": commons_filename,
@@ -2225,7 +2299,7 @@ class Fileprocessor:
             "wikidata": wikidata,
         }
 
-    def commons_filename(
+    def deprecated_commons_filename(
         self,
         filename,
         objectnames,
@@ -2723,9 +2797,7 @@ class Fileprocessor:
         # asap quicker check if directory is empty
         if os.listdir(filepath) == []:
             quit()
-        assert desc_dict["mode"] in ["object", "vehicle", "auto", "bus"]
-
-        assert "country" in desc_dict
+        assert desc_dict["mode"] in ["object", "vehicle", "auto", "bus", "addr"]
 
         if not "secondary_objects" in desc_dict:
             # for simple call next function
@@ -2736,10 +2808,10 @@ class Fileprocessor:
             desc_dict["later"] = False  # for simple call next function
         if not "verify" in desc_dict:
             desc_dict["verify"] = False  # for simple call next function
-        if "country" in desc_dict:
-            desc_dict["country"] = desc_dict["country"].title()
-        else:
-            desc_dict["country"] = None
+        # if "country" in desc_dict:
+        #    desc_dict["country"] = desc_dict["country"].title()
+        # else:
+        #    desc_dict["country"] = None
 
         files, uploaded_folder_path = self.input2filelist(filepath)
 
@@ -2805,7 +2877,7 @@ class Fileprocessor:
 
             suffix = self.get_suffix_from_string(filename)
 
-            if desc_dict["mode"] == "object":
+            if desc_dict["mode"] in ("object", "addr"):
                 if desc_dict["wikidata"] == "FROMFILENAME":
                     if not self.get_wikidatalist_from_string(filename):
                         self.logger.error(
@@ -2821,15 +2893,28 @@ class Fileprocessor:
                     else:
                         wikidata = modelwiki.wikidata_input2id(desc_dict["wikidata"])
 
-                texts = self.make_image_texts_simple(
-                    filename=filename,
-                    wikidata=wikidata,
-                    country=desc_dict["country"],
-                    rail=desc_dict.get("rail"),
-                    secondary_wikidata_ids=secondary_wikidata_ids,
-                    custom_categories=custom_categories,
-                    suffix=suffix,
-                )
+                if desc_dict["mode"] == "object":
+                    texts = self.make_image_texts_simple(
+                        filename=filename,
+                        wikidata=wikidata,
+                        country=desc_dict["country"],
+                        rail=desc_dict.get("rail"),
+                        secondary_wikidata_ids=secondary_wikidata_ids,
+                        custom_categories=custom_categories,
+                        suffix=suffix,
+                    )
+                elif desc_dict["mode"] == "addr":
+                    texts = self.make_image_texts_simple(
+                        filename=filename,
+                        wikidata=wikidata,
+                        rail=desc_dict.get("rail"),
+                        city_polygons=desc_dict["city_polygons"],
+                        street_polygons=desc_dict["street_polygons"],
+                        addr_polygons=desc_dict["addr_polygons"],
+                        secondary_wikidata_ids=secondary_wikidata_ids,
+                        custom_categories=custom_categories,
+                        suffix=suffix,
+                    )
 
                 if texts is None:
                     continue

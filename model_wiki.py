@@ -1819,6 +1819,7 @@ class Model_wiki:
 
         year = ""
         decade = ""
+        year_demolition = ""
         year_field = None
         if "P1619" in building_dict_wd["claims"]:
             year_field = "P1619"

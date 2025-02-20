@@ -63,7 +63,7 @@ class Fileprocessor:
         destination = os.path.splitext(filepath)[0] + ".webp"
 
         image = PILImage.open(filepath)  # Open image
-        image.MAX_IMAGE_PIXELS = None #supress DecompressionBombWarning
+        image.MAX_IMAGE_PIXELS = None  # supress DecompressionBombWarning
         image.save(
             destination, format="webp", lossless=False, quality=98
         )  # Convert image to webp
@@ -2299,7 +2299,7 @@ class Fileprocessor:
             "wikidata": wikidata,
         }
 
-    def deprecated_commons_filename(
+    def renameprocess_filename(
         self,
         filename,
         objectnames,

@@ -542,6 +542,41 @@ class Model_wiki:
         return new pywikibot claim object for add to wikidata using pywikibot from dict
         """
 
+    def wikidata_change_claim(self,wdid:str,prop:str,vfrom:str=None,vto:str=None, editmessage='')->bool:
+        """
+        change claim in wikidata, e.q. replace "this is instance of building" to "apartment building"
+        """
+        assert wdid.startswith('Q')
+        assert prop.startswith('P')
+        site = pywikibot.Site("wikidata", "wikidata")
+        repo = site.data_repository()
+        item = pywikibot.ItemPage(site, wdid)
+        item.get()  
+        claims = item.claims 
+        # Check if the new value not exists yet
+        claims = item.claims.get(prop, [])
+        for claim in claims:
+            if claim.getTarget().id == vto:
+                print(f'entity https://www.wikidata.org/wiki/{wdid} already have {prop}={vto}, skip')
+                return
+            
+        # Check if the old value exists and remove it
+        claims = item.claims.get(prop, [])
+        for claim in claims:
+            if claim.getTarget().id == vfrom:
+                print(f"Removing old value: {vfrom}")
+                item.removeClaims([claim], summary=f"{editmessage}")
+
+        # Create a new claim or replace the value
+        new_target = pywikibot.ItemPage(repo, vto)
+        new_claim = pywikibot.Claim(repo, prop)
+        new_claim.setTarget(new_target)
+        print(f"Adding new value: {vto}")
+        item.addClaim(new_claim, summary=f"{editmessage}")
+
+        self.reset_cache()
+        
+        
     def create_or_update_geoobject(
         self,
         city_wdid,

@@ -1360,6 +1360,7 @@ class Fileprocessor:
             wikidata_4_structured_data.add(vehicles_wikidata[vehicle])
         if vehicle in train_synonims:
             wikidata_4_structured_data.add(vehicles_wikidata["train"])
+        
 
         assert (
             None not in wikidata_4_structured_data
@@ -3139,20 +3140,20 @@ class Fileprocessor:
                 if "_replace" in filename:
                     # ignore_warning=True
 
-                    if "_reupload" in filename:
-                        self.logger.info("replace file..")
-                        modelwiki.replace_file_commons(
-                            modelwiki.pagename_from_id(
-                                self.get_replace_id_from_string(filename)
-                            ),
-                            filename,
-                        )
+                    # if "_reupload" in filename:
+                    self.logger.info("replace file..")
+                    modelwiki.replace_file_commons(
+                        modelwiki.pagename_from_id(
+                            self.get_replace_id_from_string(filename)
+                        ),
+                        filename,
+                    )
 
                     self.logger.info(
-                        "You should manualy replace texts. Open https://commons.wikimedia.org/entity/M"
+                        "now will replacing text on https://commons.wikimedia.org/entity/M"
                         + self.get_replace_id_from_string(filename)
                     )
-                    print("Texts for manual update")
+                    print("Texts for  update")
 
                     txt = (
                         "{{Rename|"
@@ -3161,7 +3162,17 @@ class Fileprocessor:
                     )
                     print(txt)
                     print(texts["text"])
-                    input("Press Enter to continue...")
+                    newtext = txt + "/n" + texts["text"]
+                    modelwiki.replace_file_text(
+                        modelwiki.pagename_from_id(
+                            self.get_replace_id_from_string(filename)
+                        ),
+                        newtext,
+                        message="Replace my image imported from Panoramio with original uncompressed file with more detailed description",
+                    )
+                    del newtext
+
+                    self.logger.info("Text replaced")
                     # CREATE CATEGORY PAGES
                     if len(texts["need_create_categories"]) > 0:
                         for ctd in texts["need_create_categories"]:

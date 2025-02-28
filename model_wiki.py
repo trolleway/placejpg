@@ -83,6 +83,18 @@ class Model_wiki:
 
         return
 
+    def replace_file_text(self, pagename, new_text, message):
+        assert pagename
+        # Login to your account
+        site = pywikibot.Site("commons", "commons")
+        site.login()
+        site.get_tokens("csrf")  # preload csrf token
+
+        # Replace the file
+        file_page = pywikibot.FilePage(site, pagename)
+        file_page.text = new_text
+        file_page.save(message)
+
     def wikidata_cache_load(self, wikidata_cache_filename):
         if os.path.isfile(wikidata_cache_filename) == False:
             cache = {

@@ -45,7 +45,7 @@ desc_dict["mode"] = "addr"
 desc_dict["city_polygons"] = args.city_polygons
 desc_dict["street_polygons"] = args.street_polygons
 desc_dict["addr_polygons"] = args.addr_polygons
-desc_dict["wikidata"] = "FROMFILENAME"
+desc_dict["wikidata"] = "trolleybus.gpkg"
 desc_dict["progress"] = args.progress
 
 

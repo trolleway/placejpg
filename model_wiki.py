@@ -252,7 +252,6 @@ class Model_wiki:
         gen2 = pagegenerators.RegexBodyFilterPageGenerator(gen1, regex)
 
         logging.getLogger().setLevel(logging.DEBUG)
-        logging.getLogger("foo").debug("bah")
 
         location = location.title()
         pbar = tqdm(total=total_files)
@@ -548,31 +547,79 @@ class Model_wiki:
         """
         assert wdid.startswith('Q')
         assert prop.startswith('P')
-        site = pywikibot.Site("wikidata", "wikidata")
-        repo = site.data_repository()
-        item = pywikibot.ItemPage(site, wdid)
-        item.get()  
-        claims = item.claims 
-        # Check if the new value not exists yet
-        claims = item.claims.get(prop, [])
-        for claim in claims:
-            if claim.getTarget().id == vto:
-                print(f'entity https://www.wikidata.org/wiki/{wdid} already have {prop}={vto}, skip')
-                return
+        
+        if ',' not in wdid:
+            wdids=list()
+            wdids.append(wdid)
+        else:
+            wdids=wdid.split(',')
+        
+        assert len(wdids)>0
+        if len(wdids)>1:
+            if vto.startswith("Q") and self.is_wikidata_id(vto):
+                vfrom_wd = None
+                if vfrom:
+                    vfrom_wd=self.get_wikidata_simplified(vfrom)
+                vto_wd = self.get_wikidata_simplified(vto)   
             
-        # Check if the old value exists and remove it
-        claims = item.claims.get(prop, [])
-        for claim in claims:
-            if claim.getTarget().id == vfrom:
-                print(f"Removing old value: {vfrom}")
-                item.removeClaims([claim], summary=f"{editmessage}")
+                for wdid in wdids:
+                    wd = self.get_wikidata_simplified(wdid)
+                    msgline = wd['labels'].get('en','').rjust(50)+ ' '
+                    if vfrom: msgline += '-'+vfrom_wd['labels'].get('en','' ) + ' '
+                    msgline += '+'+vto_wd['labels'].get('en','' ) + ' '
+                    print(msgline) 
+            else:
+                for wdid in wdids:
+                    wd = self.get_wikidata_simplified(wdid)
+                    msgline = wd['labels'].get('en','').rjust(50)+ ' '
+                    if vfrom: msgline += f'-{vfrom} '
+                    msgline += f'+{vto} '
+                    print(msgline) 
+            answer = input(" do change on these wikidata entities?  " + "\n y / n   ? ")
+            # Remove white spaces after the answers and convert the characters into lower cases.
+            answer = answer.strip().lower()
 
-        # Create a new claim or replace the value
-        new_target = pywikibot.ItemPage(repo, vto)
-        new_claim = pywikibot.Claim(repo, prop)
-        new_claim.setTarget(new_target)
-        print(f"Adding new value: {vto}")
-        item.addClaim(new_claim, summary=f"{editmessage}")
+            if answer not in ["yes", "y", "1"]:
+                return
+        
+        for wdid in wdids:
+        
+            site = pywikibot.Site("wikidata", "wikidata")
+            repo = site.data_repository()
+            item = pywikibot.ItemPage(site, wdid)
+            item.get()  
+            claims = item.claims 
+            # Check if the new value not exists yet
+            skip_item=False
+            claims = item.claims.get(prop, [])
+            for claim in claims:
+
+                if claim.getTarget().id == vto:
+                    print(f'entity https://www.wikidata.org/wiki/{wdid} already have {prop}={vto}, skip')
+                    skip_item = True
+                    break
+            if skip_item: continue
+                
+            # Check if the old value exists and remove it
+            claims = item.claims.get(prop, [])
+            for claim in claims:
+                if claim.getTarget().id == vfrom:
+                    print(f"Removing old value: {vfrom}")
+                    item.removeClaims([claim], summary=f"{editmessage}")
+
+            # Create a new claim or replace the value
+            try:
+                new_target = pywikibot.ItemPage(repo, vto)
+                new_claim = pywikibot.Claim(repo, prop)
+                new_claim.setTarget(new_target)
+            except:
+                new_target = pywikibot.WbQuantity(
+                amount=vto,
+                site=site)
+                new_claim = pywikibot.Claim(repo, prop)
+                new_claim.setTarget(new_target)
+            print(f"Adding new value: {vto} to https://www.wikidata.org/wiki/{wdid}")
+            item.addClaim(new_claim, summary=f"{editmessage}")
 
         self.reset_cache()
         

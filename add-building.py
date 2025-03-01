@@ -30,18 +30,6 @@ parser = argparse.ArgumentParser(
     + "python3 add-building.py --snow-fix --wikidata Q113682558 --city Torzhok"
 )
 
-"""
-Run docker with this script one-off, for call from QGIS action:
-
-cmd = docker run --rm -v "C:\trolleway\placejpg\:/opt/commons-uploader" -it placejpg:2023.11 ./add-building.py --help
-
-
-
-QgsMessageLog.logMessage("Your plugin code has been executed correctly", 'MyPlugin', level=Qgis.Info)
-
-
-anyway qgis can not start docker run
-"""
 
 parser.add_argument(
     "--wikidata", type=str, required=False, help="Wikidata object optional"

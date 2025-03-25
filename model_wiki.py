@@ -95,16 +95,8 @@ class Model_wiki:
         file_page.text = new_text
         file_page.save(message)
 
-    def wikidata_cache_load(self, wikidata_cache_filename):
-        if os.path.isfile(wikidata_cache_filename) == False:
-            cache = {
-                "entities_simplified": {},
-                "commonscat_by_2_wikidata": {},
-                "cities_ids": {},
-                "commonscat_exists_set": set(),
-            }
-            return cache
-        else:
+    def wikidata_cache_load_deprecated(self, wikidata_cache_filename):
+        if os.path.isfile(wikidata_cache_filename) == True:
             file = open(wikidata_cache_filename, "rb")
 
             # dump information to that file
@@ -112,6 +104,33 @@ class Model_wiki:
 
             # close the file
             file.close()
+            return cache
+        else:
+            cache = {
+                "entities_simplified": {},
+                "commonscat_by_2_wikidata": {},
+                "cities_ids": {},
+                "commonscat_exists_set": set(),
+            }
+            return cache
+
+    def wikidata_cache_load(self, wikidata_cache_filename):
+        try:
+            file = open(wikidata_cache_filename, "rb")
+
+            # dump information to that file
+            cache = pickle.load(file)
+
+            # close the file
+            file.close()
+            return cache
+        except:
+            cache = {
+                "entities_simplified": {},
+                "commonscat_by_2_wikidata": {},
+                "cities_ids": {},
+                "commonscat_exists_set": set(),
+            }
             return cache
 
     def wikidata_cache_save(self, cache, wikidata_cache_filename) -> bool:
@@ -1728,20 +1747,35 @@ class Model_wiki:
                 return None, None
             content += "\n[[Category:" + uppercat + "]]"
 
-        # PART OF
+        # PART OF, CARRIES, CROSSES
         wdids = self.get_claims_list(geoobject_wikidata, "P361")
-
         if wdids is not None and len(wdids) > 0:
             for wdid in wdids:
                 try:
                     temp_wd = self.get_wikidata_simplified(wdid)
-                    content += (
-                        "\n[[Category:"
-                        + self.get_wikidata_simplified(wdid)["commons"]
-                        + "]]"
-                    )
+                    content += ("\n[[Category:" + self.get_wikidata_simplified(wdid)["commons"]+ "]]")
                 except:
                     pass
+        del wdids
+        wdids = self.get_claims_list(geoobject_wikidata, "P2505")
+        if wdids is not None and len(wdids) > 0:
+            for wdid in wdids:
+                try:
+                    temp_wd = self.get_wikidata_simplified(wdid)
+                    content += ("\n[[Category:" + self.get_wikidata_simplified(wdid)["commons"]+ "]]")
+                except:
+                    pass
+        del wdids
+        wdids = self.get_claims_list(geoobject_wikidata, "P177")
+        if wdids is not None and len(wdids) > 0:
+            for wdid in wdids:
+                try:
+                    temp_wd = self.get_wikidata_simplified(wdid)
+                    content += ("\n[[Category:" + self.get_wikidata_simplified(wdid)["commons"]+ "]]")
+                except:
+                    pass
+        del wdids
+        
         # ADMINISTRATIVE ENTITY
         wdid = self.get_best_claim(geoobject_wikidata, "P131")
         try:

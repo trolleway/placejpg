@@ -32,7 +32,7 @@ parser = argparse.ArgumentParser(
 
 
 parser.add_argument(
-    "--wikidata", type=str, required=False, help="Wikidata object optional"
+    "--wikidata", type=str, required=False, help="Wikidata object for snow-fix. If only this key provided, a category for building will created"
 )
 parser.add_argument(
     "--building",
@@ -207,32 +207,37 @@ if args.snow_fix is not None:
     quit()
 
 elif args.wikidata is not None:
+    wdid = args.wikidata
     # create building category
+    if ',' not in wdid:
+        wdids=list()
+        wdids.append(modelwiki.wikidata_input2id(wdid))
+    else:
+        wdids=wdid.split(',')
+    for building_wikidata in wdids:
+        if city_wdid is None:
+            city_wdid = modelwiki.get_settlement_for_object(building_wikidata)
+        if city_wdid is None:
+            raise ValueError(
+                f"can not find city for https://www.wikidata.org/wiki/{building_wikidata}"
+            )
 
-    building_wikidata = modelwiki.wikidata_input2id(args.wikidata)
-    if city_wdid is None:
-        city_wdid = modelwiki.get_settlement_for_object(building_wikidata)
-    if city_wdid is None:
-        raise ValueError(
-            f"can not find city for https://www.wikidata.org/wiki/{building_wikidata}"
+        if dry_run:
+            print("dry run. For object https://www.wikidata.org/wiki/" + building_wikidata)
+            print(
+                "Proposed category name: https://commons.wikimedia.org/wiki/Category:"
+                + category_name.replace(" ", "_")
+            )
+            continue
+        category_name = modelwiki.create_building_category(
+            building_wikidata, city_wikidata=city_wdid, dry_mode=dry_run
         )
 
-    category_name = modelwiki.create_building_category(
-        building_wikidata, city_wikidata=city_wdid, dry_mode=dry_run
-    )
-    if dry_run:
-        print("dry run. For object https://www.wikidata.org/wiki/" + building_wikidata)
+        print("Created https://www.wikidata.org/wiki/" + building_wikidata)
         print(
-            "Proposed category name: https://commons.wikimedia.org/wiki/Category:"
+            "Created https://commons.wikimedia.org/wiki/Category:"
             + category_name.replace(" ", "_")
         )
-        quit()
-
-    print("Created https://www.wikidata.org/wiki/" + building_wikidata)
-    print(
-        "Created https://commons.wikimedia.org/wiki/Category:"
-        + category_name.replace(" ", "_")
-    )
 
     quit()
 

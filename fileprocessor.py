@@ -1463,7 +1463,11 @@ class Fileprocessor:
         test_str = test_str[0 : test_str.index(".")]
 
         lst = re.findall(r"(replace\d+)", test_str)
-        id = lst[0].replace("replace", "")
+        try:
+            id = lst[0].replace("replace", "")
+        except:
+            self.logger.error('invalid content of _replace key')
+            quit()
         return id
 
     def get_wikidatalist_from_string(self, test_str: str) -> list:
@@ -1701,7 +1705,14 @@ class Fileprocessor:
             )
         categories = set()
         categories.update(camera_categories)
-
+        
+                    
+        # PROCESS STEREO KEY
+        if "_stereo" in filename:
+            categories.add(
+                "Photographs by " + self.photographer + "/Stereoscopic"
+            )
+            text = text + "{{Stereoscopic 3D|method=parallel}}" + "\n"
         if "ShiftN" in filename:
             categories.add("Corrected with ShiftN")
         if "stitch" in filename or "pano" in filename.lower():
@@ -2203,6 +2214,7 @@ class Fileprocessor:
             objectnames["en"] = nam
             del nam
 
+
         if suffix == "":
             skip_unixtime = False
         else:
@@ -2272,7 +2284,9 @@ class Fileprocessor:
             )
             assert city_wdid is not None
             assert street_wdid is not None
-            assert addr_housenumber is not None
+            if addr_housenumber is None:
+                self.logger.warning('no house number for '+filename)
+                return
 
             city_wd = modelwiki.get_wikidata_simplified(city_wdid)
             city = city_wd["labels"]["en"]
@@ -2824,6 +2838,7 @@ class Fileprocessor:
             dry_run = True
 
         uploaded_paths = list()
+        '''
         files_filtered = list()
         # count for progressbar
         total_files = 0
@@ -2839,15 +2854,22 @@ class Fileprocessor:
                 else:
                     self.logger.info(filename + " invalid")
 
+        files = files_filtered
+        del files_filtered
+        '''
+        
+        total_files = len(files)
         progressbar_on = False
         if total_files > 1 and "progress" in desc_dict:
             progressbar_on = True
             pbar = tqdm(total=total_files)
-
-        files = files_filtered
-        del files_filtered
+        
 
         for filename in files:
+        
+            if not self.check_extension_valid(filename): continue
+            if not self.check_exif_valid(filename): continue
+                
             if "commons_uploaded" in filename:
                 continue
             assert "_place" + " " not in filename
@@ -3052,12 +3074,12 @@ class Fileprocessor:
                     custom_categories=custom_categories,
                     suffix=suffix,
                 )
-                wikidata_list = list()
-                wikidata_list += texts["structured_data_on_commons"]
-                wikidata_list += secondary_wikidata_ids
             if texts is None:
                 # invalid metadata for this file, continue to next file
                 continue
+            wikidata_list = list()
+            wikidata_list += texts["structured_data_on_commons"]
+            wikidata_list += secondary_wikidata_ids
             if (
                 desc_dict.get("move_ready", "") != ""
                 and desc_dict.get("move_ready", "") is not None

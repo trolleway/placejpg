@@ -28,6 +28,7 @@ PTZ5283=Q124209334
 BKM101=Q4053993
 BKM201=Q4053991
 BKM321=Q4053996
+vitovt=Q2638866
 vmz529800=Q4101956
 vmz529801=Q4101953
 vmz52980150=Q4101954
@@ -212,6 +213,13 @@ python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $gorozanin   i
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $BKM321   i/_trolleybuses/$city/BKM321  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $vmz529800   i/_trolleybuses/$city/vmz529800  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $trolza5275optima   i/_trolleybuses/$city/trolza5275optima  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+
+SYSTEM=Q4209556 #kaliningrad troll
+city=kaliningrad
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $ZIU9   i/_trolleybuses/$city/ZIU9  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $trolza5275optima   i/_trolleybuses/$city/trolza5275optima  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $vmz52980150   i/_trolleybuses/$city/vmz52980150  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $vitovt   i/_trolleybuses/$city/vitovt  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 
 
 

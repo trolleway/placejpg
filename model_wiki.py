@@ -1554,8 +1554,7 @@ class Model_wiki:
                 l, " - - - - - void string - - - "
             ):
                 is_triggered += 1
-                if is_triggered == 1:
-                    print()
+
                 print(text1_dict.get(l, " - - - - - void string - - - "))
                 print(text2_dict.get(l, " - - - - - void string - - - "))
                 print("^^^^^text changed^^^^^")

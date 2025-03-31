@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument("wikidata", help="wikidata object")
 parser.add_argument("place", help="wikidata object for place")
+parser.add_argument("--country", required=False, help="Country wikidata or name for create category [Wikidata object] in [country]")
 
 
 parser.add_argument(
@@ -43,7 +44,7 @@ candidates = list()
 location_commonscat_previous = ""
 
 
-if len(proposeds) > 0:
+if proposeds is not None and len(proposeds) > 0:
     for proposed_cat in proposeds:
         print(proposed_cat)
 

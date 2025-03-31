@@ -14,10 +14,9 @@ from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description=" ")
 
-parser.add_argument("--pagename", type=str, required=False, help="Wikipedia filepage")
-parser.add_argument(
-    "--csv", type=str, required=False, help="list of page names for batch rename"
-)
+group = parser.add_mutually_exclusive_group(required=True)
+group.add_argument("--pagename", type=str, required=False, help="Wikipedia filepage")
+group.add_argument(    "--csv", type=str, required=False, help="list of page names for batch rename")
 parser.add_argument("--wikidata", type=str, required=True)
 parser.add_argument("--suffix", type=str, required=False, default="")
 parser.add_argument("--prefix", type=str, required=False, default="")
@@ -47,6 +46,7 @@ class Helper_rename:
     fileprocessor = Fileprocessor()
     blacklist = list()
     blacklist.append("Ludvig14")
+    blacklist.append("A.Savin")
 
     def dowload_or_cache_read(self, FilePage) -> str:
         if not os.path.isdir(self.cachedir):

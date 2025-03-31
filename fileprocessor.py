@@ -1749,8 +1749,8 @@ class Fileprocessor:
         else:
             caption = ""
 
-        if objectname is None or caption is None:
-            return None
+        #if objectname is None or caption is None:
+        #    return None
         result = dict()
         result["object name"] = objectname
         result["caption"] = caption

@@ -33,7 +33,7 @@ from fileprocessor import Fileprocessor
 
 class Model_wiki:
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.ERROR,
         format="%(asctime)s %(levelname)-8s %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
@@ -673,10 +673,9 @@ class Model_wiki:
                 local_wikidata_uuid=local_wikidata_uuid,
             )
             if wikidata_only != True and catname is None:
-                street_category_result = self.create_category_by_wikidata(
-                    wdid, city_wdid
-                )
-                print(street_category_result)
+                print('call here generate category')
+                cmd=f"python3 add-category.py {wdid}"
+                os.system(cmd)
             else:
                 if catname is not None and self.is_category_exists(catname):
                     self.wikidata_add_commons_category(wdid, catname)
@@ -1238,6 +1237,9 @@ class Model_wiki:
         if len(datestr) < len("yyyy-mm-dd"):
             return False
         if len(datestr) > len("yyyy-mm-dd"):
+            return False
+        if datestr.startswith('1'):
+            print('datestr starts with 1, skip')
             return False
         assert datestr, "invalid date parce in " + page.full_url()
 
@@ -2718,17 +2720,16 @@ class Model_wiki:
                         .rjust(35)
                     )
                 )
-                print(info)
-                # self.logger.info(info)
+
 
             # search category "objects in city/country" by name
             if (
                 object_wd.get("commons") is not None
                 and geoobject_wd.get("commons") is not None
             ):
-                suggested_category = (
-                    object_wd["commons"] + " in " + geoobject_wd["commons"]
-                )
+                suggested_category = (                    object_wd["commons"] + " in " + geoobject_wd["commons"]                )
+                info = f'{info} ::::: {suggested_category}'
+                if verbose: print(info)
                 if self.is_category_exists(suggested_category):
                     text = suggested_category
                     if order:
@@ -2748,24 +2749,38 @@ class Model_wiki:
                     text = text + "|" + order
                 return text, proposed_categories
 
-            # save proposed category for optional manual creation
+
             # search upper level
             upper_wdid = self.get_upper_location_wdid(geoobject_wd)
-            if upper_wdid is None:
-                stop_hieraechy_walk = True
-                continue
-            upper_wd = self.get_wikidata_simplified(upper_wdid)
-            proposed_cat = {
+            if upper_wdid is not None:
+                #generate proposed cat for upper level
+                upper_wd = self.get_wikidata_simplified(upper_wdid)
+                proposed_cat = {
+                    "name": "Category:" + suggested_category,
+                    "object_wdid": object_wdid,
+                    "location_wdid": geoobject_wd["id"],
+                    "upper_location_wdid": upper_wdid,
+                }
+                proposed_categories.append(proposed_cat)
+            else:
+                print('no subcategories exist. Suggest to create new category for object in country '+suggested_category)         
+                proposed_cat = {
                 "name": "Category:" + suggested_category,
                 "object_wdid": object_wdid,
                 "location_wdid": geoobject_wd["id"],
                 "upper_location_wdid": upper_wdid,
-            }
-            proposed_categories.append(proposed_cat)
+                
+                } 
+                text = suggested_category
+                if order:
+                    text = text + "|" + order
+                stop_hieraechy_walk = True
+                return text, proposed_categories
 
             geoobject_wd = upper_wd
+        
 
-        return None
+        return text, proposed_categories
 
     def append_image_descripts_claim(
         self, commonsfilename, entity_list, dry_run=False

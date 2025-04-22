@@ -868,7 +868,7 @@ class Model_wiki:
 
         self.reset_cache()
 
-    def create_wikidata_building(self, data, dry_mode=False, local_wikidata_uuid=None):
+    def create_wikidata_building(self, data, dry_mode=False, local_wikidata_uuid=None)->str:
         assert "street_wikidata" in data
 
         # get street data from wikidata
@@ -2278,6 +2278,28 @@ class Model_wiki:
         else:
             self.logger.error(vehicle + " not implemented")
         return name
+    
+    def wikidata_set_building_date_russian_prerevolutionary(self, item_id):
+        site = pywikibot.Site("wikidata", "wikidata")
+        repo = site.data_repository()
+
+        # Load the Wikidata item
+        item = pywikibot.ItemPage(repo, item_id)
+        item.get()
+
+        # Create a new claim for P729 (service entry) with a decade-based date
+        claim = pywikibot.Claim(repo, "P729")
+        claim.setTarget(pywikibot.WbTime(year=1900,precision='decade', after=1900, before=1917, site=site))  # Using the starting year of the decade
+
+        # Add qualifier P1326 (latest date = 1917)
+        qualifier = pywikibot.Claim(repo, "P1326")
+        qualifier.setTarget(pywikibot.WbTime(year=1917,precision='year'))
+        claim.addQualifier(qualifier, summary="Adding latest date qualifier")
+        item.addClaim(claim, summary="Set service entry date to russian pre-revolutionary")
+        
+
+        print(f"Successfully updated {item_id}")
+                
 
     def wikidata_add_commons_category(self, item_id: str, category_name: str):
         """

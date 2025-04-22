@@ -90,7 +90,10 @@ parser.add_argument(
     "--levels_url", type=str, required=False, help="url for building levels refrence"
 )
 
-parser.add_argument("--year", type=int, required=False, help="year built")
+group_year = parser.add_mutually_exclusive_group()
+group_year.add_argument("--year", type=int, required=False, help="year built")
+group_year.add_argument("--earlyxx", action='store_true', help="built period is russia pre-revolutionary")
+
 parser.add_argument(
     "--year_url", type=str, required=False, help="url for year refrence"
 )
@@ -181,6 +184,9 @@ building_wdid = args.building
 city_wdid = modelwiki.wikidata_input2id(city_wdid)
 
 if args.snow_fix is not None:
+    # SNOW FIX
+    # UPGRADE WIKIDATA BUILDING INFO CREATED BY SNOW TOOL
+    # SET MACHINE-READABLE ADDR AND HUMAN-READ NAME FROM ADDR
     assert args.wikidata is not None
     building_wikidata = modelwiki.wikidata_input2id(args.wikidata)
     if city_wdid is None:
@@ -207,8 +213,8 @@ if args.snow_fix is not None:
     quit()
 
 elif args.wikidata is not None:
+    # CREATE BUILDING CATEGORY FOR WIKIDATA BUILDING
     wdid = args.wikidata
-    # create building category
     if ',' not in wdid:
         wdids=list()
         wdids.append(modelwiki.wikidata_input2id(wdid))
@@ -242,7 +248,7 @@ elif args.wikidata is not None:
     quit()
 
 else:
-    # create new building in wikidata
+    # CREATE BUILDING IN WIKIDATA
 
     if building_wdid is not None:
         building_wdid = modelwiki.wikidata_input2id(str(building_wdid).strip())
@@ -255,7 +261,7 @@ else:
                 f"can not find city for https://www.wikidata.org/wiki/{building_wikidata}"
             )
     assert city_wdid is not None
-    buildings = list()
+
     building = {
         "housenumber": str(args.housenumber),
         "building": building_wdid,
@@ -298,27 +304,28 @@ else:
             str(args.architecture).strip()
         )
 
-    buildings.append(building)
-    del building
+
 
     validation_pass = True
-    for building in buildings:
-        if modelwiki.validate_street_in_building_record(building) == False:
-            validation_pass = False
-    print("validation ok")
+
+    if modelwiki.validate_street_in_building_record(building) == False:
+        validation_pass = False
+
 
     if not validation_pass:
         print("street wikidata objects non valid")
         quit()
     category_name = ""
-    for data in buildings:
-        building_wikidata = modelwiki.create_wikidata_building(
-            data, dry_mode=dry_run, local_wikidata_uuid=local_wikidata_uuid
+
+    building_wikidata = modelwiki.create_wikidata_building(
+        building, dry_mode=dry_run, local_wikidata_uuid=local_wikidata_uuid
+    )
+    if args.earlyxx: modelwiki.wikidata_set_building_date_russian_prerevolutionary(building_wikidata)
+    
+    if not args.wikidata_only and args.category is None:
+        category_name = modelwiki.create_building_category(
+            building_wikidata, city_wikidata=city_wdid, dry_mode=dry_run
         )
-        if not args.wikidata_only and args.category is None:
-            category_name = modelwiki.create_building_category(
-                building_wikidata, city_wikidata=city_wdid, dry_mode=dry_run
-            )
 
     # end of method
     if args.dry_run:

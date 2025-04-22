@@ -100,7 +100,7 @@ class Model_Geo:
         layer=None
         ds = None
 
-    def make_photo_coordinates_file(self, startpath, geojsonl_filename):
+    def make_photo_coordinates_file(self, startpath, geojsonl_filename, depth0=False):
         from fileprocessor import Fileprocessor as Fileprocessor_ask
         localinstance_fileprocessor = Fileprocessor_ask()
         assert os.path.isdir(startpath), "The path is not a directory"
@@ -153,7 +153,8 @@ class Model_Geo:
                     feature.SetField("filename", filepath)
                     layer.CreateFeature(feature)
                     del feature
-        del layer
-        del ds
+                if depth0: break
+        #del layer
+        #del ds
                 
                 

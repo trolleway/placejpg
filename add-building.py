@@ -287,7 +287,12 @@ else:
     if args.project:
         building["project"] = modelwiki.wikidata_input2id(str(args.project).strip())
     if args.architect:
-        building["architect"] = modelwiki.wikidata_input2id(str(args.architect).strip())
+        if ','in args.architect:
+            building["architect"]=[]
+            for a in args.architect.split():
+                building["architect"].append(modelwiki.wikidata_input2id(str(args.architect).strip()))
+        else:
+            building["architect"] = modelwiki.wikidata_input2id(str(args.architect).strip())
     if args.architecture:
         building["architecture"] = modelwiki.wikidata_input2id(
             str(args.architecture).strip()

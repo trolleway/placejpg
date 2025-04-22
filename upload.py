@@ -45,6 +45,7 @@ desc_dict['country'] = args.country
 desc_dict['secondary_objects'] = args.secondary_objects
 desc_dict['rail'] = args.rail
 desc_dict['later'] = args.later
+desc_dict['verify'] = args.verify
 desc_dict['move_ready'] = args.move_ready
 desc_dict['progress'] = args.progress
 

@@ -454,6 +454,7 @@ class Fileprocessor:
             model_wd = modelwiki.get_wikidata_simplified(model_wdid)
             model_names = model_wd["labels"]
             wikidata_4_structured_data.add(model_wd["id"])
+            
 
         # ROUTE
         if route is None:
@@ -597,17 +598,30 @@ class Fileprocessor:
                 raise ValueError(
                     "vehicle model https://www.wikidata.org/wiki/"
                     + model_wdid
-                    + " must has name en"
+                    + " must has name en" + '  now it is '+str(model_names)
                 )
             city_wdid = None
-            city_wdid = self.get_place_from_input(
-                filename, "building-generator.gpkg", geo_dict, layer="cities"
-            )
+            if os.path.isfile("building-generator.gpkg"):
+                city_wdid = (
+                    self.get_place_from_input(
+                        filename,
+                        "building-generator.gpkg",
+                        geo_dict,
+                        layer="cities",
+                        override_key="_city",
+                        geodata_attribute="wikidata",
+                    )
+                    or ""
+                )
+
             if city_wdid is not None:
-                city_wd = modelwiki.get_wikidata_simplified(city_wdid)
+                try:
+                    city_wd = modelwiki.get_wikidata_simplified(city_wdid)
+                except:
+                    raise ValueError(f'invalid city: {city_wd}')
+                    
                 city_name_en = city_wd["labels"]["en"]
                 city_name_ru = city_wd["labels"]["en"]
-
             objectname_en = "{city} {transport} {license_plate}".format(
                 transport=vehicle,
                 city=city_name_en,
@@ -1109,6 +1123,10 @@ class Fileprocessor:
         liveries_codes["RZDGREEN"] = "Russian railways green livery"
         liveries_codes["RZD"] = "Russian Railways livery"
         liveries_codes["NASHEPODMOSKOVIE"] = "Nashe Podmoskovie livery"
+        liveries_codes["SPBTURQ"] = "Saint Petersburg turquoise livery"
+        liveries_codes["MGTGW"] = "[[Category:{transports} in Mosgortrans green and white livery]]"
+        liveries_codes["SPBCR"] = "[[Category:{transports} in Saint Petersburg cream and red livery]]"
+        liveries_codes["SPBVODKA"] = "[[Category:{transports} in Saint Petersburg cream and teal livery]]"
         if colors is None and "color" in os.path.basename(filename):
             colors = self.get_colorlist_from_string(os.path.basename(filename))
         if colors is not None:
@@ -1120,6 +1138,26 @@ class Fileprocessor:
                 )
             elif colors[0].upper() == "RZD":
                 text += "[[Category:{transports} in Russian Railways livery]]\n".format(
+                    transports=transports_color[vehicle].capitalize(),
+                    colorname=colorname,
+                )
+            elif colors[0].upper() == "MGTGW":
+                text += "[[Category:{transports} in Mosgortrans green and white livery]]\n".format(
+                    transports=transports_color[vehicle].capitalize(),
+                    colorname=colorname,
+                )
+            elif colors[0].upper() == "SPBTURQ":
+                text += "[[Category:{transports} in Saint Petersburg turquoise livery]]\n".format(
+                    transports=transports_color[vehicle].capitalize(),
+                    colorname=colorname,
+                )
+            elif colors[0].upper() == "SPBCR":
+                text += "[[Category:{transports} in Saint Petersburg cream and red livery]]\n".format(
+                    transports=transports_color[vehicle].capitalize(),
+                    colorname=colorname,
+                )
+            elif colors[0].upper() == "SPBVODKA":
+                text += "[[Category:{transports} in Saint Petersburg cream and teal livery]]\n".format(
                     transports=transports_color[vehicle].capitalize(),
                     colorname=colorname,
                 )
@@ -2825,10 +2863,6 @@ class Fileprocessor:
         if not "secondary_objects" in desc_dict:
             # for simple call next function
             desc_dict["secondary_objects"] = list()
-        if not "dry_run" in desc_dict:
-            desc_dict["dry_run"] = False  # for simple call next function
-        if not "later" in desc_dict:
-            desc_dict["later"] = False  # for simple call next function
         if not "verify" in desc_dict:
             desc_dict["verify"] = False  # for simple call next function
         # if "country" in desc_dict:
@@ -2841,9 +2875,8 @@ class Fileprocessor:
         if len(files) == 0:
             quit()
 
-        dry_run = desc_dict["dry_run"]
-        if desc_dict["later"] == True:
-            dry_run = True
+        
+
 
         uploaded_paths = list()
         '''
@@ -3104,6 +3137,8 @@ class Fileprocessor:
                 shutil.move(filename, dest_filepath)
                 self.logger.info("moved " + filename + " to " + dest_filepath)
                 continue
+                
+            
 
             # HACK
             # UPLOAD WEBP instead of TIFF if tiff is big
@@ -3121,8 +3156,8 @@ class Fileprocessor:
                 print(
                     "found tif and webp file with same name. upload webp with fileinfo from tif"
                 )
-                if not dry_run:
-                    self.move_file_to_uploaded_dir(filename, uploaded_folder_path)
+
+                self.move_file_to_uploaded_dir(filename, uploaded_folder_path)
                 filename = filename_webp
                 texts["name"] = (
                     texts["name"].replace(".tif", ".webp").replace(".tiff", ".webp")
@@ -3136,8 +3171,8 @@ class Fileprocessor:
                 print(
                     "found mp4 and webm file with same name. upload webm with fileinfo from mp4"
                 )
-                if not dry_run:
-                    self.move_file_to_uploaded_dir(filename, uploaded_folder_path)
+
+                self.move_file_to_uploaded_dir(filename, uploaded_folder_path)
                 filename = video_converted_filename
                 texts["name"] = (
                     texts["name"]
@@ -3165,85 +3200,85 @@ class Fileprocessor:
                 templist.append("【" + wd["labels"].get("en", "no en label") + "】")
             print("-".join(templist))
             del templist
+            
+            if desc_dict["verify"]:
+                print("Run in verify mode. Press Enter to continue or Ctrl+C for cancel...")
+                input()
+            
+            if "_replace" in filename:
+                # ignore_warning=True
 
-            if not dry_run:
-                if "_replace" in filename:
-                    # ignore_warning=True
-
-                    # if "_reupload" in filename:
-                    self.logger.info("replace file..")
-                    modelwiki.replace_file_commons(
-                        modelwiki.pagename_from_id(
-                            self.get_replace_id_from_string(filename)
-                        ),
-                        filename,
-                    )
-
-                    self.logger.info(
-                        "now will replacing text on https://commons.wikimedia.org/entity/M"
-                        + self.get_replace_id_from_string(filename)
-                    )
-                    print("Texts for  update")
-
-                    txt = (
-                        "{{Rename|"
-                        + texts["name"]
-                        + "|2|More detailed object name, taken from wikidata}}"
-                    )
-                    print(txt)
-                    print(texts["text"])
-                    newtext = txt + "/n" + texts["text"]
-                    modelwiki.replace_file_text(
-                        modelwiki.pagename_from_id(
-                            self.get_replace_id_from_string(filename)
-                        ),
-                        newtext,
-                        message="Replace my image imported from Panoramio with original uncompressed file with more detailed description",
-                    )
-                    del newtext
-
-                    self.logger.info("Text replaced")
-                    # CREATE CATEGORY PAGES
-                    if len(texts["need_create_categories"]) > 0:
-                        for ctd in texts["need_create_categories"]:
-                            if not modelwiki.is_category_exists(ctd["name"]):
-                                self.logger.info("creating category " + ctd["name"])
-                            modelwiki.create_category(ctd["name"], ctd["content"])
-
-                    # move uploaded file to subfolder
-                    if not dry_run:
-                        self.move_file_to_uploaded_dir(filename, uploaded_folder_path)
-
-                    if progressbar_on:
-                        pbar.update(1)
-
-                    continue
-                else:
-                    ignore_warning = False
-                upload_messages = self.upload_file(
+                # if "_reupload" in filename:
+                self.logger.info("replace file..")
+                modelwiki.replace_file_commons(
+                    modelwiki.pagename_from_id(
+                        self.get_replace_id_from_string(filename)
+                    ),
                     filename,
-                    texts["name"],
-                    texts["text"],
-                    verify_description=desc_dict["verify"],
-                    ignore_warning=ignore_warning,
                 )
 
-                print(upload_messages)
+                self.logger.info(
+                    "now will replacing text on https://commons.wikimedia.org/entity/M"
+                    + self.get_replace_id_from_string(filename)
+                )
+                print("Texts for  update")
+
+                txt = (
+                    "{{Rename|"
+                    + texts["name"]
+                    + "|2|More detailed object name, taken from wikidata}}"
+                )
+                print(txt)
+                print(texts["text"])
+                newtext = txt + "/n" + texts["text"]
+                modelwiki.replace_file_text(
+                    modelwiki.pagename_from_id(
+                        self.get_replace_id_from_string(filename)
+                    ),
+                    newtext,
+                    message="Replace my image imported from Panoramio with original uncompressed file with more detailed description",
+                )
+                del newtext
+
+                self.logger.info("Text replaced")
+                # CREATE CATEGORY PAGES
+                if len(texts["need_create_categories"]) > 0:
+                    for ctd in texts["need_create_categories"]:
+                        if not modelwiki.is_category_exists(ctd["name"]):
+                            self.logger.info("creating category " + ctd["name"])
+                        modelwiki.create_category(ctd["name"], ctd["content"])
+
+                # move uploaded file to subfolder
+
+                self.move_file_to_uploaded_dir(filename, uploaded_folder_path)
+
+                if progressbar_on:
+                    pbar.update(1)
+
+                continue
+            else:
+                ignore_warning = False
+            upload_messages = self.upload_file(
+                filename,
+                texts["name"],
+                texts["text"],
+                verify_description=desc_dict["verify"],
+                ignore_warning=ignore_warning,
+            )
+
+            print(upload_messages)
 
             self.logger.info("append claims")
 
             claims_append_result = modelwiki.append_image_descripts_claim(
-                texts["name"], wikidata_list, dry_run
-            )
+                texts["name"], wikidata_list)
             claims_append_result = modelwiki.append_location_of_creation(
-                texts["name"], texts["location_of_creation"], dry_run
+                texts["name"], texts["location_of_creation"])
+
+            modelwiki.create_category_taken_on_day(
+                texts["country"].title(), texts["dt_obj"].strftime("%Y-%m-%d")
             )
-            if not dry_run:
-                modelwiki.create_category_taken_on_day(
-                    texts["country"].title(), texts["dt_obj"].strftime("%Y-%m-%d")
-                )
-            else:
-                print("will append " + " ".join(wikidata_list))
+
 
             uploaded_paths.append(
                 "https://commons.wikimedia.org/wiki/File:"
@@ -3306,18 +3341,16 @@ class Fileprocessor:
                     modelwiki.create_category(ctd["name"], ctd["content"])
 
             # move uploaded file to subfolder
-            if not dry_run:
-                self.move_file_to_uploaded_dir(filename, uploaded_folder_path)
+            self.move_file_to_uploaded_dir(filename, uploaded_folder_path)
 
             if progressbar_on:
                 pbar.update(1)
 
         if progressbar_on:
             pbar.close()
-        if not dry_run:
-            self.logger.info("uploaded: ")
-        else:
-            self.logger.info("emulating upload. URL will be: ")
+
+        self.logger.info("uploaded: ")
+
 
         self.logger.info("\n".join(uploaded_paths))
 

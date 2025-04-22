@@ -2373,8 +2373,6 @@ class Model_wiki:
             self.create_page(pagename, content, "create category")
             print("Created new category with content")
             print(content)
-        else:
-            self.logger.info("page already exists " + pagename)
 
     def wikidata2instanceof_list(self, wdid) -> list:
         """

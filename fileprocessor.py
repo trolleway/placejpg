@@ -792,9 +792,11 @@ class Fileprocessor:
         if route is not None:
             captions[lang] += " Маршрут " + route
         if line_wdid is not None:
-            captions[lang] += (
-                " " + modelwiki.get_wikidata_simplified(line_wdid)["labels"][lang]
-            )
+            line_wd = modelwiki.get_wikidata_simplified(line_wdid)
+            if line_wd["labels"].get(lang) is not None:
+                captions[lang] += line_wd["labels"].get(lang)
+            else:
+                captions[lang] += line_wd["labels"].get('en')
         text += "{{" + lang + "|1=" + captions[lang] + "}}" + "\n"
 
         if vehicle in ("bus", "trolleybus", "tram"):

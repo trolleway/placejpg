@@ -816,13 +816,14 @@ class Fileprocessor:
         # CULTURAL HERITAGE
         # if object is cultural heritage: insert special templates
         heritage_id = None
-        for wdid in [street_wdid]+secondary_wikidata_ids:
-            heritage_id = modelwiki.get_heritage_id(wdid)
-            if heritage_id is not None:
-                text += "{{Cultural Heritage Russia|" + heritage_id + "}}"
-                today = datetime.today()
-                if today.strftime("%Y-%m") == "2024-09":
-                    text += "{{Wiki Loves Monuments 2024|ru}}"
+        if 'noheritage' not in os.path.basename(filename).lower():
+            for wdid in [street_wdid]+secondary_wikidata_ids:
+                heritage_id = modelwiki.get_heritage_id(wdid)
+                if heritage_id is not None:
+                    text += "{{Cultural Heritage Russia|" + heritage_id + "}}"
+                    today = datetime.today()
+                    if today.strftime("%Y-%m") == "2024-09":
+                        text += "{{Wiki Loves Monuments 2024|ru}}"
 
 
                     
@@ -2004,13 +2005,14 @@ class Fileprocessor:
         # CULTURAL HERITAGE
         # if object is cultural heritage: insert special templates
         heritage_id = None
-        for wdid in [wikidata]+secondary_wikidata_ids:
-            heritage_id = modelwiki.get_heritage_id(wdid)
-            if heritage_id is not None:
-                st += "{{Cultural Heritage Russia|" + heritage_id + "}}"
-                today = datetime.today()
-                if today.strftime("%Y-%m") == "2024-09":
-                    st += "{{Wiki Loves Monuments 2024|ru}}"
+        if 'noheritage' not in os.path.basename(filename).lower():
+            for wdid in [wikidata]+secondary_wikidata_ids:
+                heritage_id = modelwiki.get_heritage_id(wdid)
+                if heritage_id is not None:
+                    st += "{{Cultural Heritage Russia|" + heritage_id + "}}"
+                    today = datetime.today()
+                    if today.strftime("%Y-%m") == "2024-09":
+                        st += "{{Wiki Loves Monuments 2024|ru}}"
 
         # wikidata depicts
         st += """ |other_fields_1 = 

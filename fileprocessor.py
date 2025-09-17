@@ -618,7 +618,8 @@ class Fileprocessor:
                 try:
                     city_wd = modelwiki.get_wikidata_simplified(city_wdid)
                 except:
-                    raise ValueError(f'invalid city: {city_wd}')
+                    print(city_wdid)
+                    raise ValueError(f'invalid city: {city_wdid}')
                     
                 city_name_en = city_wd["labels"]["en"]
                 city_name_ru = city_wd["labels"]["en"]
@@ -752,11 +753,11 @@ class Fileprocessor:
         if vehicle in ("bus", "trolleybus", "tram"):
             text = """== {{int:filedesc}} ==
     {{Bus-Information
-    |description="""
+    """
         else:
             text = """== {{int:filedesc}} ==
     {{Information
-    |description="""
+    """
         captions = dict()
         assert "en" in street_names, (
             "https://www.wikidata.org/wiki/" + street_wdid + " must have english name"
@@ -773,7 +774,7 @@ class Fileprocessor:
             captions["en"] += (
                 " " + modelwiki.get_wikidata_simplified(line_wdid)["labels"]["en"]
             )
-        text += "{{en|1=" + captions["en"] + "}}" + "\n"
+
 
         lang = "ru"
         assert street_names.get(lang, "") != "", (
@@ -797,8 +798,8 @@ class Fileprocessor:
                 captions[lang] += line_wd["labels"].get(lang)
             else:
                 captions[lang] += line_wd["labels"].get('en')
-        text += "{{" + lang + "|1=" + captions[lang] + "}}" + "\n"
 
+        '''
         if vehicle in ("bus", "trolleybus", "tram"):
             text += " {{#property:P180|from=M{{PAGEID}} }} \n"
         else:
@@ -813,17 +814,8 @@ class Fileprocessor:
                     pass
                 else:
                     text += " {{on Wikidata|" + wdid + "}}\n"
-        # CULTURAL HERITAGE
-        # if object is cultural heritage: insert special templates
-        heritage_id = None
-        if 'noheritage' not in os.path.basename(filename).lower():
-            for wdid in [street_wdid]+secondary_wikidata_ids:
-                heritage_id = modelwiki.get_heritage_id(wdid)
-                if heritage_id is not None:
-                    text += "{{Cultural Heritage Russia|" + heritage_id + "}}"
-                    today = datetime.today()
-                    if today.strftime("%Y-%m") == "2024-09":
-                        text += "{{Wiki Loves Monuments 2024|ru}}"
+        '''
+
 
 
                     
@@ -850,6 +842,20 @@ class Fileprocessor:
         text += self.get_date_information_part(dt_obj, country)
         text += self.get_source_information_part(filename)
         text += "}}\n"
+        
+        # CULTURAL HERITAGE
+        # if object is cultural heritage: insert special templates
+        heritage_id = None
+        if 'noheritage' not in os.path.basename(filename).lower():
+            for wdid in [street_wdid]+secondary_wikidata_ids:
+                heritage_id = modelwiki.get_heritage_id(wdid)
+                if heritage_id is not None:
+                    text += "{{Cultural Heritage Russia|" + heritage_id + "}}"
+                    today = datetime.today()
+                    if today.strftime("%Y-%m") == "2025-09":
+                        text += "{{Wiki Loves Monuments 2025|ru}}"
+                        
+        
         tech_description, tech_categories = self.get_tech_description(
             filename, geo_dict
         )
@@ -1730,7 +1736,13 @@ class Fileprocessor:
                     + "\n"
                 )
                 text += st
-        camera_text, camera_categories = self.get_camera_text(filename)
+        camera_result = self.get_camera_text(filename)
+        if camera_result is not None:
+            camera_text, camera_categories = camera_result
+        else:
+            camera_categories = set()
+            camera_text = ''
+        
         text += camera_text
 
         if mapillarykey is None and mapillaryuser is None:
@@ -1836,6 +1848,8 @@ class Fileprocessor:
         dt_obj = self.image2datetime(filename)
         iptc_objectname = self.image2objectname(filename)
         geo_dict = self.image2coords(filename)
+        
+        if wikidata.startswith('Q') and wikidata[1:].isdigit():  location_of_creation = wikidata
 
         # Optionaly obtain wikidata from gpkg file if wikidata parameter is path to vector file (.gpkg)
         if os.path.isfile(wikidata):
@@ -1890,6 +1904,7 @@ class Fileprocessor:
         iptc_captions = self.read_IPTC(filename)
 
         text = ""
+        captions = {}
         objectnames = {}
         objectname_long = {}
         objectnames_long = {}
@@ -1980,27 +1995,67 @@ class Fileprocessor:
     """
         st = """== {{int:filedesc}} ==
 {{Information
-|description="""
+"""
 
+        desctext=''
         if iptc_captions is not None and iptc_captions.get("objectname", "") != "":
-            st += iptc_captions["objectname"]
+            desctext += iptc_captions["objectname"]
 
         if iptc_captions is not None and iptc_captions.get("caption", "") != "":
-            st += iptc_captions["caption"]
+            desctext += iptc_captions["caption"]
 
         for lang in self.langs_primary:
-            st += "{{" + lang + "|1=" + objectname_long[lang] + "}} \n"
+            if objectname_long.get(lang,'') != '':
+                if 3<len(objectname_long.get(lang,''))<250:
+                    captions[lang]=objectname_long[lang]
+                else:
+                    desctext += "{{" + lang + "|1=" + objectname_long[lang] + "}} \n"
 
         for lang in self.langs_optional:
-            if lang in objectnames_long:
-                st += "{{" + lang + "|1=" + objectnames_long[lang] + "}} \n"
+            if objectname_long.get(lang,'') != '':
+                if 3<len(objectname_long.get(lang,''))<250:
+                    captions[lang]=objectname_long[lang]
+                else:
+                    desctext += "{{" + lang + "|1=" + objectname_long[lang] + "}} \n"
+        if desctext != '':
+            st += '|description='+desctext
+            st += " {{on Wikidata|" + wikidata + "}}\n"
+            if len(secondary_wikidata_ids) > 0:
+                for secondary_wikidata_id in secondary_wikidata_ids:
+                    if secondary_wikidata_id == wikidata:
+                        continue
+                    st += " {{on Wikidata|" + secondary_wikidata_id + "}}\n"
+        else:
+            st += ''
+        del desctext
+                
 
-        st += " {{on Wikidata|" + wikidata + "}}\n"
-        if len(secondary_wikidata_ids) > 0:
-            for secondary_wikidata_id in secondary_wikidata_ids:
-                if secondary_wikidata_id == wikidata:
-                    continue
-                st += " {{on Wikidata|" + secondary_wikidata_id + "}}\n"
+        
+
+
+
+        other_fields=''
+        # wikidata place of creation
+        if location_of_creation is not None and location_of_creation != '':
+        
+            other_fields += """{{Information field
+     |name  = {{Label|P1071|link=-|capitalization=ucfirst}} 
+     |value = {{#invoke:Information|SDC_Location|icon=true}} {{#if:{{#property:P1071|from=M{{PAGEID}} }}|(<small>{{#invoke:PropertyChain|PropertyChain|qID={{#invoke:WikidataIB |followQid |props=P1071}}|pID=P131|endpID=P17}}</small>)}} }}\n"""
+
+        
+        # wikidata depicts
+        other_fields += """{{Information field
+ |name  = {{Label|P180|link=-|capitalization=ucfirst}} 
+ |value = {{#property:P180|from=M{{PAGEID}} }} }} \n"""
+        if other_fields != '':
+            other_fields = '|other_fields_1 ='+other_fields
+            st += other_fields
+        del other_fields
+        st += self.get_date_information_part(dt_obj, country)
+        st += self.get_source_information_part(filename)
+        st += "}}\n"
+
+        text += st
 
         # CULTURAL HERITAGE
         # if object is cultural heritage: insert special templates
@@ -2011,20 +2066,9 @@ class Fileprocessor:
                 if heritage_id is not None:
                     st += "{{Cultural Heritage Russia|" + heritage_id + "}}"
                     today = datetime.today()
-                    if today.strftime("%Y-%m") == "2024-09":
-                        st += "{{Wiki Loves Monuments 2024|ru}}"
+                    if today.strftime("%Y-%m") == "2025-09":
+                        st += "{{Wiki Loves Monuments 2025|ru}}"
 
-        # wikidata depicts
-        st += """ |other_fields_1 = 
-{{Information field
- |name  = {{Label|P180|link=-|capitalization=ucfirst}} 
- |value = {{#property:P180|from=M{{PAGEID}} }} }} \n"""
-
-        st += self.get_date_information_part(dt_obj, country)
-        st += self.get_source_information_part(filename)
-        st += "}}\n"
-
-        text += st
 
         tech_description, tech_categories = self.get_tech_description(
             filename, geo_dict
@@ -2355,6 +2399,7 @@ class Fileprocessor:
         return {
             "name": commons_filename,
             "text": text,
+            "captions": captions,
             "dt_obj": dt_obj,
             "country": country,
             "structured_data_on_commons": list(wikidata_4_structured_data),
@@ -3275,9 +3320,11 @@ class Fileprocessor:
 
             claims_append_result = modelwiki.append_image_descripts_claim(
                 texts["name"], wikidata_list)
-            claims_append_result = modelwiki.append_location_of_creation(
-                texts["name"], texts["location_of_creation"])
-
+            print('location_of_creation='+texts["location_of_creation"])
+            captions_append_result = modelwiki.set_image_captions_SDC(
+                texts["name"], texts.get('captions')) 
+            claims_append_result = modelwiki.append_image_SDC(
+                texts["name"], [texts["location_of_creation"]], prop='P1071') 
             modelwiki.create_category_taken_on_day(
                 texts["country"].title(), texts["dt_obj"].strftime("%Y-%m-%d")
             )

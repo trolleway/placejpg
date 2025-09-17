@@ -1301,6 +1301,120 @@ class Model_wiki:
                 page.save(message + " with manual preview")
                 self.create_category_taken_on_day(location, datestr)
 
+    def dev_page_category_taken_on(
+        self,
+        page,
+        location,
+        dry_run=True,
+        interactive=False,
+        verbose=True,
+        message="set Taken on category for manual set list of images",
+    ):
+        assert page
+        texts = dict()
+        page_not_need_change = False
+        texts[0] = page.text
+
+        if ".svg".upper() in page.full_url().upper():
+            return False
+        if ".png".upper() in page.full_url().upper():
+            return False
+        if ".ogg".upper() in page.full_url().upper():
+            return False
+
+        if "{{Information".upper() not in texts[0].upper():
+            self.logger.debug("template Information not exists in " + page.title())
+            return False
+        if "|location=".upper() + location.upper() in texts[0].upper():
+            self.logger.debug("|location=" + location + " already in page")
+            page_not_need_change = True
+            texts[1] = texts[0]
+        else:
+            try:
+                texts[1] = self._text_add_category_taken_on(texts[0])
+            except:
+                raise ValueError("invalid page text in " + page.full_url())
+        assert (
+            "Taken on".upper() in texts[1].upper()
+            or "Taken in".upper() in texts[1].upper()
+            or "According to Exif data".upper() in texts[1].upper()
+        ), ("wrong text in " + page.title())
+
+        datestr = self.get_date_from_pagetext(texts[1])
+        if datestr == False:
+            return False
+        if "/" in datestr:
+            raise ValueError(
+                "Slash symbols in date causes side-effects. Normalize date in "
+                + page.full_url()
+            )
+        if len(datestr) < len("yyyy-mm-dd"):
+            return False
+        if len(datestr) > len("yyyy-mm-dd"):
+            return False
+        if datestr.startswith('1'):
+            print('datestr starts with 1, skip')
+            return False
+        assert datestr, "invalid date parce in " + page.full_url()
+
+        location_value_has_already = self._text_get_template_taken_on_location(texts[1])
+
+        if location_value_has_already is None:
+            texts[2] = self._text_add_template_taken_on_location(texts[1], location)
+        else:
+            texts[2] = self._text_get_template_replace_on_location(texts[1], location)
+
+        if texts[2] == False:
+            return False
+        if "|location=" + location + "}}" not in texts[2]:
+            return False
+        # Remove category
+        cat = "Russia photographs taken on " + datestr
+        texts[2] = texts[2].replace("[[Category:" + cat + "]]", "")
+        texts[2] = texts[2].replace("[[Category:" + cat.replace(" ", "_") + "]]", "")
+
+        date_obj = datetime.strptime(datestr, "%Y-%m-%d")
+        date_obj.strftime("%B %Y")
+        cat = date_obj.strftime("%B %Y") + " in " + location
+        texts[2] = texts[2].replace("[[Category:" + cat + "]]", "")
+        texts[2] = texts[2].replace("[[Category:" + cat.replace(" ", "_") + "]]", "")
+
+        cat = date_obj.strftime("%Y") + " in " + location
+        texts[2] = texts[2].replace("[[Category:" + cat + "]]", "")
+        texts[2] = texts[2].replace("[[Category:" + cat.replace(" ", "_") + "]]", "")
+
+        cat = date_obj.strftime("%Y") + " in Russia"
+        texts[2] = texts[2].replace("[[Category:" + cat + "]]", "")
+        texts[2] = texts[2].replace("[[Category:" + cat.replace(" ", "_") + "]]", "")
+
+        self.difftext(texts[0], texts[2])
+        if texts[0] != texts[2]:
+            page_not_need_change = False
+
+        if verbose:
+            print(
+                "----------- proposed page content ----------- " + datestr + "--------"
+            )
+
+            print(texts[2])
+        if not dry_run and not interactive:
+            page.text = texts[2]
+            if page_not_need_change == False:
+                page.save(message)
+            self.create_category_taken_on_day(location, datestr)
+        else:
+            print("page not changing")
+
+        if interactive:
+            answer = input(" do change on  " + page.full_url() + "\n y / n   ? ")
+            # Remove white spaces after the answers and convert the characters into lower cases.
+            answer = answer.strip().lower()
+
+            if answer in ["yes", "y", "1"]:
+                page.text = texts[2]
+                page.save(message + " with manual preview")
+                self.create_category_taken_on_day(location, datestr)
+
     @staticmethod
     def is_wikidata_id(text) -> bool:
         # check if string is valid wikidata id
@@ -2801,119 +2915,73 @@ class Model_wiki:
 
         return text, proposed_categories
 
+    def set_image_captions_SDC(
+        self,
+        commonsfilename: str,
+        captions: dict
+    ) -> bool:
+        """
+        Set multilingual captions (labels) on a Commons file's MediaInfo entity.
+
+        :param commonsfilename: Title of the file on Commons (e.g. "File:Example.jpg").
+        :param captions: Dictionary mapping language codes to caption text.
+        :return: True on success, False on failure.
+        """
+        assert isinstance(captions, dict), "captions must be a dict of {lang: text}"
+        if not captions:
+            self.logger.warning("No captions provided.")
+            return False
+
+        # Prepare filename and connect to Commons
+        fileprocessor = Fileprocessor()
+        commonsfilename = fileprocessor.prepare_commonsfilename(commonsfilename)
+        print(commonsfilename)
+
+        site = pywikibot.Site("commons", "commons")
+        site.login()
+        page = pywikibot.FilePage(site, title=commonsfilename)
+
+        # Identify the MediaInfo entity (e.g. "M123456")
+        media_id = f"M{page.pageid}"
+        item = page.data_item()
+
+        # Apply each caption as a label
+        for lang, text in captions.items():
+            if not text:
+                continue
+            try:
+                item.editLabels(
+                    labels={lang: text},
+                    summary=f"Setting caption ({lang}) to '{text}'"
+                )
+                print(f"Caption for '{lang}' updated.")
+            except pywikibot.data.api.APIError as e:
+                self.logger.error(f"Failed to set caption [{lang}]: {e}")
+                return False
+
+        return True
+    
     def append_image_descripts_claim(
         self, commonsfilename, entity_list, dry_run=False
     ) -> bool:
-
-        assert isinstance(entity_list, list)
-        assert len(entity_list) > 0
-        if dry_run:
-            print("simulate add entities")
-            self.pp.pprint(entity_list)
-            return
-        from fileprocessor import Fileprocessor
-
-        fileprocessor = Fileprocessor()
-        commonsfilename = fileprocessor.prepare_commonsfilename(commonsfilename)
-
-        site = pywikibot.Site("commons", "commons")
-        site.login()
-        site.get_tokens("csrf")  # preload csrf token
-        page = pywikibot.Page(site, title=commonsfilename, ns=6)
-        media_identifier = "M{}".format(page.pageid)
-
-        # fetch exist structured data
-
-        request = site.simple_request(action="wbgetentities", ids=media_identifier)
-        try:
-            raw = request.submit()
-        except:
-            self.logger.error(traceback.format_exc())
-            return None
-
-        existing_data = None
-        if raw.get("entities").get(media_identifier).get("pageid"):
-            existing_data = raw.get("entities").get(media_identifier)
-
-        try:
-            depicts = existing_data.get("statements").get("P180")
-        except:
-            depicts = None
-        for entity in entity_list:
-            if depicts is not None:
-                # Q80151 (hat)
-                if any(
-                    statement["mainsnak"]["datavalue"]["value"]["id"] == entity
-                    for statement in depicts
-                ):
-                    print(
-                        "There already exists a statement claiming that this media depicts a "
-                        + entity
-                        + " continue to next entity"
-                    )
-                    continue
-
-            statement_json = {
-                "claims": [
-                    {
-                        "mainsnak": {
-                            "snaktype": "value",
-                            "property": "P180",
-                            "datavalue": {
-                                "type": "wikibase-entityid",
-                                "value": {
-                                    "numeric-id": entity.replace("Q", ""),
-                                    "id": entity,
-                                },
-                            },
-                        },
-                        "type": "statement",
-                        "rank": "normal",
-                    }
-                ]
-            }
-
-            csrf_token = site.tokens["csrf"]
-            payload = {
-                "action": "wbeditentity",
-                "format": "json",
-                "id": media_identifier,
-                "data": json.dumps(statement_json, separators=(",", ":")),
-                "token": csrf_token,
-                "summary": "adding depicts statement",
-                # in case you're using a bot account (which you should)
-                "bot": False,
-            }
-
-            request = site.simple_request(**payload)
-            try:
-                request.submit()
-            except pywikibot.data.api.APIError as e:
-                print("Got an error from the API, the following request were made:")
-                print(request)
-                print("Error: {}".format(e))
-
-        return True
-
-    def append_location_of_creation(
-        self, commonsfilename, entity, dry_run=False
+        return self.append_image_SDC(commonsfilename, entity_list, prop='P180',dry_run=dry_run)
+    
+    def append_image_SDC(
+        self, commonsfilename, entity_list, prop='', dry_run=False
     ) -> bool:
-        entity = entity.strip()
-        if entity == "":
-            return True
-        entity_list = list()
-        entity_list.append(entity)
 
         assert isinstance(entity_list, list)
         assert len(entity_list) > 0
-        if dry_run:
-            print("simulate add entities")
-            self.pp.pprint(entity_list)
-            return
+        assert prop.startswith('P')
+        assert prop[1:].isdigit()
+        
+        
+
         from fileprocessor import Fileprocessor
 
         fileprocessor = Fileprocessor()
         commonsfilename = fileprocessor.prepare_commonsfilename(commonsfilename)
+
 
         site = pywikibot.Site("commons", "commons")
         site.login()
@@ -2935,12 +3003,12 @@ class Model_wiki:
             existing_data = raw.get("entities").get(media_identifier)
 
         try:
-            depicts = existing_data.get("statements").get("P1071")
+            depicts = existing_data.get("statements").get(prop)
         except:
             depicts = None
         for entity in entity_list:
-            if depicts is not None:
-                # Q80151 (hat)
+            if entity=='': continue
+            if depicts is not None :
                 if any(
                     statement["mainsnak"]["datavalue"]["value"]["id"] == entity
                     for statement in depicts
@@ -2957,7 +3025,7 @@ class Model_wiki:
                     {
                         "mainsnak": {
                             "snaktype": "value",
-                            "property": "P1071",
+                            "property": prop,
                             "datavalue": {
                                 "type": "wikibase-entityid",
                                 "value": {
@@ -2979,7 +3047,7 @@ class Model_wiki:
                 "id": media_identifier,
                 "data": json.dumps(statement_json, separators=(",", ":")),
                 "token": csrf_token,
-                "summary": "adding depicts statement",
+                "summary": "adding SDS statement",
                 # in case you're using a bot account (which you should)
                 "bot": False,
             }
@@ -2993,6 +3061,8 @@ class Model_wiki:
                 print("Error: {}".format(e))
 
         return True
+
+    
 
     def wikidata_set_building_entity_name(
         self, wdid, city_wdid, skip_en, prepend_names=False

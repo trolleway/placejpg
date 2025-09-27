@@ -22,3 +22,6 @@ source = '{{own}}'
 langs_primary = ['en']
 langs_optional = ['de', 'fr', 'it', 'es', 'pt', 'uk', 'be', 'ja','ru','eo']
 
+# Optional flickr api key for imports
+flickr_key = ''
+flickr_secret = ''

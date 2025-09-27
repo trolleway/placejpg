@@ -1670,6 +1670,32 @@ class Fileprocessor:
 
         return mapillarykey, mapillaryuser
 
+    def get_flickr_from_string(self, test_str: str) -> str:
+        # from string aaaa_flickr123456.jpg  retrive 123456 as flickr photo id. 
+        # using flickr api retrive and return [flickrurl,flickrname]
+
+        if "flickr" not in test_str and "flickr" not in test_str:
+            return None
+
+        import re
+
+        # cut to . symbol if extsts
+        test_str = test_str[0 : test_str.index(".")]
+
+        lst = re.findall(r"(flickr\d+)", test_str)
+
+        lst2 = list()
+        for line in lst:
+            lst2.append(line[6:])
+        flickrid = str(lst2[0])
+        if not flickrid.isdigit():
+            return None
+        return flickrid
+    
+
+        
+
+
     def get_date_information_part(self, dt_obj, taken_on_location):
         st = ""
         st += (
@@ -1685,12 +1711,9 @@ class Fileprocessor:
 
     def get_source_information_part(self, filename):
         mapillarykey, mapillaryuser = self.get_mapillary_from_string(filename)
-        if mapillarykey is None and mapillaryuser is None:
-            text = (
-                "\n" + "|source={{own}}\n|author={{Creator:" + self.photographer + "}}"
-            )
-        else:
-            # text = f"\n"
+        flickrid = self.get_flickr_from_string(filename)
+
+        if mapillarykey is not None and mapillaryuser is not None:
             text = (
                 "\n"
                 + """|source= {{Mapillary-source|key="""
@@ -1700,6 +1723,25 @@ class Fileprocessor:
                 + " "
                 + mapillaryuser
                 + "] @ Mapillary.com"
+            )
+        elif  flickrid is not None:
+            import flickrapi
+            # this file has uploaded to flickr, add cross link
+            flickr = flickrapi.FlickrAPI(placejpgconfig.flickr_key,placejpgconfig.flickr_secret,format='parsed-json')
+            flickrimage = flickr.photos.getInfo(photo_id=flickrid)
+
+            flickrurl = flickrimage['photo']['urls']['url'][0]['_content']
+            flickrtitle = flickrimage['photo']['title']['_content']
+            text = (
+                "\n" + "|source={{own}}\n|author={{Creator:" + self.photographer + "}} {{Flickr source |url="+flickrurl+" |title="+flickrtitle+"}}"
+            )
+            
+            """
+            {{Flickr source |url=https://www.flickr.com/photos/trolleway/54789268324 |title=Moscow Zelenyj prospekt 83 }}
+            """
+        else:
+            text = (
+                "\n" + "|source={{own}}\n|author={{Creator:" + self.photographer + "}}"
             )
 
         return text
@@ -2047,6 +2089,21 @@ class Fileprocessor:
         other_fields += """{{Information field
  |name  = {{Label|P180|link=-|capitalization=ucfirst}} 
  |value = {{#property:P180|from=M{{PAGEID}} }} }} \n"""
+        #is this flickr
+        flickrid = self.get_flickr_from_string(filename)
+        if flickrid is not None:
+                import flickrapi
+                # this file has uploaded to flickr, add cross link
+                flickr = flickrapi.FlickrAPI(placejpgconfig.flickr_key,placejpgconfig.flickr_secret,format='parsed-json')
+                flickrimage = flickr.photos.getInfo(photo_id=flickrid)
+
+
+                flickrcaption = flickrimage['photo']['description']['_content']
+                other_fields += """{{Information field
+     |name  = Flickr caption 
+     |value ={{Original caption|"""+flickrcaption+"""|Flickr|lang=}} }} \n"""
+
+        
         if other_fields != '':
             other_fields = '|other_fields_1 ='+other_fields
             st += other_fields

@@ -17,3 +17,7 @@ license = '{{self|cc-by-4.0|author=John Doe}}'
 # Source
 
 source = '{{own}}'
+
+# Optional flickr api key for imports
+flickr_key = ''
+flickr_secret = ''

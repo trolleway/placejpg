@@ -2,6 +2,11 @@
 config.py
 placejpgconfig.py
 user-config.py
+apicache*
+.vscode
+i
+*.jpg
+maintainer_cache
 
 
 # Byte-compiled / optimized / DLL files

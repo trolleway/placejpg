@@ -13,3 +13,4 @@ iptcinfo3
 climage
 shortuuid
 jsonlines
+flickrapi

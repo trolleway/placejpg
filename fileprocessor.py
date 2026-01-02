@@ -130,6 +130,7 @@ class Fileprocessor:
         verify_description=False,
         ignore_warning=False,
     ):
+        
         # The site object for Wikimedia Commons
         site = pywikibot.Site("commons", "commons")
         logging.basicConfig(level=logging.DEBUG, format="%(message)s")
@@ -152,6 +153,7 @@ class Fileprocessor:
         print()
         print("=======================================================")
         print(commons_name.center(60, "*"))
+        
         # Try to run the upload robot
         try:
             # bot.run()
@@ -854,7 +856,7 @@ class Fileprocessor:
                     today = datetime.today()
                     if today.strftime("%Y-%m") == "2025-09":
                         text += "{{Wiki Loves Monuments 2025|ru}}"
-                        
+                  
         
         tech_description, tech_categories = self.get_tech_description(
             filename, geo_dict
@@ -1439,9 +1441,11 @@ class Fileprocessor:
         import re
 
         # cut to . symbol if extsts
-        test_str = test_str[0 : test_str.index(".")]
 
+        test_str = test_str[0 : test_str.index(".")]
+        
         lst = re.findall(r"(suffix\d+)", test_str)
+        assert len(lst) > 0, 'invalid suffix format, it must be _suffixDDD'
         suffix = lst[0].replace("suffix", "")
         return suffix
 
@@ -2095,8 +2099,10 @@ class Fileprocessor:
                 import flickrapi
                 # this file has uploaded to flickr, add cross link
                 flickr = flickrapi.FlickrAPI(placejpgconfig.flickr_key,placejpgconfig.flickr_secret,format='parsed-json')
-                flickrimage = flickr.photos.getInfo(photo_id=flickrid)
-
+                try:
+                    flickrimage = flickr.photos.getInfo(photo_id=flickrid)
+                except:
+                    quit('not found photo on flickr. Prorably photo is not public '+flickrid)
 
                 flickrcaption = flickrimage['photo']['description']['_content']
                 other_fields += """{{Information field
@@ -2117,16 +2123,16 @@ class Fileprocessor:
         # CULTURAL HERITAGE
         # if object is cultural heritage: insert special templates
         heritage_id = None
+
         if 'noheritage' not in os.path.basename(filename).lower():
             for wdid in [wikidata]+secondary_wikidata_ids:
                 heritage_id = modelwiki.get_heritage_id(wdid)
                 if heritage_id is not None:
-                    st += "{{Cultural Heritage Russia|" + heritage_id + "}}"
+                    text += "{{Cultural Heritage Russia|" + heritage_id + "}}"
                     today = datetime.today()
                     if today.strftime("%Y-%m") == "2025-09":
-                        st += "{{Wiki Loves Monuments 2025|ru}}"
-
-
+                        text += "{{Wiki Loves Monuments 2025|ru}}"
+        
         tech_description, tech_categories = self.get_tech_description(
             filename, geo_dict
         )
@@ -3363,6 +3369,7 @@ class Fileprocessor:
                 continue
             else:
                 ignore_warning = False
+            texts["name"] = texts["name"].replace("/", "∕")    
             upload_messages = self.upload_file(
                 filename,
                 texts["name"],
@@ -3378,10 +3385,9 @@ class Fileprocessor:
             claims_append_result = modelwiki.append_image_descripts_claim(
                 texts["name"], wikidata_list)
             print('location_of_creation='+texts["location_of_creation"])
-            captions_append_result = modelwiki.set_image_captions_SDC(
-                texts["name"], texts.get('captions')) 
-            claims_append_result = modelwiki.append_image_SDC(
-                texts["name"], [texts["location_of_creation"]], prop='P1071') 
+            captions_append_result = modelwiki.set_image_captions_SDC(texts["name"], texts.get('captions')) 
+            claims_append_result = modelwiki.append_image_SDC(texts["name"], [texts["location_of_creation"]], prop='P1071') 
+            claims_append_result = modelwiki.append_image_SDC(texts["name"], [texts["location_of_creation"]], prop='P180') 
             modelwiki.create_category_taken_on_day(
                 texts["country"].title(), texts["dt_obj"].strftime("%Y-%m-%d")
             )

@@ -193,6 +193,21 @@ class Model_wiki:
 
         self.page_template_taken_on(page, location, dry_run, verbose, interactive)
 
+    def url_add_category_taken_on(
+        self, pagename, location, dry_run=True, verbose=False, interactive=False
+    ):
+        assert pagename
+        location = location.title()
+        site = pywikibot.Site("commons", "commons")
+        site.login()
+        site.get_tokens("csrf")  # preload csrf token
+        pagename = self.page_name_canonical(pagename)
+        if not pagename.startswith("File:"):
+            pagename = "File:" + pagename
+        page = pywikibot.Page(site, title=pagename)
+
+        self.page_category_taken_on(page, location, dry_run, verbose, interactive)
+
     def category_add_template_wikidata_infobox(self, category: str):
         if not category.startswith("Category:"):
             category = "Category:" + category
@@ -250,7 +265,6 @@ class Model_wiki:
             namespaces=None,
         )
         gen2 = pagegenerators.RegexBodyFilterPageGenerator(gen1, regex)
-        regex
         gen2 = pagegenerators.RegexBodyFilterPageGenerator(gen1, regex)
         for page in gen2:
             print(page)
@@ -276,7 +290,7 @@ class Model_wiki:
         pbar = tqdm(total=total_files)
         for page in gen2:
 
-            self.page_template_taken_on(
+            self.page_category_taken_on(
                 page,
                 location,
                 dry_run,
@@ -334,6 +348,8 @@ class Model_wiki:
             self.logger.info(
                 "created wikidata entity: "
                 + str(new_item.getID())
+                + ' '
+                + wd_object["labels"]['en']
                 + "    _place"
                 + str(new_item.getID())
             )
@@ -1301,14 +1317,14 @@ class Model_wiki:
                 page.save(message + " with manual preview")
                 self.create_category_taken_on_day(location, datestr)
 
-    def dev_page_category_taken_on(
+    def page_category_taken_on(
         self,
         page,
         location,
         dry_run=True,
         interactive=False,
         verbose=True,
-        message="set Taken on category for manual set list of images",
+        message="set Taken on location for manual set list of images",
     ):
         assert page
         texts = dict()
@@ -1331,7 +1347,8 @@ class Model_wiki:
             texts[1] = texts[0]
         else:
             try:
-                texts[1] = self._text_add_category_taken_on(texts[0])
+                texts[1] = self._text_add_template_taken_on(texts[0])
+                
             except:
                 raise ValueError("invalid page text in " + page.full_url())
         assert (
@@ -1339,8 +1356,10 @@ class Model_wiki:
             or "Taken in".upper() in texts[1].upper()
             or "According to Exif data".upper() in texts[1].upper()
         ), ("wrong text in " + page.title())
+        
 
         datestr = self.get_date_from_pagetext(texts[1])
+        texts[1] = texts[0]
         if datestr == False:
             return False
         if "/" in datestr:
@@ -1358,16 +1377,14 @@ class Model_wiki:
         assert datestr, "invalid date parce in " + page.full_url()
 
         location_value_has_already = self._text_get_template_taken_on_location(texts[1])
-
+        '''
         if location_value_has_already is None:
             texts[2] = self._text_add_template_taken_on_location(texts[1], location)
         else:
             texts[2] = self._text_get_template_replace_on_location(texts[1], location)
-
-        if texts[2] == False:
-            return False
-        if "|location=" + location + "}}" not in texts[2]:
-            return False
+        '''
+        texts[2] = texts[1]
+        
         # Remove category
         cat = "Russia photographs taken on " + datestr
         texts[2] = texts[2].replace("[[Category:" + cat + "]]", "")
@@ -1387,6 +1404,9 @@ class Model_wiki:
         texts[2] = texts[2].replace("[[Category:" + cat + "]]", "")
         texts[2] = texts[2].replace("[[Category:" + cat.replace(" ", "_") + "]]", "")
 
+        texts[2] = texts[2] + "\n"+"[[Category:"+location+" photographs taken on " + datestr+"]]"
+
+
         self.difftext(texts[0], texts[2])
         if texts[0] != texts[2]:
             page_not_need_change = False
@@ -1401,9 +1421,10 @@ class Model_wiki:
             page.text = texts[2]
             if page_not_need_change == False:
                 page.save(message)
+            else:
+                print("page not changing")
             self.create_category_taken_on_day(location, datestr)
-        else:
-            print("page not changing")
+
 
         if interactive:
             answer = input(" do change on  " + page.full_url() + "\n y / n   ? ")
@@ -2235,7 +2256,8 @@ class Model_wiki:
         if prop in building_dict_wd["claims"]:
             partof_value = self.get_best_claim(wikidata, prop)
             category = self.get_wikidata_simplified(partof_value)["commons"]
-            code += "\n[[Category:" + category + "]]"
+            if category is not None:
+                code += "\n[[Category:" + category + "]]"
             del category
             del partof_value
 

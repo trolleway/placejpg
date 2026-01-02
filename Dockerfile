@@ -1,4 +1,4 @@
-FROM ubuntu:24.10
+FROM ubuntu:latest
 ARG DEBIAN_FRONTEND=noninteractive
 ARG APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=DontWarn
 
@@ -21,8 +21,8 @@ RUN chmod  --recursive 777 /opt/commons-uploader
 
 WORKDIR /opt/commons-uploader
 COPY requirements.txt requirements.txt
-RUN pip3 uninstall --break-system-packages  setuptools
-RUN pip3 install --break-system-packages setuptools
+#RUN pip3 uninstall --break-system-packages  setuptools
+#RUN pip3 install --break-system-packages setuptools
 RUN pip3 install  --break-system-packages -r requirements.txt 
 
 

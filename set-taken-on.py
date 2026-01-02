@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
 
     if args.pagename:
-        modelwiki.url_add_template_taken_on(pagename=args.pagename, location=args.location,verbose=True,interactive=args.interactive)
+        modelwiki.url_add_category_taken_on(pagename=args.pagename, location=args.location,verbose=True,interactive=args.interactive)
     elif args.category:
         modelwiki.category_add_template_taken_on(categoryname=args.category, location=args.location,dry_run=False,interactive=args.interactive)
         

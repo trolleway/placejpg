@@ -12,10 +12,9 @@ from urllib.parse import urlparse
 parser = argparse.ArgumentParser(
     description=" ")
 
-group = parser.add_mutually_exclusive_group()
 
-group.add_argument('wdabstract', type=str, required=False, help='Wikipedia filepage')
-group.add_argument('wdobject', type=str, required=False, help='Wikipedia filepage')
+parser.add_argument('wdabstract', type=str, help='Wikipedia filepage')
+parser.add_argument('wdobject', type=str,  help='Wikipedia filepage')
 
 
 
@@ -29,13 +28,8 @@ if __name__ == '__main__':
 
 
 
-    r=modelwiki.get_category_object_in_location(args.wdabstract,args.wdobject)
+    r=modelwiki.get_category_object_in_location(modelwiki.wikidata_input2id(args.wdabstract),modelwiki.wikidata_input2id(args.wdobject),verbose=True)
     print(r)
     
     
     
-
-#set category by 2 wikidata ids
-
-
-modelwiki.get_category_object_in_location

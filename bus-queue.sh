@@ -28,6 +28,7 @@ PTZ5283=Q124209334
 BKM101=Q4053993
 BKM201=Q4053991
 BKM321=Q4053996
+BKM333=Q4053994
 vitovt=Q2638866
 vitovtmax=Q28669059
 vmz529800=Q4101956
@@ -40,11 +41,13 @@ svarzmaz6275=Q4402988
 svarzmaz6235=Q4402985
 admiral=Q97278541
 MAZ203T=Q4273304
+MTRZ6223=Q4273641
 MTRZ5279=Q4273640
 ST6217M=Q4403223
 skoda9tr=Q391947
 YUMZT2=Q3810753
 bogdanT70117=Q131372899
+ikarus280t=Q121294927
 
 ikarus256=Q846220
 ikarus260=Q897765
@@ -130,7 +133,9 @@ python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $trolza6206 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $BKM101   i/_trolleybuses/moscow/BKM101  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $BKM201   i/_trolleybuses/moscow/BKM201  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $BKM321   i/_trolleybuses/moscow/BKM321  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $BKM333   i/_trolleybuses/moscow/BKM333  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $MTRZ5279   i/_trolleybuses/moscow/MTRZ5279  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $MTRZ6223   i/_trolleybuses/moscow/MTRZ6223  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 
 #moscow-rare
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $VZTM5284   i/_trolleybuses/moscow/rare/VZTM5284  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
@@ -140,6 +145,7 @@ python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $BTZ527601  
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $BTZ52761   i/_trolleybuses/moscow/rare/BTZ52761  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $YUMZT2   i/_trolleybuses/moscow/rare/YUMZT2  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $skoda9tr   i/_trolleybuses/moscow/rare/skoda9tr  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $ikarus280t   i/_trolleybuses/moscow/rare/ikarus280t  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 
 #vidnoye
 city=vidnoye 

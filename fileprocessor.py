@@ -2102,7 +2102,7 @@ class Fileprocessor:
                 try:
                     flickrimage = flickr.photos.getInfo(photo_id=flickrid)
                 except:
-                    quit('not found photo on flickr. Prorably photo is not public '+flickrid)
+                    quit(f"not found photo on flickr. Prorably photo is not public https://www.flickr.com/photos/trolleway/{flickrid}")
 
                 flickrcaption = flickrimage['photo']['description']['_content']
                 other_fields += """{{Information field

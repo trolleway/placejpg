@@ -3578,3 +3578,24 @@ class Fileprocessor:
         shutil.move(
             filename, os.path.join(uploaded_folder_path, os.path.basename(filename))
         )
+
+    def write_iptc(self, filename, caption, keywords):
+        """
+        Writes a caption and a list of keywords to a file's IPTC metadata.
+        :param filename: Path to the image file (e.g., 'photo.jpg')
+        :param caption: String for the Caption/Abstract field
+        :param keywords: List of strings for the Keywords field
+        """
+        # Load existing IPTC data; force=True creates info if none exists
+        info = IPTCInfo(filename, force=True)
+
+        # Assign metadata
+        # Note: iptcinfo3 uses byte strings for internal storage
+        info['caption/abstract'] = caption
+        info['keywords'] = keywords
+
+        # Save the changes back to the file
+        info.save()
+        
+        # iptcinfo3 creates a backup (e.g., photo.jpg~) by default. 
+        # You can delete it manually if not needed.

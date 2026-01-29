@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(
     description="make photo coordinates file")
 
 
-parser.add_argument('-path', type=str,  default='i')
+parser.add_argument('-p','--path', type=str,  default='i')
 parser.add_argument('-output', type=str,  default='photos.geojsonl')
 parser.add_argument('-depth0', action='store_true',help='only top directory')
 

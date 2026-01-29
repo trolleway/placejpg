@@ -124,10 +124,12 @@ python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $ZIU6205   i
 
 #moscow
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $vmz529801   i/_trolleybuses/moscow/vmz529801  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $vmz529800   i/_trolleybuses/moscow/rare/vmz529800  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $vmz61251   i/_trolleybuses/moscow/vmz61251  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $svarzmaz6275   i/_trolleybuses/moscow/svarzmaz6275  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $svarzmaz6235   i/_trolleybuses/moscow/svarzmaz6235  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $trolza5275optima   i/_trolleybuses/moscow/trolza5275optima  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $trolza527500   i/_trolleybuses/moscow/trolza527500  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $trolza5265   i/_trolleybuses/moscow/trolza5265  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $trolza6206   i/_trolleybuses/moscow/trolza6206  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $BKM101   i/_trolleybuses/moscow/BKM101  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 

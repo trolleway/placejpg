@@ -2,8 +2,7 @@ FROM ubuntu:latest
 ARG DEBIAN_FRONTEND=noninteractive
 ARG APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=DontWarn
 
-RUN apt-get update 
-RUN apt-get install --no-install-recommends --fix-missing -y \
+RUN apt-get update && apt-get install --no-install-recommends --fix-missing -y \
     jq python3-pip  gdal-bin proj-data libxml2-utils nano
 	
 	

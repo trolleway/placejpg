@@ -2542,12 +2542,13 @@ class Fileprocessor:
         return commons_filename
 
     def take_user_wikidata_id(self, wdid) -> str:
-        warnings.warn("moved to model_wiki", DeprecationWarning, stacklevel=2)
+
         # parse user input wikidata string.
         # it may be wikidata id, wikidata uri, string.
         # call search if need
         # return valid wikidata id
         if self.is_wikidata_id(wdid):
+            
             result_wdid = wdid
         else:
             result_wdid = self.search_wikidata_by_string(wdid, stop_on_error=True)

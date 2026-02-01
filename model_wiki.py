@@ -2570,6 +2570,21 @@ class Model_wiki:
         page.save(savemessage)
 
         return True
+    def download_file(self,title,directory):
+        site = pywikibot.Site("commons", "commons")
+        site.login()
+        site.get_tokens("csrf")  # preload csrf token
+        if not title.startswith('http'):
+            if not title.startswith('File:'):
+                title = 'File:' + title
+
+        file_page = pywikibot.FilePage(site, title)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        local_path = os.path.join(directory, file_page.title(with_ns=False))
+        file_page.download(local_path)
+        return local_path
+       
 
     def search_files_geo(self, lat, lon):
         site = pywikibot.Site("commons", "commons")

@@ -1,6 +1,6 @@
 
 from osgeo import ogr, gdal
-import logging,pprint,os
+import logging,pprint,os,shutil
 from tqdm import tqdm
 
 class Model_Geo:
@@ -156,5 +156,15 @@ class Model_Geo:
                 if depth0: break
         #del layer
         #del ds
+        
+    def move_file_if_identify(self,filepath,dest,lat,lon,geofilepath,fieldname,layer=None):
+        if not os.path.isfile(filepath):
+            print(f"file not found {filepath}")
+            return None
+        i = self.identify_deodata(lat,lon,geofilepath,fieldname,layer)
+        if i is not None:
+            print(f"move {filepath} to {dest}")
+            shutil.move(filepath, dest)
+            
                 
                 

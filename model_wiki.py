@@ -2840,7 +2840,10 @@ class Model_wiki:
             if upper_wdid is None:
                 stop_hieraechy_walk = True
                 continue
+   
             upper_wd = self.get_wikidata_simplified(upper_wdid)
+   
+            
             geoobject_wd = upper_wd
 
         return None

@@ -20,8 +20,8 @@ RUN chmod  --recursive 777 /opt/commons-uploader
 
 WORKDIR /opt/commons-uploader
 COPY requirements.txt requirements.txt
-#RUN pip3 uninstall --break-system-packages  setuptools
-#RUN pip3 install --break-system-packages setuptools
+ENV WITH_EXTENSION=0
+RUN pip install --break-system-packages --no-cache-dir pywikibot
 RUN pip3 install  --break-system-packages -r requirements.txt 
 
 

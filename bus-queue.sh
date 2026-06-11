@@ -148,6 +148,8 @@ python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $BTZ52761   
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $YUMZT2   i/_trolleybuses/moscow/rare/YUMZT2  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $skoda9tr   i/_trolleybuses/moscow/rare/skoda9tr  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $ikarus280t   i/_trolleybuses/moscow/rare/ikarus280t  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $mostroll  --model Q2095280   i/_trolleybuses/moscow/rare/ziu5  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $mostroll  --model Q140166992   i/_trolleybuses/moscow/rare/421  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 
 #vidnoye
 city=vidnoye 
@@ -198,6 +200,8 @@ python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model Q4535800   i/_
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $admiral   i/_trolleybuses/$city/admiral  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model $vitovtmax   i/_trolleybuses/$city/BKM433  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model Q133827323   i/_trolleybuses/$city/2835  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model Q1628197   i/_trolleybuses/$city/mtb82  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $SYSTEM  --model Q2095280   i/_trolleybuses/$city/ziu5  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 
 
 SYSTEM=Q4078421 #barnaul_troll

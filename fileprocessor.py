@@ -130,7 +130,7 @@ class Fileprocessor:
         verify_description=False,
         ignore_warning=False,
     ):
-        
+
         # The site object for Wikimedia Commons
         site = pywikibot.Site("commons", "commons")
         logging.basicConfig(level=logging.DEBUG, format="%(message)s")
@@ -153,7 +153,7 @@ class Fileprocessor:
         print()
         print("=======================================================")
         print(commons_name.center(60, "*"))
-        
+
         # Try to run the upload robot
         try:
             # bot.run()
@@ -309,7 +309,7 @@ class Fileprocessor:
 
             street_wdid = modelwiki.wikidata_input2id(gpkg_or_wdid)
             if gpkg_or_wdid is not None:
-                assert street_wdid is not None
+                assert street_wdid is not None, f"not found street for {filename}"
         return street_wdid
 
     def get_coordinate_from_string(self, filename) -> list:
@@ -456,7 +456,7 @@ class Fileprocessor:
             model_wd = modelwiki.get_wikidata_simplified(model_wdid)
             model_names = model_wd["labels"]
             wikidata_4_structured_data.add(model_wd["id"])
-            
+
 
         # ROUTE
         if route is None:
@@ -622,7 +622,7 @@ class Fileprocessor:
                 except:
                     print(city_wdid)
                     raise ValueError(f'invalid city: {city_wdid}')
-                    
+
                 city_name_en = city_wd["labels"]["en"]
                 city_name_ru = city_wd["labels"]["en"]
             objectname_en = "{city} {transport} {license_plate}".format(
@@ -820,7 +820,7 @@ class Fileprocessor:
 
 
 
-                    
+
 
         text += "\n"
 
@@ -844,7 +844,7 @@ class Fileprocessor:
         text += self.get_date_information_part(dt_obj, country)
         text += self.get_source_information_part(filename)
         text += "}}\n"
-        
+
         # CULTURAL HERITAGE
         # if object is cultural heritage: insert special templates
         heritage_id = None
@@ -856,8 +856,8 @@ class Fileprocessor:
                     today = datetime.today()
                     if today.strftime("%Y-%m") == "2025-09":
                         text += "{{Wiki Loves Monuments 2025|ru}}"
-                  
-        
+
+
         tech_description, tech_categories = self.get_tech_description(
             filename, geo_dict
         )
@@ -1215,6 +1215,9 @@ class Fileprocessor:
             if modelwiki.is_category_exists(cat):
                 has_category_for_this_vehicle = True
                 categories.add(cat)
+            elif digital_number is None:
+                print(f"! {filename} has need number in _n format")
+                return
             elif digital_number.isdigit():
                 catname = "Number " + digital_number + " on rail vehicles"
                 category_page_content = "{{NumbercategoryTrain|" + digital_number + "}}"
@@ -1246,7 +1249,7 @@ class Fileprocessor:
                 vehicle="bus", number=digital_number
             )
         elif (
-            number is not None and vehicle == "trolleybus" and digital_number.isdigit()
+            number is not None and vehicle == "trolleybus" and (digital_number is not None and digital_number.isdigit())
         ):
             catname = f"Number {digital_number} on trolleybuses"
             if not has_category_for_this_vehicle:
@@ -1337,6 +1340,7 @@ class Fileprocessor:
                     categories.add(cat)
                     break
 
+
         # TRANSPORT IN CITY
         if "system_wd" in locals():
             if (
@@ -1351,9 +1355,11 @@ class Fileprocessor:
 
         if type(secondary_wikidata_ids) == list and len(secondary_wikidata_ids) > 0:
             for wdid in secondary_wikidata_ids:
+                print(wdid)
                 cat = modelwiki.get_category_object_in_location(
                     wdid, street_wdid, verbose=True
                 )
+
                 if cat is not None:
                     categories.add(cat)
                 else:
@@ -1376,6 +1382,7 @@ class Fileprocessor:
                     if "commons" in wd_record and wd_record["commons"] is not None:
                         categories.add(wd_record["commons"])
         categories.discard(None)
+
         for catname in categories:
 
             assert catname is not None, (
@@ -1416,7 +1423,7 @@ class Fileprocessor:
             wikidata_4_structured_data.add(vehicles_wikidata[vehicle])
         if vehicle in train_synonims:
             wikidata_4_structured_data.add(vehicles_wikidata["train"])
-        
+
 
         assert (
             None not in wikidata_4_structured_data
@@ -1443,7 +1450,7 @@ class Fileprocessor:
         # cut to . symbol if extsts
 
         test_str = test_str[0 : test_str.index(".")]
-        
+
         lst = re.findall(r"(suffix\d+)", test_str)
         assert len(lst) > 0, 'invalid suffix format, it must be _suffixDDD'
         suffix = lst[0].replace("suffix", "")
@@ -1675,7 +1682,7 @@ class Fileprocessor:
         return mapillarykey, mapillaryuser
 
     def get_flickr_from_string(self, test_str: str) -> str:
-        # from string aaaa_flickr123456.jpg  retrive 123456 as flickr photo id. 
+        # from string aaaa_flickr123456.jpg  retrive 123456 as flickr photo id.
         # using flickr api retrive and return [flickrurl,flickrname]
 
         if "flickr" not in test_str and "flickr" not in test_str:
@@ -1695,9 +1702,9 @@ class Fileprocessor:
         if not flickrid.isdigit():
             return None
         return flickrid
-    
 
-        
+
+
 
 
     def get_date_information_part(self, dt_obj, taken_on_location):
@@ -1731,18 +1738,20 @@ class Fileprocessor:
         elif  flickrid is not None:
             import flickrapi
             # this file has uploaded to flickr, add cross link
-            flickr = flickrapi.FlickrAPI(placejpgconfig.flickr_key,placejpgconfig.flickr_secret,format='parsed-json')
-            flickrimage = flickr.photos.getInfo(photo_id=flickrid)
+            try:
+                flickr = flickrapi.FlickrAPI(placejpgconfig.flickr_key,placejpgconfig.flickr_secret,format='parsed-json')
+                flickrimage = flickr.photos.getInfo(photo_id=flickrid)
 
-            flickrurl = flickrimage['photo']['urls']['url'][0]['_content']
-            flickrtitle = flickrimage['photo']['title']['_content']
-            text = (
-                "\n" + "|source={{own}}\n|author={{Creator:" + self.photographer + "}} {{Flickr source |url="+flickrurl+" |title="+flickrtitle+"}}"
-            )
-            
-            """
-            {{Flickr source |url=https://www.flickr.com/photos/trolleway/54789268324 |title=Moscow Zelenyj prospekt 83 }}
-            """
+                flickrurl = flickrimage['photo']['urls']['url'][0]['_content']
+                flickrtitle = flickrimage['photo']['title']['_content']
+                text = (
+                    "\n" + "|source={{own}}\n|author={{Creator:" + self.photographer + "}} {{Flickr source |url="+flickrurl+" |title="+flickrtitle+"}}"
+                )
+            except:
+                text = (
+                    "\n" + "|source={{own}}\n|author={{Creator:" + self.photographer + "}}"
+                )            
+
         else:
             text = (
                 "\n" + "|source={{own}}\n|author={{Creator:" + self.photographer + "}}"
@@ -1788,7 +1797,7 @@ class Fileprocessor:
         else:
             camera_categories = set()
             camera_text = ''
-        
+
         text += camera_text
 
         if mapillarykey is None and mapillaryuser is None:
@@ -1811,8 +1820,8 @@ class Fileprocessor:
             )
         categories = set()
         categories.update(camera_categories)
-        
-                    
+
+
         # PROCESS STEREO KEY
         if "_stereo" in filename:
             categories.add(
@@ -1858,7 +1867,7 @@ class Fileprocessor:
         #if objectname is None or caption is None:
         #    return None
         result = dict()
-        result["object name"] = objectname
+        result["objectname"] = objectname
         result["caption"] = caption
         return result
 
@@ -1894,7 +1903,7 @@ class Fileprocessor:
         dt_obj = self.image2datetime(filename)
         iptc_objectname = self.image2objectname(filename)
         geo_dict = self.image2coords(filename)
-        
+
         if wikidata.startswith('Q') and wikidata[1:].isdigit():  location_of_creation = wikidata
 
         # Optionaly obtain wikidata from gpkg file if wikidata parameter is path to vector file (.gpkg)
@@ -1957,15 +1966,15 @@ class Fileprocessor:
 
         # rewrite label if not extst
         for lang in self.langs_primary:
-                #if lang not in wd_record["labels"]:
-                #    self.logger.error(
-                #        "object https://www.wikidata.org/wiki/"
-                #        + wd_record["id"]
-                #        + " must has name "
-                #        + lang
-                #    )
-                #    return None
-                #wd_record["labels"][lang] = wd_record["labels"]["en"]
+            if lang not in wd_record["labels"]:
+                self.logger.error(
+                    "object https://www.wikidata.org/wiki/"
+                    + wd_record["id"]
+                    + " must has name "
+                    + lang
+                )
+                return None
+            #wd_record["labels"][lang] = wd_record["labels"]["en"]
             objectnames[lang] = wd_record["labels"].get(lang,wd_record["labels"]['en'])
             objectname_long[lang] = objectnames[lang]
 
@@ -2012,7 +2021,7 @@ class Fileprocessor:
 
         """== {{int:filedesc}} ==
 {{Information
-|description={{en|1=2nd Baumanskaya Street 1 k1}}{{ru|1=Вторая Бауманская улица дом 1 К1}} {{on Wikidata|Q86663303}}  {{Building address|Country=RU|Street name=2-я Бауманская улица|House number=1 К1}}  
+|description={{en|1=2nd Baumanskaya Street 1 k1}}{{ru|1=Вторая Бауманская улица дом 1 К1}} {{on Wikidata|Q86663303}}  {{Building address|Country=RU|Street name=2-я Бауманская улица|House number=1 К1}}
 |source={{own}}
 |author={{Creator:Artem Svetlov}}
 |date={{According to Exif data|2022-07-03|location=Moscow}}
@@ -2024,14 +2033,14 @@ class Fileprocessor:
 {{Photo Information
  |Model                 = Olympus mju II
  |ISO                   = 200
- |Lens                  = 
+ |Lens                  =
  |Focal length          = 35
  |Focal length 35mm     = 35
  |Support               = freehand
  |Film                  = Kodak Gold 200
  |Developer             = C41
  }}
- 
+
     == {{int:license-header}} ==
     {{self|cc-by-sa-4.0|author=Артём Светлов}}
 
@@ -2044,11 +2053,15 @@ class Fileprocessor:
 """
 
         desctext=''
-        if iptc_captions is not None and iptc_captions.get("objectname", "") != "":
+        if iptc_captions is not None and iptc_captions["objectname"] is not None and iptc_captions.get("objectname", "") != "":
             desctext += iptc_captions["objectname"]
+        if desctext != '': 
+            desctext += ' '
 
-        if iptc_captions is not None and iptc_captions.get("caption", "") != "":
+        if iptc_captions is not None and iptc_captions["objectname"] is not None and iptc_captions.get("caption", "") != "":
             desctext += iptc_captions["caption"]
+
+        
 
         for lang in self.langs_primary:
             if objectname_long.get(lang,'') != '':
@@ -2063,6 +2076,7 @@ class Fileprocessor:
                     captions[lang]=objectname_long[lang]
                 else:
                     desctext += "{{" + lang + "|1=" + objectname_long[lang] + "}} \n"
+        
         if desctext != '':
             st += '|description='+desctext
             st += " {{on Wikidata|" + wikidata + "}}\n"
@@ -2073,25 +2087,26 @@ class Fileprocessor:
                     st += " {{on Wikidata|" + secondary_wikidata_id + "}}\n"
         else:
             st += ''
-        del desctext
-                
 
-        
+        del desctext
+
+
+
 
 
 
         other_fields=''
         # wikidata place of creation
         if location_of_creation is not None and location_of_creation != '':
-        
+
             other_fields += """{{Information field
-     |name  = {{Label|P1071|link=-|capitalization=ucfirst}} 
+     |name  = {{Label|P1071|link=-|capitalization=ucfirst}}
      |value = {{#invoke:Information|SDC_Location|icon=true}} {{#if:{{#property:P1071|from=M{{PAGEID}} }}|(<small>{{#invoke:PropertyChain|PropertyChain|qID={{#invoke:WikidataIB |followQid |props=P1071}}|pID=P131|endpID=P17}}</small>)}} }}\n"""
 
-        
+
         # wikidata depicts
         other_fields += """{{Information field
- |name  = {{Label|P180|link=-|capitalization=ucfirst}} 
+ |name  = {{Label|P180|link=-|capitalization=ucfirst}}
  |value = {{#property:P180|from=M{{PAGEID}} }} }} \n"""
         #is this flickr
         flickrid = self.get_flickr_from_string(filename)
@@ -2106,10 +2121,10 @@ class Fileprocessor:
 
                 flickrcaption = flickrimage['photo']['description']['_content']
                 other_fields += """{{Information field
-     |name  = Flickr caption 
+     |name  = Flickr caption
      |value ={{Original caption|"""+flickrcaption+"""|Flickr|lang=}} }} \n"""
 
-        
+
         if other_fields != '':
             other_fields = '|other_fields_1 ='+other_fields
             st += other_fields
@@ -2117,7 +2132,7 @@ class Fileprocessor:
         st += self.get_date_information_part(dt_obj, country)
         st += self.get_source_information_part(filename)
         st += "}}\n"
-
+        
         text += st
 
         # CULTURAL HERITAGE
@@ -2132,7 +2147,7 @@ class Fileprocessor:
                     today = datetime.today()
                     if today.strftime("%Y-%m") == "2025-09":
                         text += "{{Wiki Loves Monuments 2025|ru}}"
-        
+
         tech_description, tech_categories = self.get_tech_description(
             filename, geo_dict
         )
@@ -2326,7 +2341,7 @@ class Fileprocessor:
                     wd_record = modelwiki.get_wikidata_simplified(wdid)
                     if wd_record.get("commons", None) is not None:
                         categories.add(wd_record["commons"])
-
+        
         # REMOVE OVERCATEGORISATION
 
         site = pywikibot.Site("commons", "commons")
@@ -2409,9 +2424,22 @@ class Fileprocessor:
         else:
             time_suffix_format = "%Y-%m %s"
         dt = dt_obj.strftime(time_suffix_format)
+
+
+        iptc_objectname=iptc_captions.get('objectname','')
+        if iptc_objectname != '' and iptc_objectname is not None:
+            iptc_objectname = iptc_objectname + ' '
+        if iptc_objectname is None:
+            iptc_objectname = ''
+        if iptc_objectname == 'None':
+            iptc_objectname = ''
+
+        
         commons_filename = (
-            f'{prefix}{objectnames["en"]} {dt}{suffix}{filename_extension}'
+            f'{prefix}{objectnames["en"]} {iptc_objectname}{dt}{suffix}{filename_extension}'
         )
+        assert 'None' not in commons_filename
+
 
         commons_filename = commons_filename.replace("/", " drob ")
 
@@ -2438,8 +2466,8 @@ class Fileprocessor:
             addr_housenumber = modelgeo.identify_deodata(
                 lat, lon, addr_polygons, fieldname="addr:housenumber"
             )
-            assert city_wdid is not None
-            assert street_wdid is not None
+            assert city_wdid is not None, f"not found city for {filename}"
+            assert street_wdid is not None, f"not found street for {filename}"
             if addr_housenumber is None:
                 self.logger.warning('no house number for '+filename)
                 return
@@ -2450,14 +2478,19 @@ class Fileprocessor:
             street = street_wd["labels"]["en"]
             addr = translit(addr_housenumber, "ru", reversed=True)
 
-            commons_filename = "{city} {street} {addr} {dt}{suffix}{extension}".format(
+            objectname = iptc_captions.get('objectname','')
+            if objectname == 'None': objectname = ''
+            if objectname is None: objectname = ''
+            commons_filename = "{city} {street} {addr} {objectname}{dt}{suffix}{extension}".format(
                 city=city,
                 street=street,
                 addr=addr,
                 dt=dt,
+                objectname=objectname,
                 suffix=suffix,
                 extension=filename_extension,
             )
+
 
         return {
             "name": commons_filename,
@@ -2548,7 +2581,7 @@ class Fileprocessor:
         # call search if need
         # return valid wikidata id
         if self.is_wikidata_id(wdid):
-            
+
             result_wdid = wdid
         else:
             result_wdid = self.search_wikidata_by_string(wdid, stop_on_error=True)
@@ -2916,20 +2949,26 @@ class Fileprocessor:
 
         geo_dict = {}
         geo_dict = {"lat": lat, "lon": lon}
-        if "gpsimgdirection" in exiftool_metadata:
-            geo_dict["direction"] = round(
-                float(exiftool_metadata.get("gpsimgdirection"))
-            )
+        try:
+            if "gpsimgdirection" in exiftool_metadata:
+                geo_dict["direction"] = round(
+                    float(exiftool_metadata.get("gpsimgdirection"))
+                )
+        except:
+            print(f"invalid direction  in {path}")
 
-        if "gpsdestlatitude" in exiftool_metadata:
-            geo_dict["dest_lat"] = round(
-                float(exiftool_metadata.get("gpsdestlatitude")), 6
-            )
-        if "gpsdestlongitude" in exiftool_metadata:
-            geo_dict["dest_lon"] = round(
-                float(exiftool_metadata.get("gpsdestlongitude")), 6
-            )
-
+        try:
+            if "gpsdestlatitude" in exiftool_metadata:
+                geo_dict["dest_lat"] = round(
+                    float(exiftool_metadata.get("gpsdestlatitude")), 6
+                )
+            if "gpsdestlongitude" in exiftool_metadata:
+                geo_dict["dest_lon"] = round(
+                    float(exiftool_metadata.get("gpsdestlongitude")), 6
+                )
+        except:
+            print(f"invalid dest coordinates in {path}")
+            return geo_dict
         return geo_dict
 
     def prepare_commonsfilename(self, commonsfilename) -> str:
@@ -2987,7 +3026,7 @@ class Fileprocessor:
         if len(files) == 0:
             quit()
 
-        
+
 
 
         uploaded_paths = list()
@@ -3010,19 +3049,19 @@ class Fileprocessor:
         files = files_filtered
         del files_filtered
         '''
-        
+
         total_files = len(files)
         progressbar_on = False
         if total_files > 1 and "progress" in desc_dict:
             progressbar_on = True
             pbar = tqdm(total=total_files)
-        
+
 
         for filename in files:
-        
+
             if not self.check_extension_valid(filename): continue
             if not self.check_exif_valid(filename): continue
-                
+
             if "commons_uploaded" in filename:
                 continue
             assert "_place" + " " not in filename
@@ -3068,7 +3107,7 @@ class Fileprocessor:
                         wikidata = desc_dict["wikidata"]
                     else:
                         wikidata = modelwiki.wikidata_input2id(desc_dict["wikidata"])
-
+                
                 if desc_dict["mode"] == "object":
                     texts = self.make_image_texts_simple(
                         filename=filename,
@@ -3079,7 +3118,13 @@ class Fileprocessor:
                         custom_categories=custom_categories,
                         suffix=suffix,
                     )
+                
                 elif desc_dict["mode"] == "addr":
+                    #custom_categories =                 modelwiki.get_category_object_in_location(
+                    #'Q41176", wikidata, verbose=True
+                    #)
+                    secondary_wikidata_ids.append('Q41176')
+                    
                     texts = self.make_image_texts_simple(
                         filename=filename,
                         wikidata=wikidata,
@@ -3091,7 +3136,7 @@ class Fileprocessor:
                         custom_categories=custom_categories,
                         suffix=suffix,
                     )
-
+                    #assert 'None' not in texts["name"]
                 if texts is None:
                     continue
                 wikidata = texts["wikidata"]  # if wikidata taken from gpkg file
@@ -3107,6 +3152,7 @@ class Fileprocessor:
                 wikidata_list = wikidata_list + wikidata_list_upperlevel
                 del wikidata_list_upperlevel
                 del entity_list
+                assert 'None' not in texts["name"]
 
             elif desc_dict["mode"] == "auto":
                 desc_dict["model"] = modelwiki.wikidata_input2id(
@@ -3249,8 +3295,8 @@ class Fileprocessor:
                 shutil.move(filename, dest_filepath)
                 self.logger.info("moved " + filename + " to " + dest_filepath)
                 continue
-                
-            
+
+
 
             # HACK
             # UPLOAD WEBP instead of TIFF if tiff is big
@@ -3298,6 +3344,7 @@ class Fileprocessor:
                 )
 
             print(texts["name"])
+            assert 'None' not in texts["name"]
             print(texts["text"])
 
             # remove duplicates
@@ -3312,11 +3359,11 @@ class Fileprocessor:
                 templist.append("【" + wd["labels"].get("en", "no en label") + "】")
             print("-".join(templist))
             del templist
-            
+
             if desc_dict["verify"]:
                 print("Run in verify mode. Press Enter to continue or Ctrl+C for cancel...")
                 input()
-            
+
             if "_replace" in filename:
                 # ignore_warning=True
 
@@ -3370,7 +3417,7 @@ class Fileprocessor:
                 continue
             else:
                 ignore_warning = False
-            texts["name"] = texts["name"].replace("/", "∕")    
+            texts["name"] = texts["name"].replace("/", "∕")
             upload_messages = self.upload_file(
                 filename,
                 texts["name"],
@@ -3386,9 +3433,9 @@ class Fileprocessor:
             claims_append_result = modelwiki.append_image_descripts_claim(
                 texts["name"], wikidata_list)
             print('location_of_creation='+texts["location_of_creation"])
-            captions_append_result = modelwiki.set_image_captions_SDC(texts["name"], texts.get('captions')) 
-            claims_append_result = modelwiki.append_image_SDC(texts["name"], [texts["location_of_creation"]], prop='P1071') 
-            claims_append_result = modelwiki.append_image_SDC(texts["name"], [texts["location_of_creation"]], prop='P180') 
+            captions_append_result = modelwiki.set_image_captions_SDC(texts["name"], texts.get('captions'))
+            claims_append_result = modelwiki.append_image_SDC(texts["name"], [texts["location_of_creation"]], prop='P1071')
+            claims_append_result = modelwiki.append_image_SDC(texts["name"], [texts["location_of_creation"]], prop='P180')
             modelwiki.create_category_taken_on_day(
                 texts["country"].title(), texts["dt_obj"].strftime("%Y-%m-%d")
             )
@@ -3597,6 +3644,6 @@ class Fileprocessor:
 
         # Save the changes back to the file
         info.save()
-        
-        # iptcinfo3 creates a backup (e.g., photo.jpg~) by default. 
+
+        # iptcinfo3 creates a backup (e.g., photo.jpg~) by default.
         # You can delete it manually if not needed.

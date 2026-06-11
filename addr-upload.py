@@ -37,7 +37,8 @@ parser.add_argument(
 parser.add_argument(
     "-dry", "--dry-run", action="store_const", required=False, default=False, const=True
 )
-
+parser.add_argument("--move-ready", type=str, required=False,
+                    help='Instead of uploading, move files to this directory')
 args = parser.parse_args()
 
 desc_dict = dict()
@@ -47,7 +48,7 @@ desc_dict["street_polygons"] = args.street_polygons
 desc_dict["addr_polygons"] = args.addr_polygons
 desc_dict["wikidata"] = "trolleybus.gpkg"
 desc_dict["progress"] = args.progress
-
+desc_dict['move_ready'] = args.move_ready
 
 desc_dict["dry_run"] = args.dry_run
 

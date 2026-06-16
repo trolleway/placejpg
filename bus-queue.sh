@@ -149,7 +149,10 @@ python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $YUMZT2   i/
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $skoda9tr   i/_trolleybuses/moscow/rare/skoda9tr  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model $ikarus280t   i/_trolleybuses/moscow/rare/ikarus280t  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 python3 vehicle-upload.py -v trolleybus --system $mostroll  --model Q2095280   i/_trolleybuses/moscow/rare/ziu5  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
-python3 vehicle-upload.py -v trolleybus --system $mostroll  --model Q140166992   i/_trolleybuses/moscow/rare/421  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $mostroll  --model Q4402993   i/_trolleybuses/moscow/rare/421  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $mostroll  --model Q140177832   i/_trolleybuses/moscow/rare/701  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $mostroll  --model Q1628197   i/_trolleybuses/moscow/rare/1777  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
+python3 vehicle-upload.py -v trolleybus --system $mostroll  --model Q121176811   i/_trolleybuses/moscow/rare/3690  --number BEFORE_UNDERSCORE --country countries.gpkg  --progress --street trolleybus.gpkg 
 
 #vidnoye
 city=vidnoye 

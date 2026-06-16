@@ -3101,7 +3101,7 @@ class Fileprocessor:
                         )
                         continue  # continue to next file
                     wikidata = self.get_wikidatalist_from_string(filename)[0]
-                    del secondary_wikidata_ids[0]
+                    if isinstance(secondary_wikidata_ids, list) and len(secondary_wikidata_ids)>0: del secondary_wikidata_ids[0]
                 else:
                     if os.path.isfile(desc_dict["wikidata"]):
                         wikidata = desc_dict["wikidata"]

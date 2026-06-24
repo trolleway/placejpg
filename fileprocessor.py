@@ -22,6 +22,7 @@ from tqdm import tqdm
 
 import contextlib
 import io
+import sys
 
 import placejpgconfig
 from iptcinfo3 import IPTCInfo
@@ -34,6 +35,14 @@ class Fileprocessor:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
     logger = logging.getLogger(__name__)
+    logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler("placejpg.log", mode="w"),  # Wipes the file every run
+        logging.StreamHandler(sys.stdout)          # Prints to console
+    ]
+    )
     pp = pprint.PrettyPrinter(indent=4)
 
     langs_optional = placejpgconfig.langs_optional
@@ -1745,16 +1754,16 @@ class Fileprocessor:
                 flickrurl = flickrimage['photo']['urls']['url'][0]['_content']
                 flickrtitle = flickrimage['photo']['title']['_content']
                 text = (
-                    "\n" + "|source={{own}}\n|author={{Creator:" + self.photographer + "}} {{Flickr source |url="+flickrurl+" |title="+flickrtitle+"}}"
+                    "\n" + "|author={{Creator:" + self.photographer + "}} {{Flickr source |url="+flickrurl+" |title="+flickrtitle+"}}"
                 )
             except:
                 text = (
-                    "\n" + "|source={{own}}\n|author={{Creator:" + self.photographer + "}}"
+                    "\n" + "|author={{Creator:" + self.photographer + "}}"
                 )            
 
         else:
             text = (
-                "\n" + "|source={{own}}\n|author={{Creator:" + self.photographer + "}}"
+                "\n" + "|author={{Creator:" + self.photographer + "}}"
             )
 
         return text
@@ -2703,7 +2712,7 @@ class Fileprocessor:
                 make = image_exif.get("make").strip()
                 model = image_exif.get("model").strip()
                 make = make.capitalize()
-                st = "{{Taken with|" + make + " " + model + "|sf=1|own=1}}" + "\n"
+                st = "" + "\n"
 
                 st += "{{Photo Information|Model = " + make + " " + model
                 if (
@@ -2773,13 +2782,7 @@ class Fileprocessor:
                         st = st.replace(camerastring, cameramodels_dict[camerastring])
 
                 # lens quess
-                if lens is not None:
-                    st += (
-                        "{{Taken with|"
-                        + lens.replace("[", "").replace("]", "").replace("f/ ", "f/")
-                        + "|sf=1|own=1}}"
-                        + "\n"
-                    )
+
 
                 for lensstring in lensmodel_dict.keys():
                     if lensstring in st:
@@ -3058,6 +3061,17 @@ class Fileprocessor:
 
 
         for filename in files:
+        
+            print("check folder 'stop' for graceful break")
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            # Define the target folder path
+            target_folder = os.path.join(script_dir, "stop")
+            # Check if the folder exists and is a directory
+            if os.path.isdir(target_folder):
+                print('break')
+                shutil.rmtree(target_folder)
+                break
+                
 
             if not self.check_extension_valid(filename): continue
             if not self.check_exif_valid(filename): continue
@@ -3427,6 +3441,42 @@ class Fileprocessor:
             )
 
             print(upload_messages)
+            
+
+            if "Uploaded file is a duplicate of" in upload_messages:
+                old_filename = self.get_old_filename_from_overwrite_error(
+                    upload_messages
+                )
+                uploaded_folder_path_dublicate = uploaded_folder_path.replace(
+                    "commons_uploaded", "commons_duplicates"
+                )
+                self.move_file_to_uploaded_dir(
+                    filename, uploaded_folder_path_dublicate
+                )
+
+                # write description to text file for panoramio-replace process
+                import pickle
+
+                photo_duplicate_desc = {
+                    "old_filename": old_filename,
+                    "desc": texts["text"],
+                    "filename": os.path.join(
+                        uploaded_folder_path_dublicate, os.path.basename(filename)
+                    ),
+                    "new_name": texts["name"],
+                    "wikidata_list": wikidata_list,
+                    "need_create_categories": texts["need_create_categories"],
+                }
+                photo_duplicate_desc_filename = os.path.join(
+                    uploaded_folder_path_dublicate,
+                    os.path.splitext(os.path.basename(filename))[0]
+                    + ".description",
+                )
+                file = open(photo_duplicate_desc_filename, "wb")
+                pickle.dump(photo_duplicate_desc, file)
+                file.close()
+                # Continue to next file
+                continue
 
             self.logger.info("append claims")
 
@@ -3436,6 +3486,7 @@ class Fileprocessor:
             captions_append_result = modelwiki.set_image_captions_SDC(texts["name"], texts.get('captions'))
             claims_append_result = modelwiki.append_image_SDC(texts["name"], [texts["location_of_creation"]], prop='P1071')
             claims_append_result = modelwiki.append_image_SDC(texts["name"], [texts["location_of_creation"]], prop='P180')
+            claims_append_result = modelwiki.append_image_SDC(texts["name"], ['Q66458942'], prop='P7482')
             modelwiki.create_category_taken_on_day(
                 texts["country"].title(), texts["dt_obj"].strftime("%Y-%m-%d")
             )
@@ -3446,42 +3497,7 @@ class Fileprocessor:
                 + texts["name"].replace(" ", "_")
             )
 
-            if claims_append_result is None:
-                # UPLOAD FAILED
-                if "Uploaded file is a duplicate of" in upload_messages:
-                    old_filename = self.get_old_filename_from_overwrite_error(
-                        upload_messages
-                    )
-                    uploaded_folder_path_dublicate = uploaded_folder_path.replace(
-                        "commons_uploaded", "commons_duplicates"
-                    )
-                    self.move_file_to_uploaded_dir(
-                        filename, uploaded_folder_path_dublicate
-                    )
-
-                    # write description to text file for panoramio-replace process
-                    import pickle
-
-                    photo_duplicate_desc = {
-                        "old_filename": old_filename,
-                        "desc": texts["text"],
-                        "filename": os.path.join(
-                            uploaded_folder_path_dublicate, os.path.basename(filename)
-                        ),
-                        "new_name": texts["name"],
-                        "wikidata_list": wikidata_list,
-                        "need_create_categories": texts["need_create_categories"],
-                    }
-                    photo_duplicate_desc_filename = os.path.join(
-                        uploaded_folder_path_dublicate,
-                        os.path.splitext(os.path.basename(filename))[0]
-                        + ".description",
-                    )
-                    file = open(photo_duplicate_desc_filename, "wb")
-                    pickle.dump(photo_duplicate_desc, file)
-                    file.close()
-                # Continue to next file
-                # continue
+            ''' too complex
             else:
                 self.logger.info("check if replace old photo")
                 # REPLACE old panoramio photo. New photo uploaded, server not triggered at dublicate:
@@ -3493,7 +3509,7 @@ class Fileprocessor:
                     modelwiki.file_add_duplicate_template(
                         pagename=old_file_pagename, new_filename=texts["name"]
                     )
-
+            '''
             # CREATE CATEGORY PAGES
             if len(texts["need_create_categories"]) > 0:
                 for ctd in texts["need_create_categories"]:
